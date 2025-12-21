@@ -77,6 +77,7 @@ export interface SearchArgs extends CursorOnly {
 }
 
 export interface TimelineGetArgs extends CursorOnly {
+    type?: 'algorithmical' | 'chronological',
     seenTweetIds?: Array<string>
 }
 
