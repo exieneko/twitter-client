@@ -1,15 +1,15 @@
-# witter
+# twitter-client
 
 a basic twitter api client for javascript & typescript because i love reinventing the wheel ♡
 
 ## setup
 
-1. install the package: `npm i witter`
+1. install the package: `npm i @exieneko/twitter-client` / `pnpm add @exieneko/twitter-client`
 2. get your account tokens
 3. initialize the twitter client
 
     ```ts
-    import { TwitterClient } from 'witter';
+    import { TwitterClient } from '@exieneko/twitter-client';
 
     const twitter = new TwitterClient({
         authToken: 'auth_token cookie value',
@@ -25,7 +25,7 @@ example implementation in sveltekit
 
 ```ts
 // src/app.d.ts
-import type { TwitterClient } from 'witter';
+import type { TwitterClient } from '@exieneko/twitter-client';
 
 declare global {
     namespace App {
@@ -40,7 +40,7 @@ export {};
 
 ```ts
 // src/hooks.server.ts
-import { TwitterClient } from 'witter';
+import { TwitterClient } from '@exieneko/twitter-client';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -54,7 +54,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 ```
 
 ```ts
-// src/routes/something/+server.ts
+// src/routes/api/something/+server.ts
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -72,11 +72,12 @@ for easier use, a formatter will parse the data and return a custom object that 
 you can import both the types and the formatter functions
 
 ```ts
-import type { User } from 'witter/types';
+import type { User } from '@exieneko/twitter-client/types';
 
-const customUser: User = {
+const someUser: User = {
     __type: 'User',
+    id: '1234567890',
+    username: 'random_twitter_user',
     // ...
-    username: 'random_twitter_user'
 };
 ```

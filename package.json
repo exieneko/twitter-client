@@ -1,14 +1,20 @@
 {
-  "name": "witter",
+  "name": "@exieneko/twitter-client",
   "description": "a basic twitter api client for javascript & typescript",
   "version": "0.5.0",
-  "author": "exieneko",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": {
+    "name": "exieneko",
+    "email": "exieneko@proton.me"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/exieneko/witter.git"
+    "url": "https://github.com/exieneko/twitter-client.git"
   },
-  "bugs": "https://github.com/exieneko/witter/issues",
+  "bugs": "https://github.com/exieneko/twitter-client/issues",
   "files": [
     "dist/"
   ],
