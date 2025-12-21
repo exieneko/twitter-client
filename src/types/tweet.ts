@@ -4,7 +4,7 @@ import type { Cursor, User } from './index.js';
  * Represents a single tweet
  */
 export interface Tweet {
-    __type: 'Tweet',
+    __typename: 'Tweet',
     id: string,
     author: User,
     /** Birdwatch note on this tweet, if it exists */
@@ -91,7 +91,7 @@ export enum TweetPlatform {
 
 
 export interface TweetImage {
-    __type: 'Image',
+    __typename: 'Image',
     id: string,
     /** Whether or not the media has an AI-generated note on it */
     ai_generated: boolean,
@@ -108,8 +108,8 @@ export interface TweetImage {
     url: string
 }
 
-export interface TweetVideo extends Omit<TweetImage, '__type'> {
-    __type: 'Video',
+export interface TweetVideo extends Omit<TweetImage, '__typename'> {
+    __typename: 'Video',
     aspect_ratio: [number, number],
     /** Duration in milliseconds, may be `0` on gifs */
     duration: number,
@@ -123,8 +123,8 @@ export interface TweetVideo extends Omit<TweetImage, '__type'> {
     }>
 }
 
-export interface TweetGif extends Omit<TweetVideo, '__type'> {
-    __type: 'Gif'
+export interface TweetGif extends Omit<TweetVideo, '__typename'> {
+    __typename: 'Gif'
 }
 
 /** Union type of tweet media kinds */
@@ -136,7 +136,7 @@ export type TweetMedia = TweetImage | TweetGif | TweetVideo;
  * Represents a retweet in a timeline that points to another tweet
  */
 export interface Retweet {
-    __type: 'Retweet',
+    __typename: 'Retweet',
     id: string,
     tweet: Tweet,
     user: User
@@ -148,7 +148,7 @@ export interface Retweet {
  * Represents a conversation that can contain multiple tweets
  */
 export interface Conversation {
-    __type: 'Conversation',
+    __typename: 'Conversation',
     items: Array<Tweet | TweetTombstone | Cursor>
 }
 
@@ -158,7 +158,7 @@ export interface Conversation {
  * Represents a deleted or unavailable tweet
  */
 export interface TweetTombstone {
-    __type: 'TweetTombstone',
+    __typename: 'TweetTombstone',
     /** Reason for the tweet's unavailability */
     reason: TweetUnavailableReason
 }

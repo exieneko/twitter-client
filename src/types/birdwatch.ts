@@ -2,7 +2,7 @@
  * Represents a single Birdwatch note
  */
 export interface BirdwatchNote {
-    __type: 'BirdwatchNote',
+    __typename: 'BirdwatchNote',
     id: string,
     /** Whether or not the note was created by an ai author */
     ai_generated: boolean,
@@ -24,11 +24,11 @@ export interface BirdwatchNote {
     /** The note's current display status */
     status: BirdwatchNoteStatus,
     tags: ({
-        __type: 'MisleadingTweet',
+        __typename: 'MisleadingTweet',
         /** The note's claims of why the tweet needs a Birdwatch note */
         tweet_misleading_tags: Array<BirdwatchTweetMisleadingTag>
     } | {
-        __type: 'NoNoteNeeded',
+        __typename: 'NoNoteNeeded',
         /** The note's claims of why no notes are needed on this tweet */
         tweet_not_misleading_tags: Array<BirdwatchTweetNotMisleadingTag>
     }) & {

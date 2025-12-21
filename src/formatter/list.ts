@@ -3,11 +3,11 @@ import { cursor, getEntries, user } from './index.js';
 
 export function list(value: any): List | UnavailableList {
     if (!value || !value.created_at) {
-        return { __type: 'UnavailableList' }
+        return { __typename: 'UnavailableList' }
     }
 
     return {
-        __type: 'List',
+        __typename: 'List',
         id: value.id_str,
         banner_url: value.custom_banner_media.media_info.original_img_id,
         created_at: new Date(value.created_at).toISOString(),

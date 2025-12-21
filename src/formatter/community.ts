@@ -3,11 +3,11 @@ import { user } from './user.js';
 
 export function community(value: any): Community | UnavailableCommunity {
     if (!value || value.__typename === 'CommunityUnavailable') {
-        return { __type: 'UnavailableCommunity' };
+        return { __typename: 'UnavailableCommunity' };
     }
 
     return {
-        __type: 'Community',
+        __typename: 'Community',
         id: value.id_str,
         banner_url: value.custom_banner_media?.media_info?.original_img_url,
         can_join: value.join_policy === 'Open',

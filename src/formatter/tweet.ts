@@ -4,7 +4,7 @@ import { cursor, getEntries, user, userLegacy } from './index.js';
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
     if (!value) {
         return {
-            __type: 'TweetTombstone',
+            __typename: 'TweetTombstone',
             reason: TweetUnavailableReason.Unavailable
         };
     }
@@ -15,7 +15,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         const text: string = t.tombstone?.text?.text?.toLowerCase();
 
         return {
-            __type: 'TweetTombstone',
+            __typename: 'TweetTombstone',
             reason: text.includes('estimates your age')
                 ? TweetUnavailableReason.AgeVerificationRequired
             : text.includes('limits who can view their')
@@ -36,7 +36,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
 
     if (t.legacy.retweeted_status_result?.result) {
         return {
-            __type: 'Retweet',
+            __typename: 'Retweet',
             id: t.rest_id,
             tweet: tweet(t.legacy.retweeted_status_result.result) as Tweet,
             user: user(t.core.user_results.result) as User
@@ -56,7 +56,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
     const source = s?.startsWith('for ') ? s.slice(4) : s;
 
     return {
-        __type: 'Tweet',
+        __typename: 'Tweet',
         id: t.rest_id,
         author: user(t.core.user_results.result) as User,
         birdwatch_note: t.birdwatch_pivot?.note?.rest_id ? {
@@ -134,7 +134,7 @@ export function media(value: any): TweetMedia {
         const variants: TweetVideo['variants'] = value.video_info?.variants || [];
 
         return {
-            __type: value.type === 'video' ? 'Video' : 'Gif',
+            __typename: value.type === 'video' ? 'Video' : 'Gif',
             aspect_ratio: value.video_info?.aspect_ratio ?? [1, 1],
             duration: value.video_info?.duration_millis || 0,
             thumbnail_url: value.media_url_https,
@@ -145,7 +145,7 @@ export function media(value: any): TweetMedia {
     }
 
     return {
-        __type: 'Image',
+        __typename: 'Image',
         url: value.media_url_https,
         ...common
     };
@@ -157,7 +157,7 @@ export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTw
     const tweetMedia = (tweet.extended_entities.media as Array<{}>)?.map(media) ?? [];
 
     return {
-        __type: 'Tweet',
+        __typename: 'Tweet',
         id: tweet.id_str,
         author: userLegacy(author),
         bookmarked: !!tweet.bookmarked,
@@ -219,7 +219,7 @@ export function entry(value: any): Entry<TimelineTweet> | undefined {
         return {
             id: value.entryId,
             content: {
-                __type: 'Conversation',
+                __typename: 'Conversation',
                 items: value.content.items.map((item: any) => item.item.itemContent.__typename === 'TimelineTimelineCursor'
                     ? cursor(item.item.itemContent)
                     : (tweet(item.item.itemContent.tweet_results?.result, {

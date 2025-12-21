@@ -75,7 +75,7 @@ you can import both the types and the formatter functions
 import type { User } from '@exieneko/twitter-client/types';
 
 const someUser: User = {
-    __type: 'User',
+    __typename: 'User',
     id: '1234567890',
     username: 'random_twitter_user',
     // ...

@@ -59,10 +59,10 @@ export function notification(value: any, notificationKind: string): Notification
     })();
 
     const _t = type === NotificationKind.Mentioned ? formatTweet(value.tweet_results.result) : undefined
-    const tweet = _t?.__type === 'Tweet' ? _t : undefined;
+    const tweet = _t?.__typename === 'Tweet' ? _t : undefined;
 
     return {
-        __type: 'Notification',
+        __typename: 'Notification',
         id: value.id || tweet?.id,
         created_at: new Date(value.timestamp_ms).toISOString(),
         objectId: type === NotificationKind.Mentioned
@@ -111,7 +111,7 @@ export function deviceFollowEntries(value: Array<any>, globalObjects: any): Arra
             return {
                 id: entry.entryId,
                 content: {
-                    __type: 'Cursor',
+                    __typename: 'Cursor',
                     direction: cursor.cursorType === 'Top' ? CursorDirection.Top : CursorDirection.Bottom,
                     value: cursor.value
                 }

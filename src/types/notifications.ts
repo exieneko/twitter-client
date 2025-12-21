@@ -4,7 +4,7 @@ import type { Cursor, Tweet, User } from './index.js';
  * Represents a Twitter notification
  */
 export interface Notification {
-    __type: 'Notification',
+    __typename: 'Notification',
     id: string,
     /** The list's creation datetime as an ISO string */
     created_at: string,

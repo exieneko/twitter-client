@@ -4,7 +4,7 @@ import type { Cursor, User } from './index.js';
  * Represents a Twitter user list
  */
 export interface List {
-    __type: 'List',
+    __typename: 'List',
     id: string,
     /** The url for the list's banner, `undefined` if none is set */
     banner_url?: string,
@@ -34,7 +34,7 @@ export interface List {
  * Represents an unavailable list as a fallback
  */
 export interface UnavailableList {
-    __type: 'UnavailableList'
+    __typename: 'UnavailableList'
 }
 
 /**

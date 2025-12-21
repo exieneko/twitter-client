@@ -22,7 +22,7 @@ export interface Entry<T> {
  * The direction shows where the timeline continues from
  */
 export interface Cursor {
-    __type: 'Cursor',
+    __typename: 'Cursor',
     direction: CursorDirection,
     value: string
 }

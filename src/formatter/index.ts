@@ -11,7 +11,7 @@ export * from './user.js';
 
 export function cursor(value: any): Cursor {
     return {
-        __type: 'Cursor',
+        __typename: 'Cursor',
         direction: value.cursorType in CursorDirection
             ? CursorDirection[value.cursorType as keyof typeof CursorDirection]
             : CursorDirection.ShowSpam,

@@ -30,7 +30,7 @@ export function birdwatchUser(value: any, is_ai?: boolean): BirdwatchUser {
 
 export function birdwatchNote(value: any): BirdwatchNote {
     return {
-        __type: 'BirdwatchNote',
+        __typename: 'BirdwatchNote',
         id: value.rest_id,
         ai_generated: !!value.is_api_author,
         author: birdwatchUser(value.birdwatch_profile, !!value.is_api_author),
@@ -47,11 +47,11 @@ export function birdwatchNote(value: any): BirdwatchNote {
             : BirdwatchNoteStatus.Unrated,
         tags: {
             ...(value.classification !== 'NotMisleading' ? {
-                __type: 'MisleadingTweet',
+                __typename: 'MisleadingTweet',
                 tweet_misleading_tags: (value.data_v1.misleading_tags || [])
                     .map((s: string) => s in MisleadingTag ? MisleadingTag[s as keyof typeof MisleadingTag] : MisleadingTag.Other)
             } : {
-                __type: 'NoNoteNeeded',
+                __typename: 'NoNoteNeeded',
                 tweet_not_misleading_tags: (value.data_v1.not_misleading_tags || [])
                     .map((s: string) => s in NotMisleadingTag ? NotMisleadingTag[s as keyof typeof NotMisleadingTag] : NotMisleadingTag.Other)
             }),

@@ -3,7 +3,7 @@ import { cursor, getEntries } from './index.js';
 
 export function user(value: any): User | SuspendedUser | UnavailableUser {
     if (!value) {
-        return { __type: 'UnavailableUser' };
+        return { __typename: 'UnavailableUser' };
     }
 
     if (value.__typename === 'User') {
@@ -11,7 +11,7 @@ export function user(value: any): User | SuspendedUser | UnavailableUser {
         const verified_type = value.verification?.verified_type;
 
         return {
-            __type: 'User',
+            __typename: 'User',
             id: value.rest_id,
             affiliates_count: value.business_account?.affiliates_count || 0,
             affiliate_label: !!value.affiliates_highlighted_label?.label?.badge?.url ? {
@@ -72,15 +72,15 @@ export function user(value: any): User | SuspendedUser | UnavailableUser {
     }
 
     if (value.__typename === 'UnavailableUser') {
-        return { __type: 'SuspendedUser' };
+        return { __typename: 'SuspendedUser' };
     }
 
-    return { __type: 'UnavailableUser' };
+    return { __typename: 'UnavailableUser' };
 }
 
 export function userLegacy(value: any): User {
     return {
-        __type: 'User',
+        __typename: 'User',
         id: value.id_str,
         affiliates_count: 0,
         avatar_url: value.profile_image_url_https.replace('normal', '400x400'),
