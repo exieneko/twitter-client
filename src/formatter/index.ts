@@ -19,7 +19,7 @@ export function cursor(value: any): Cursor {
     };
 }
 
-export function getEntries<T>(instructions: Array<{ type?: string, entries?: Array<T> }>): Array<T> {
+export function getEntries<T>(instructions: { type?: string, entries?: T[] }[]): T[] {
     const pin = instructions.find(instruction => instruction.type === 'TimelinePinEntry') as { type: 'TimelinePinEntry', entry: T } | undefined;
     const entries = instructions.find(instruction => instruction.type === 'TimelineAddEntries')?.entries || [];
 

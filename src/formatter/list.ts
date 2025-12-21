@@ -1,4 +1,4 @@
-import type { Entry, List, TimelineList, TimelineTweet, UnavailableList, User } from '../types/index.js';
+import type { Entry, List, TimelineList, UnavailableList, User } from '../types/index.js';
 import { cursor, getEntries, user } from './index.js';
 
 export function list(value: any): List | UnavailableList {
@@ -26,8 +26,8 @@ export function list(value: any): List | UnavailableList {
 
 
 
-export function listEntries(instructions: any): Array<Entry<TimelineList>> {
-    const value: Array<any> = getEntries(instructions);
+export function listEntries(instructions: any): Entry<TimelineList>[] {
+    const value: any[] = getEntries(instructions);
 
     return value.map(entry => ({
         id: entry.entryId,
@@ -37,9 +37,9 @@ export function listEntries(instructions: any): Array<Entry<TimelineList>> {
     }));
 }
 
-export function listDiscoveryEntries(instructions: any): Array<Entry<List>> {
+export function listDiscoveryEntries(instructions: any): Entry<List>[] {
     // @ts-ignore
-    const value: Array<any> = getEntries(instructions).find((entry: any) => entry.entryId.includes('discovery'))?.content?.items || [];
+    const value: any[] = getEntries(instructions).find((entry: any) => entry.entryId.includes('discovery'))?.content?.items || [];
 
     return value.map(entry => ({
         id: entry.entryId,

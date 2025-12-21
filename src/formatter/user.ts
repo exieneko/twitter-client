@@ -119,8 +119,8 @@ export function userLegacy(value: any): User {
 
 
 
-export function userEntries(instructions: any): Array<Entry<TimelineUser>> {
-    const value: Array<any> = getEntries(instructions);
+export function userEntries(instructions: any): Entry<TimelineUser>[] {
+    const value: any[] = getEntries(instructions);
 
     return value.map(entry => ({
         id: entry.entryId,

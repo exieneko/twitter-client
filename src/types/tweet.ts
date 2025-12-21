@@ -32,7 +32,7 @@ export interface Tweet {
         allowed: boolean,
         allowed_until: string,
         remaining_count: number,
-        tweet_ids: Array<string>
+        tweet_ids: string[]
     },
     /** Whether or not if the tweet is so long that the full text is not displayed normally. `this.text` will still contain all text */
     expandable: boolean,
@@ -51,7 +51,7 @@ export interface Tweet {
     liked: boolean,
     /** Amount of users that liked the tweet */
     likes_count: number,
-    media: Array<TweetMedia>,
+    media: TweetMedia[],
     /** The platform the tweet has posted from */
     platform: TweetPlatform,
     /** Amount of users that are quote tweeting the tweet */
@@ -149,7 +149,7 @@ export interface Retweet {
  */
 export interface Conversation {
     __typename: 'Conversation',
-    items: Array<Tweet | TweetTombstone | Cursor>
+    items: Tweet | TweetTombstone | Cursor[]
 }
 
 

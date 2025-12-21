@@ -92,8 +92,8 @@ export function notification(value: any, notificationKind: string): Notification
     };
 }
 
-export function notificationEntries(instructions: any): Array<Entry<TimelineNotification>> {
-    const value: Array<any> = getEntries(instructions);
+export function notificationEntries(instructions: any): Entry<TimelineNotification>[] {
+    const value: any[] = getEntries(instructions);
 
     return value.map(entry => ({
         id: entry.entryId,
@@ -103,7 +103,7 @@ export function notificationEntries(instructions: any): Array<Entry<TimelineNoti
     }));
 }
 
-export function deviceFollowEntries(value: Array<any>, globalObjects: any): Array<Entry<TimelineTweet>> {
+export function deviceFollowEntries(value: any[], globalObjects: any): Entry<TimelineTweet>[] {
     return value.map(entry => {
         if (Object.hasOwn(entry.content, 'operation')) {
             const cursor = entry.content.operation.cursor;

@@ -46,8 +46,8 @@ export interface BlockedAccountsGetArgs extends CursorOnly {
 
 export interface BirdwatchRateNoteArgs {
     tweetId: string,
-    helpful_tags?: Array<BirdwatchHelpfulTag>,
-    unhelpful_tags?: Array<BirdwatchUnhelpfulTag>
+    helpful_tags?: BirdwatchHelpfulTag[],
+    unhelpful_tags?: BirdwatchUnhelpfulTag[]
 }
 
 export interface CommunityTimelineGetArgs {
@@ -78,12 +78,12 @@ export interface SearchArgs extends CursorOnly {
 
 export interface TimelineGetArgs extends CursorOnly {
     type?: 'algorithmical' | 'chronological',
-    seenTweetIds?: Array<string>
+    seenTweetIds?: string[]
 }
 
 export interface TweetCreateArgs {
     text: string,
-    mediaIds?: Array<string>,
+    mediaIds?: string[],
     sensitive?: boolean,
     replyPermission?: TweetReplyPermission
 }

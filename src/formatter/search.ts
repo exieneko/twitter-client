@@ -10,8 +10,8 @@ export function typeahead(value: any): Typeahead {
     };
 }
 
-export function searchEntries(instructions: any): Array<Entry<TimelineTweet>> | Array<Entry<TimelineUser>> | Array<Entry<TimelineList>> {
-    const value: Array<any> = getEntries(instructions);
+export function searchEntries(instructions: any): Entry<TimelineTweet>[] | Entry<TimelineUser>[] | Entry<TimelineList>[] {
+    const value: any[] = getEntries(instructions);
 
     if (value.at(0)?.entryId?.includes('tweet') || value.at(5)?.entryId.includes('tweet')) {
         return entries(instructions);

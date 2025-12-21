@@ -50,7 +50,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         );
     }
 
-    const tweetMedia = (t.legacy.entities.media as Array<{}>)?.map(media) ?? [];
+    const tweetMedia = (t.legacy.entities.media as {}[])?.map(media) ?? [];
 
     const s: string | undefined = t.source.includes('Twitter Web') ? 'web' : t.source.match(/>Twitter\s(.*?)</)?.at(1);
     const source = s?.startsWith('for ') ? s.slice(4) : s;
@@ -61,7 +61,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         author: user(t.core.user_results.result) as User,
         birdwatch_note: t.birdwatch_pivot?.note?.rest_id ? {
             id: t.birdwatch_pivot.note.rest_id,
-            text: (t.birdwatch_pivot.subtitle.entities as Array<{ fromIndex: number, toIndex: number, ref: { url: string } }>)
+            text: (t.birdwatch_pivot.subtitle.entities as { fromIndex: number, toIndex: number, ref: { url: string } }[])
                 .toSorted((a, b) => b.fromIndex - a.fromIndex)
                 .reduce((acc, e) => acc.slice(0, e.fromIndex) + e.ref.url + acc.slice(e.toIndex), t.birdwatch_pivot.subtitle.text),
             lang: t.birdwatch_pivot.note.language || 'en',
@@ -154,7 +154,7 @@ export function media(value: any): TweetMedia {
 
 
 export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTweetAuthor?: any): Tweet {
-    const tweetMedia = (tweet.extended_entities.media as Array<{}>)?.map(media) ?? [];
+    const tweetMedia = (tweet.extended_entities.media as {}[])?.map(media) ?? [];
 
     return {
         __typename: 'Tweet',
@@ -231,12 +231,12 @@ export function entry(value: any): Entry<TimelineTweet> | undefined {
     }
 }
 
-export function entries(instructions: any): Array<Entry<TimelineTweet>> {
-    return getEntries(instructions).map(entry).filter(x => !!x);
+export function entries(instructions: any): Entry<TimelineTweet>[] {
+    return getEntries(instructions).map(entry).filter(x => !!x) as any;
 }
 
-export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Array<Entry<TimelineTweet>> {
-    const value: Array<any> = getEntries(instructions);
+export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Entry<TimelineTweet>[] {
+    const value: any[] = getEntries(instructions);
 
     const grid = gridModule?.content ?? value.find(entry => entry.content.__typename === 'TimelineTimelineModule')?.content;
 

@@ -26,16 +26,16 @@ export interface BirdwatchNote {
     tags: ({
         __typename: 'MisleadingTweet',
         /** The note's claims of why the tweet needs a Birdwatch note */
-        tweet_misleading_tags: Array<BirdwatchTweetMisleadingTag>
+        tweet_misleading_tags: BirdwatchTweetMisleadingTag[]
     } | {
         __typename: 'NoNoteNeeded',
         /** The note's claims of why no notes are needed on this tweet */
-        tweet_not_misleading_tags: Array<BirdwatchTweetNotMisleadingTag>
+        tweet_not_misleading_tags: BirdwatchTweetNotMisleadingTag[]
     }) & {
         /** Tags applied to the note that shows its helpfulness, applied by raters */
-        note_helpful_tags: Array<BirdwatchHelpfulTag>,
+        note_helpful_tags: BirdwatchHelpfulTag[],
         /** Tags applied to the note that shows its unhelpfulness, applied by raters */
-        note_unhelpful_tags: Array<BirdwatchUnhelpfulTag>
+        note_unhelpful_tags: BirdwatchUnhelpfulTag[]
     },
     /** All text contained in the note */
     text: string,
@@ -47,8 +47,8 @@ export interface BirdwatchNote {
  */
 export interface BirdwatchNotesOnTweet {
     can_write_note: boolean,
-    pending_notes: Array<BirdwatchNote>,
-    not_needed_notes: Array<BirdwatchNote>
+    pending_notes: BirdwatchNote[],
+    not_needed_notes: BirdwatchNote[]
 }
 
 
