@@ -2,6 +2,9 @@
 
 a basic twitter api client for javascript & typescript because i love reinventing the wheel ♡
 
+> [!CAUTION]
+> this client uses twitter's free browser api instead of the paid official one. **use at your own risk**, as this may get your account suspended
+
 ## setup
 
 1. install the package: `npm i @exieneko/twitter-client` / `pnpm add @exieneko/twitter-client`
