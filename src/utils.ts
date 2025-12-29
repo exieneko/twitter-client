@@ -1,5 +1,6 @@
 import { HEADERS, OAUTH_KEY, PUBLIC_TOKEN } from './consts.js';
 import { Flags } from './flags.js';
+import type { ClientResponse } from './types/index.js';
 
 export interface Tokens {
     authToken: string,
@@ -39,7 +40,7 @@ const tokenHeaders = (tokens: Tokens) => ({
     cookie: `auth_token=${tokens.authToken}; ct0=${tokens.csrf}`
 });
 
-async function requestGql<T extends Endpoint>(endpoint: T, tokens: Tokens, params?: Params<T>): Promise<ReturnType<T['parser']>> {
+async function requestGql<T extends Endpoint>(endpoint: T, tokens: Tokens, params?: Params<T>): Promise<ClientResponse<ReturnType<T['parser']>>> {
     const toSearchParams = (obj: object) => {
         if (!obj || Object.entries(obj).every(([, value]) => value === undefined)) {
             return '';
@@ -55,28 +56,48 @@ async function requestGql<T extends Endpoint>(endpoint: T, tokens: Tokens, param
 
     const headers = { ...HEADERS, authorization: endpoint.useOauthKey ? OAUTH_KEY : PUBLIC_TOKEN, ...tokenHeaders(tokens) };
 
-    const response = await (endpoint.method === 'get'
-        ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
-            method: endpoint.method,
-            headers: headers
-        })
-        : fetch(url, {
-            method: endpoint.method,
-            headers: headers,
-            body: JSON.stringify({
-                variables: { ...endpoint.variables, ...params },
-                features: endpoint.features,
-                queryId: endpoint.url.split('/', 1)[0]
+    let data: Parameters<Endpoint['parser']>[0] | null = null;
+
+    try {
+        const response = await (endpoint.method === 'get'
+            ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
+                method: endpoint.method,
+                headers: headers
             })
-        })
-    );
+            : fetch(url, {
+                method: endpoint.method,
+                headers: headers,
+                body: JSON.stringify({
+                    variables: { ...endpoint.variables, ...params },
+                    features: endpoint.features,
+                    queryId: endpoint.url.split('/', 1)[0]
+                })
+            })
+        );
 
-    const data = <Parameters<Endpoint['parser']>[0]>await response.json();
+        data = await response.json();
+    } catch (error) {
+        return [[{
+            code: -1,
+            message: String(error)
+        }]];
+    }
 
-    return endpoint.parser(data);
+    if (data?.errors && !data.data) {
+        return [data.errors];
+    }
+
+    try {
+        return [data?.errors || [], endpoint.parser(data)];
+    } catch (error) {
+        return [[{
+            code: -1,
+            message: String(error)
+        }]];
+    }
 };
 
-async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, params?: Params<T>): Promise<ReturnType<T['parser']>> {
+async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, params?: Params<T>): Promise<ClientResponse<ReturnType<T['parser']>>> {
     const body = Object.entries({ ...(endpoint.variables || {}), ...(params || {}) })
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
         .join('&');
@@ -88,21 +109,41 @@ async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, param
         ...tokenHeaders(tokens)
     };
 
-    const response = await fetch(endpoint.method === 'get' && body ? `${endpoint.url}?${body}` : endpoint.url, {
-        method: endpoint.method,
-        headers: headers,
-        body: endpoint.method === 'post' && body ? body : undefined
-    });
+    let data: Parameters<T['parser']>[0] | null = null;
 
-    const data = <Parameters<Endpoint['parser']>[0]>await response.json();
+    try {
+        const response = await fetch(endpoint.method === 'get' && body ? `${endpoint.url}?${body}` : endpoint.url, {
+            method: endpoint.method,
+            headers: headers,
+            body: endpoint.method === 'post' && body ? body : undefined
+        });
 
-    return endpoint.parser(data);
+        data = await response.json();
+    } catch (error) {
+        return [[{
+            code: -1,
+            message: String(error)
+        }]];
+    }
+
+    if (data?.errors) {
+        return [data.errors];
+    }
+
+    try {
+        return [data?.errors || [], endpoint.parser(data)];
+    } catch (error) {
+        return [[{
+            code: -1,
+            message: String(error)
+        }]];
+    }
 };
 
-export async function request<T extends Endpoint>(endpoint: T, tokens: Tokens, params?: Params<T>): Promise<ReturnType<T['parser']>> {
+export async function request<T extends Endpoint>(endpoint: T, tokens: Tokens, params?: Params<T>): Promise<ClientResponse<ReturnType<T['parser']>>> {
     if (endpoint.url.startsWith('https://api.twitter.com')) {
         return requestV11(endpoint, tokens, params);
     }
-    
+
     return requestGql(endpoint, tokens, params);
 };

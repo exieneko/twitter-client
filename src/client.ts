@@ -1,5 +1,5 @@
 import { ENDPOINTS } from './endpoints.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, NotificationGetArgs, TimelineGetArgs, TimelineTweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, NotificationGetArgs, TimelineGetArgs, TimelineTweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission } from './types/index.js';
 import { request, type Tokens } from './utils.js';
 
 export class TwitterClient {
@@ -288,7 +288,7 @@ export class TwitterClient {
     }
 
     async getQuotedTweets(tweetId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.SearchTimeline, this.tokens, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as Entry<TimelineTweet>[]
+        return await request(ENDPOINTS.SearchTimeline, this.tokens, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as ClientResponse<Entry<TimelineTweet>[]>
     }
 
     async bookmark(tweetId: string) {
