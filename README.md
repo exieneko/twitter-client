@@ -19,7 +19,7 @@ a basic twitter api client for javascript & typescript because i love reinventin
         csrf: 'ct0 cookie value'
     });
 
-    const me = await twitter.user.get('exieneko', { byUsername: true });
+    const [errors, me] = await twitter.getUser('exieneko', { byUsername: true });
     ```
 
 ## example
@@ -62,7 +62,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals }) => {
-    const data = await locals.twitter.user.get('exieneko', { byUsername: true });
+    const [, data] = await locals.twitter.user.get('exieneko', { byUsername: true });
     return json(data);
 };
 ```
