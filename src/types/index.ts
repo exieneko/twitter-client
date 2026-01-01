@@ -130,3 +130,8 @@ export type TweetReplyPermission = 'following' | 'verified' | 'mentioned' | 'non
 export interface TweetGetArgs extends CursorOnly {
     sort?: 'relevant' | 'recent' | 'likes'
 }
+
+export interface MediaUploadArgs {
+    contentType: string,
+    segmentSizeOverride?: number
+}

@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import * as format from './formatter/index.js';
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, SuspendedUser, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, SuspendedUser, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
 import { v11, type Endpoint } from './utils.js';
 
 const GET = 'get';

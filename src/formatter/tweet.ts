@@ -1,4 +1,4 @@
-import { Entry, Retweet, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
+import { Entry, Media, Retweet, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
 import { cursor, getEntries, user, userLegacy } from './index.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
@@ -258,4 +258,22 @@ export function mediaEntries(instructions: any, gridModule?: { content: object, 
                 : []
         )
     ];
+}
+
+
+
+export function mediaUpload(value: any): Media {
+    return {
+        id: value.media_id_string,
+        media_key: value.media_key,
+        bytes: value.size || 0,
+        contentType: value.image?.image_type || value.video?.video_type || 'image/gif',
+        expires_in: value.expires_after_secs || 0,
+        width: value.image?.w,
+        height: value.image?.h,
+        processing: 'processing_info' in value ? {
+            state: value.processing_info?.state || 'pending',
+            progress: value.processing_info?.progress_percent ?? 0
+        } : undefined
+    };
 }

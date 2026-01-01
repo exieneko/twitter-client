@@ -185,3 +185,40 @@ export enum TweetUnavailableReason {
  * Union type representing all tweet types that can be present in a timeline
  */
 export type TimelineTweet = Tweet | Retweet | Conversation | TweetTombstone | Cursor;
+
+
+
+export interface MediaUploadInit {
+    media_id: number,
+    media_id_string: string,
+    expires_after_secs: number,
+    media_key: string
+}
+
+/**
+ * Data about an uploaded media file
+ */
+export interface Media {
+    id: string,
+    media_key: string,
+    /** Size of the media in bytes */
+    bytes: number,
+    /** Mime type of the media, defaults to `video/mp4` for gifs, since Twitter stores gifs as mp4, but doesn't actually return any mime type on gif uploads specifically */
+    contentType?: string,
+    /** Amount of seconds left until the media id expires */
+    expires_in: number,
+    /** Width of the image in pixels, `undefined` if the given media is a video or gif */
+    width?: number,
+    /** Height of the image in pixels, `undefined` if the given media is a video or gif */
+    height?: number,
+    /** Information about how Twitter handled the uploaded media */
+    processing?: {
+        /**
+         * `succeeded` means the media has been uploaded
+         * `failed` means the media has been rejected
+         * `pending` means a separate STATUS request needs to be made to get missing information
+         */
+        state: 'succeeded' | 'failed' | 'pending',
+        progress?: number
+    }
+}

@@ -1,6 +1,6 @@
 import { ENDPOINTS } from './endpoints.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, NotificationGetArgs, TimelineGetArgs, TimelineTweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission } from './types/index.js';
-import { request, type Tokens } from './utils.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, TimelineGetArgs, TimelineTweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission } from './types/index.js';
+import { request, uploadAppend, uploadFinalize, uploadInit, uploadStatus, type Tokens } from './utils.js';
 
 export class TwitterClient {
     constructor(private tokens: Tokens) {}
@@ -474,5 +474,69 @@ export class TwitterClient {
 
     async unmuteUser(id: string, args?: ByUsername) {
         return await request(ENDPOINTS.mutes_users_destroy, this.tokens, args?.byUsername ? { screen_name: id } : { user_id: id });
+    }
+
+
+
+    /**
+     * Sends several requests to upload a media file
+     * @param {ArrayBuffer} media The entire file as an `ArrayBuffer`
+     * @param {MediaUploadArgs} args Additional options to send with the requests
+     * @param {(chunk: ArrayBuffer, index: number, total: number) => void} callback Optional callback occuring after a successful upload of each chunk
+     * @returns {Promise<ClientResponse<Media>>} Information about the uploaded file
+     */
+    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<ClientResponse<Media>> {
+        try {
+            const [errors, init] = await uploadInit(this.tokens, {
+                bytes: media.byteLength,
+                contentType: args.contentType
+            });
+
+            if (errors.length) {
+                return [errors];
+            }
+
+            const chunkSize = args.segmentSizeOverride || 1_084_576;
+            const chunksNeeded = Math.ceil(media.byteLength / chunkSize);
+
+            const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
+
+            for (const [index, chunk] of chunks.entries()) {
+                const response = await uploadAppend(this.tokens, {
+                    id: init!.media_id_string,
+                    data: chunk,
+                    index,
+                    contentType: args.contentType
+                });
+
+                if (!response.ok) {
+                    const { errors } = await response.json();
+
+                    if (!!errors) {
+                        return [errors];
+                    }
+
+                    throw response.statusText;
+                }
+
+                callback?.(chunk, index, chunksNeeded);
+            }
+
+            return await uploadFinalize(this.tokens, { id: init!.media_id_string });
+        } catch (error) {
+            return [[{
+                code: -1,
+                message: String(error)
+            }]];
+        }
+    }
+
+    /**
+     * Check the current status of an uploaded media file
+     * @param {string} id Media id
+     * @returns {Promise<ClientResponse<Media>>} Information about the uploaded file
+     */
+    async mediaStatus(id: string): Promise<ClientResponse<Media>> {
+        return await uploadStatus(this.tokens, { id });
     }
 }
