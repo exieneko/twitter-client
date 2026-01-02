@@ -119,7 +119,7 @@ export interface TimelineGetArgs extends CursorOnly {
 }
 
 export interface TweetCreateArgs {
-    text: string,
+    text?: string,
     mediaIds?: string[],
     sensitive?: boolean,
     replyPermission?: TweetReplyPermission

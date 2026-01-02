@@ -230,7 +230,7 @@ export class TwitterClient {
 
 
     // tweet
-    async createTweet(args: TweetCreateArgs) {
+    async tweet(args: TweetCreateArgs) {
         const mode = args.replyPermission === 'following'
             ? 'Community'
         : args.replyPermission === 'verified'
@@ -249,7 +249,7 @@ export class TwitterClient {
                 possibly_sensitive: args.sensitive
             },
             semantic_annotation_ids: [],
-            tweet_text: args.text
+            tweet_text: args.text || ''
         });
     }
 
