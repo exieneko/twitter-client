@@ -4,7 +4,7 @@ import type { User } from './user.js';
  * Represents a single Twitter community
  */
 export interface Community {
-    __type: 'Community',
+    __typename: 'Community',
     id: string,
     /** The url for the community's banner and preview image, `undefined` if none is set */
     banner_url?: string,
@@ -52,5 +52,5 @@ export enum CommunityRole {
  * Represents an unavailable community as a fallback
  */
 export interface UnavailableCommunity {
-    __type: 'UnavailableCommunity'
+    __typename: 'UnavailableCommunity'
 }

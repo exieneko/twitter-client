@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import * as format from './formatter/index.js';
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, SuspendedUser, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, SuspendedUser, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
 import { v11, type Endpoint } from './utils.js';
 
 const GET = 'get';
@@ -94,8 +94,8 @@ export const ENDPOINTS = {
         method: POST,
         params: {} as {
             data_v2: {
-                helpful_tags?: Array<BirdwatchHelpfulTag>,
-                not_helpful_tags?: Array<BirdwatchUnhelpfulTag>,
+                helpful_tags?: BirdwatchHelpfulTag[],
+                not_helpful_tags?: BirdwatchUnhelpfulTag[],
                 helpfulness_level: 'Helpful' | 'SomewhatHelpful' | 'NotHelpful'
             },
             note_id: string,
@@ -439,7 +439,7 @@ export const ENDPOINTS = {
     HomeLatestTimeline: {
         url: 'rA4kQTNf-wOA063umfp08Q/HomeLatestTimeline',
         method: GET,
-        params: {} as { seenTweetIds: Array<string>, requestContext?: 'launch', cursor?: string },
+        params: {} as { seenTweetIds: string[], requestContext?: 'launch', cursor?: string },
         variables: {"count":20,"includePromotedContent":false,"latestControlAvailable":true,"withCommunity":true},
         features: flags.timeline,
         parser: data => format.entries(data.data.home.home_timeline_urt.instructions)
@@ -447,7 +447,7 @@ export const ENDPOINTS = {
     HomeTimeline: {
         url: 'wGPJhptsyASnUUJb9MPz0w/HomeTimeline',
         method: GET,
-        params: {} as { seenTweetIds: Array<string>, requestContext?: 'launch', cursor?: string },
+        params: {} as { seenTweetIds: string[], requestContext?: 'launch', cursor?: string },
         variables: {"count":20,"includePromotedContent":false,"latestControlAvailable":true,"withCommunity":true},
         features: flags.timeline,
         parser: data => format.entries(data.data.home.home_timeline_urt.instructions)
@@ -466,11 +466,11 @@ export const ENDPOINTS = {
             media: {
                 media_entities: Array<{
                     media_id: string,
-                    tagged_users: Array<string>
+                    tagged_users: string[]
                 }>,
                 possibly_sensitive?: boolean
             },
-            semantic_annotation_ids: Array<string>,
+            semantic_annotation_ids: string[],
             tweet_text: string
         },
         variables: {"dark_request":false,"disallowed_reply_options":null},
@@ -484,10 +484,10 @@ export const ENDPOINTS = {
             execute_at: number,
             post_tweet_request: {
                 auto_populate_reply_metadata: boolean,
-                exclude_reply_user_ids: Array<string>,
-                media_ids: Array<string>,
+                exclude_reply_user_ids: string[],
+                media_ids: string[],
                 status: string,
-                thread_tweets: Array<string>
+                thread_tweets: string[]
                 // TODO
             }
         },
@@ -519,10 +519,10 @@ export const ENDPOINTS = {
     TweetResultsByRestIds: {
         url: 'AmGn9FmJTSj-F_2grvcsxg/TweetResultsByRestIds',
         method: GET,
-        params: {} as { tweetIds: Array<string> },
+        params: {} as { tweetIds: string[] },
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline,
-        parser: data => data.data.tweetResult.map((tweet: any) => format.tweet(tweet?.result)) as Array<Tweet | TweetTombstone>
+        parser: data => data.data.tweetResult.map((tweet: any) => format.tweet(tweet?.result)) as Tweet | TweetTombstone[]
     },
     ModeratedTimeline: {
         url: 'uRM_fRG2eETuAnGz74btRw/ModeratedTimeline',
@@ -630,6 +630,12 @@ export const ENDPOINTS = {
         useOauthKey: true,
         parser: data => !!data.id_str
     },
+    media_metadata_create: {
+        url: v11('media/metadata/create.json'),
+        method: POST,
+        params: {} as { allow_download_status: { allow_download: `${boolean}` }, alt_text: { text: string }, media_id: string },
+        parser: _ => true
+    },
 
 
 
@@ -644,9 +650,9 @@ export const ENDPOINTS = {
     UsersByScreenNames: {
         url: 'fUj_I2cOVaiSPa0YOsfH9A/UsersByScreenNames',
         method: GET,
-        params: {} as { screen_names: Array<string> },
+        params: {} as { screen_names: string[] },
         features: flags.user,
-        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as Array<User | SuspendedUser | UnavailableUser>
+        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as User | SuspendedUser | UnavailableUser[]
     },
     UserByRestId: {
         url: 'q9yeu7UlEs2YVx_-Z8Ps7Q/UserByRestId',
@@ -658,9 +664,9 @@ export const ENDPOINTS = {
     UsersByRestIds: {
         url: 'gtih_RnTA2LZEaFd-NxHkA/UsersByRestIds',
         method: GET,
-        params: {} as { userIds: Array<string> },
+        params: {} as { userIds: string[] },
         features: flags.user,
-        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as Array<User | SuspendedUser | UnavailableUser>
+        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as User | SuspendedUser | UnavailableUser[]
     },
     UserTweets: {
         url: 'Z15UW_bggbnuLrrt0-jOGA/UserTweets',

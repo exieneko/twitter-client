@@ -4,7 +4,7 @@ import type { Cursor, User } from './index.js';
  * Represents a single tweet
  */
 export interface Tweet {
-    __type: 'Tweet',
+    __typename: 'Tweet',
     id: string,
     author: User,
     /** Birdwatch note on this tweet, if it exists */
@@ -32,7 +32,7 @@ export interface Tweet {
         allowed: boolean,
         allowed_until: string,
         remaining_count: number,
-        tweet_ids: Array<string>
+        tweet_ids: string[]
     },
     /** Whether or not if the tweet is so long that the full text is not displayed normally. `this.text` will still contain all text */
     expandable: boolean,
@@ -51,7 +51,7 @@ export interface Tweet {
     liked: boolean,
     /** Amount of users that liked the tweet */
     likes_count: number,
-    media: Array<TweetMedia>,
+    media: TweetMedia[],
     /** The platform the tweet has posted from */
     platform: TweetPlatform,
     /** Amount of users that are quote tweeting the tweet */
@@ -91,7 +91,7 @@ export enum TweetPlatform {
 
 
 export interface TweetImage {
-    __type: 'Image',
+    __typename: 'Image',
     id: string,
     /** Whether or not the media has an AI-generated note on it */
     ai_generated: boolean,
@@ -108,8 +108,8 @@ export interface TweetImage {
     url: string
 }
 
-export interface TweetVideo extends Omit<TweetImage, '__type'> {
-    __type: 'Video',
+export interface TweetVideo extends Omit<TweetImage, '__typename'> {
+    __typename: 'Video',
     aspect_ratio: [number, number],
     /** Duration in milliseconds, may be `0` on gifs */
     duration: number,
@@ -123,8 +123,8 @@ export interface TweetVideo extends Omit<TweetImage, '__type'> {
     }>
 }
 
-export interface TweetGif extends Omit<TweetVideo, '__type'> {
-    __type: 'Gif'
+export interface TweetGif extends Omit<TweetVideo, '__typename'> {
+    __typename: 'Gif'
 }
 
 /** Union type of tweet media kinds */
@@ -136,7 +136,7 @@ export type TweetMedia = TweetImage | TweetGif | TweetVideo;
  * Represents a retweet in a timeline that points to another tweet
  */
 export interface Retweet {
-    __type: 'Retweet',
+    __typename: 'Retweet',
     id: string,
     tweet: Tweet,
     user: User
@@ -148,8 +148,8 @@ export interface Retweet {
  * Represents a conversation that can contain multiple tweets
  */
 export interface Conversation {
-    __type: 'Conversation',
-    items: Array<Tweet | TweetTombstone | Cursor>
+    __typename: 'Conversation',
+    items: Tweet | TweetTombstone | Cursor[]
 }
 
 
@@ -158,7 +158,7 @@ export interface Conversation {
  * Represents a deleted or unavailable tweet
  */
 export interface TweetTombstone {
-    __type: 'TweetTombstone',
+    __typename: 'TweetTombstone',
     /** Reason for the tweet's unavailability */
     reason: TweetUnavailableReason
 }
@@ -185,3 +185,40 @@ export enum TweetUnavailableReason {
  * Union type representing all tweet types that can be present in a timeline
  */
 export type TimelineTweet = Tweet | Retweet | Conversation | TweetTombstone | Cursor;
+
+
+
+export interface MediaUploadInit {
+    media_id: number,
+    media_id_string: string,
+    expires_after_secs: number,
+    media_key: string
+}
+
+/**
+ * Data about an uploaded media file
+ */
+export interface Media {
+    id: string,
+    media_key: string,
+    /** Size of the media in bytes */
+    bytes: number,
+    /** Mime type of the media, defaults to `video/mp4` for gifs, since Twitter stores gifs as mp4, but doesn't actually return any mime type on gif uploads specifically */
+    contentType?: string,
+    /** Amount of seconds left until the media id expires */
+    expires_in: number,
+    /** Width of the image in pixels, `undefined` if the given media is a video or gif */
+    width?: number,
+    /** Height of the image in pixels, `undefined` if the given media is a video or gif */
+    height?: number,
+    /** Information about how Twitter handled the uploaded media */
+    processing?: {
+        /**
+         * `succeeded` means the media has been uploaded
+         * `failed` means the media has been rejected
+         * `pending` means a separate STATUS request needs to be made to get missing information
+         */
+        state: 'succeeded' | 'failed' | 'pending',
+        progress?: number
+    }
+}

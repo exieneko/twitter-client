@@ -1,13 +1,13 @@
-import type { Entry, List, TimelineList, TimelineTweet, UnavailableList, User } from '../types/index.js';
+import type { Entry, List, TimelineList, UnavailableList, User } from '../types/index.js';
 import { cursor, getEntries, user } from './index.js';
 
 export function list(value: any): List | UnavailableList {
     if (!value || !value.created_at) {
-        return { __type: 'UnavailableList' }
+        return { __typename: 'UnavailableList' }
     }
 
     return {
-        __type: 'List',
+        __typename: 'List',
         id: value.id_str,
         banner_url: value.custom_banner_media.media_info.original_img_id,
         created_at: new Date(value.created_at).toISOString(),
@@ -26,8 +26,8 @@ export function list(value: any): List | UnavailableList {
 
 
 
-export function listEntries(instructions: any): Array<Entry<TimelineList>> {
-    const value: Array<any> = getEntries(instructions);
+export function listEntries(instructions: any): Entry<TimelineList>[] {
+    const value: any[] = getEntries(instructions);
 
     return value.map(entry => ({
         id: entry.entryId,
@@ -37,9 +37,9 @@ export function listEntries(instructions: any): Array<Entry<TimelineList>> {
     }));
 }
 
-export function listDiscoveryEntries(instructions: any): Array<Entry<List>> {
+export function listDiscoveryEntries(instructions: any): Entry<List>[] {
     // @ts-ignore
-    const value: Array<any> = getEntries(instructions).find((entry: any) => entry.entryId.includes('discovery'))?.content?.items || [];
+    const value: any[] = getEntries(instructions).find((entry: any) => entry.entryId.includes('discovery'))?.content?.items || [];
 
     return value.map(entry => ({
         id: entry.entryId,

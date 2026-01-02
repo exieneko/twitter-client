@@ -59,10 +59,10 @@ export function notification(value: any, notificationKind: string): Notification
     })();
 
     const _t = type === NotificationKind.Mentioned ? formatTweet(value.tweet_results.result) : undefined
-    const tweet = _t?.__type === 'Tweet' ? _t : undefined;
+    const tweet = _t?.__typename === 'Tweet' ? _t : undefined;
 
     return {
-        __type: 'Notification',
+        __typename: 'Notification',
         id: value.id || tweet?.id,
         created_at: new Date(value.timestamp_ms).toISOString(),
         objectId: type === NotificationKind.Mentioned
@@ -92,8 +92,8 @@ export function notification(value: any, notificationKind: string): Notification
     };
 }
 
-export function notificationEntries(instructions: any): Array<Entry<TimelineNotification>> {
-    const value: Array<any> = getEntries(instructions);
+export function notificationEntries(instructions: any): Entry<TimelineNotification>[] {
+    const value: any[] = getEntries(instructions);
 
     return value.map(entry => ({
         id: entry.entryId,
@@ -103,7 +103,7 @@ export function notificationEntries(instructions: any): Array<Entry<TimelineNoti
     }));
 }
 
-export function deviceFollowEntries(value: Array<any>, globalObjects: any): Array<Entry<TimelineTweet>> {
+export function deviceFollowEntries(value: any[], globalObjects: any): Entry<TimelineTweet>[] {
     return value.map(entry => {
         if (Object.hasOwn(entry.content, 'operation')) {
             const cursor = entry.content.operation.cursor;
@@ -111,7 +111,7 @@ export function deviceFollowEntries(value: Array<any>, globalObjects: any): Arra
             return {
                 id: entry.entryId,
                 content: {
-                    __type: 'Cursor',
+                    __typename: 'Cursor',
                     direction: cursor.cursorType === 'Top' ? CursorDirection.Top : CursorDirection.Bottom,
                     value: cursor.value
                 }

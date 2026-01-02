@@ -1,10 +1,10 @@
-import { Entry, Retweet, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
+import { Entry, Media, Retweet, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
 import { cursor, getEntries, user, userLegacy } from './index.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
     if (!value) {
         return {
-            __type: 'TweetTombstone',
+            __typename: 'TweetTombstone',
             reason: TweetUnavailableReason.Unavailable
         };
     }
@@ -15,7 +15,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         const text: string = t.tombstone?.text?.text?.toLowerCase();
 
         return {
-            __type: 'TweetTombstone',
+            __typename: 'TweetTombstone',
             reason: text.includes('estimates your age')
                 ? TweetUnavailableReason.AgeVerificationRequired
             : text.includes('limits who can view their')
@@ -36,7 +36,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
 
     if (t.legacy.retweeted_status_result?.result) {
         return {
-            __type: 'Retweet',
+            __typename: 'Retweet',
             id: t.rest_id,
             tweet: tweet(t.legacy.retweeted_status_result.result) as Tweet,
             user: user(t.core.user_results.result) as User
@@ -50,18 +50,18 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         );
     }
 
-    const tweetMedia = (t.legacy.entities.media as Array<{}>)?.map(media) ?? [];
+    const tweetMedia = (t.legacy.entities.media as {}[])?.map(media) ?? [];
 
     const s: string | undefined = t.source.includes('Twitter Web') ? 'web' : t.source.match(/>Twitter\s(.*?)</)?.at(1);
     const source = s?.startsWith('for ') ? s.slice(4) : s;
 
     return {
-        __type: 'Tweet',
+        __typename: 'Tweet',
         id: t.rest_id,
         author: user(t.core.user_results.result) as User,
         birdwatch_note: t.birdwatch_pivot?.note?.rest_id ? {
             id: t.birdwatch_pivot.note.rest_id,
-            text: (t.birdwatch_pivot.subtitle.entities as Array<{ fromIndex: number, toIndex: number, ref: { url: string } }>)
+            text: (t.birdwatch_pivot.subtitle.entities as { fromIndex: number, toIndex: number, ref: { url: string } }[])
                 .toSorted((a, b) => b.fromIndex - a.fromIndex)
                 .reduce((acc, e) => acc.slice(0, e.fromIndex) + e.ref.url + acc.slice(e.toIndex), t.birdwatch_pivot.subtitle.text),
             lang: t.birdwatch_pivot.note.language || 'en',
@@ -134,7 +134,7 @@ export function media(value: any): TweetMedia {
         const variants: TweetVideo['variants'] = value.video_info?.variants || [];
 
         return {
-            __type: value.type === 'video' ? 'Video' : 'Gif',
+            __typename: value.type === 'video' ? 'Video' : 'Gif',
             aspect_ratio: value.video_info?.aspect_ratio ?? [1, 1],
             duration: value.video_info?.duration_millis || 0,
             thumbnail_url: value.media_url_https,
@@ -145,7 +145,7 @@ export function media(value: any): TweetMedia {
     }
 
     return {
-        __type: 'Image',
+        __typename: 'Image',
         url: value.media_url_https,
         ...common
     };
@@ -154,10 +154,10 @@ export function media(value: any): TweetMedia {
 
 
 export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTweetAuthor?: any): Tweet {
-    const tweetMedia = (tweet.extended_entities.media as Array<{}>)?.map(media) ?? [];
+    const tweetMedia = (tweet.extended_entities.media as {}[])?.map(media) ?? [];
 
     return {
-        __type: 'Tweet',
+        __typename: 'Tweet',
         id: tweet.id_str,
         author: userLegacy(author),
         bookmarked: !!tweet.bookmarked,
@@ -219,7 +219,7 @@ export function entry(value: any): Entry<TimelineTweet> | undefined {
         return {
             id: value.entryId,
             content: {
-                __type: 'Conversation',
+                __typename: 'Conversation',
                 items: value.content.items.map((item: any) => item.item.itemContent.__typename === 'TimelineTimelineCursor'
                     ? cursor(item.item.itemContent)
                     : (tweet(item.item.itemContent.tweet_results?.result, {
@@ -231,12 +231,12 @@ export function entry(value: any): Entry<TimelineTweet> | undefined {
     }
 }
 
-export function entries(instructions: any): Array<Entry<TimelineTweet>> {
-    return getEntries(instructions).map(entry).filter(x => !!x);
+export function entries(instructions: any): Entry<TimelineTweet>[] {
+    return getEntries(instructions).map(entry).filter(x => !!x) as any;
 }
 
-export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Array<Entry<TimelineTweet>> {
-    const value: Array<any> = getEntries(instructions);
+export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Entry<TimelineTweet>[] {
+    const value: any[] = getEntries(instructions);
 
     const grid = gridModule?.content ?? value.find(entry => entry.content.__typename === 'TimelineTimelineModule')?.content;
 
@@ -258,4 +258,22 @@ export function mediaEntries(instructions: any, gridModule?: { content: object, 
                 : []
         )
     ];
+}
+
+
+
+export function mediaUpload(value: any): Media {
+    return {
+        id: value.media_id_string,
+        media_key: value.media_key,
+        bytes: value.size || 0,
+        contentType: value.image?.image_type || value.video?.video_type || 'image/gif',
+        expires_in: value.expires_after_secs || 0,
+        width: value.image?.w,
+        height: value.image?.h,
+        processing: 'processing_info' in value ? {
+            state: value.processing_info?.state || 'pending',
+            progress: value.processing_info?.progress_percent ?? 0
+        } : undefined
+    };
 }

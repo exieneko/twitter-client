@@ -3,7 +3,7 @@
  */
 export interface Typeahead {
     results_count: number,
-    topics: Array<string>,
-    user_ids: Array<string>,
+    topics: string[],
+    user_ids: string[],
     query: string
 }

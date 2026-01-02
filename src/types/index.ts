@@ -10,6 +10,43 @@ export * from './tweet.js';
 export * from './user.js';
 
 /**
+ * Response tuple containing `errors` and `data` if the errors aren't fatal
+ * 
+ * # Examples
+ * 
+ * Destructure tuple and handle errors before handling data:
+ * 
+ * ```ts
+ * const [errors, entries] = await twitter.getTimeline();
+ * 
+ * if (!errors.length) {
+ *     console.error(`errors: ${errors}`);
+ *     return;
+ * }
+ * 
+ * console.log(entries!.map(entry => entry.content));
+ * ```
+ * 
+ * Or just assume there are no errors:
+ * 
+ * ```ts
+ * const [, user] = await twitter.getUser('123456');
+ * console.log(user?.name);
+ * ```
+ */
+export type ClientResponse<T> = [ClientError[], T?];
+
+/**
+ * 
+ */
+export interface ClientError {
+    code: number,
+    message?: string
+}
+
+
+
+/**
  * Represents any timeline entry
  */
 export interface Entry<T> {
@@ -22,7 +59,7 @@ export interface Entry<T> {
  * The direction shows where the timeline continues from
  */
 export interface Cursor {
-    __type: 'Cursor',
+    __typename: 'Cursor',
     direction: CursorDirection,
     value: string
 }
@@ -46,8 +83,8 @@ export interface BlockedAccountsGetArgs extends CursorOnly {
 
 export interface BirdwatchRateNoteArgs {
     tweetId: string,
-    helpful_tags?: Array<BirdwatchHelpfulTag>,
-    unhelpful_tags?: Array<BirdwatchUnhelpfulTag>
+    helpful_tags?: BirdwatchHelpfulTag[],
+    unhelpful_tags?: BirdwatchUnhelpfulTag[]
 }
 
 export interface CommunityTimelineGetArgs {
@@ -77,12 +114,13 @@ export interface SearchArgs extends CursorOnly {
 }
 
 export interface TimelineGetArgs extends CursorOnly {
-    seenTweetIds?: Array<string>
+    type?: 'algorithmical' | 'chronological',
+    seenTweetIds?: string[]
 }
 
 export interface TweetCreateArgs {
-    text: string,
-    mediaIds?: Array<string>,
+    text?: string,
+    mediaIds?: string[],
     sensitive?: boolean,
     replyPermission?: TweetReplyPermission
 }
@@ -91,4 +129,10 @@ export type TweetReplyPermission = 'following' | 'verified' | 'mentioned' | 'non
 
 export interface TweetGetArgs extends CursorOnly {
     sort?: 'relevant' | 'recent' | 'likes'
+}
+
+export interface MediaUploadArgs {
+    contentType: string,
+    altText?: string,
+    segmentSizeOverride?: number
 }

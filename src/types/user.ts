@@ -4,7 +4,7 @@ import type { Cursor } from './index.js';
  * Represents a single user
  */
 export interface User {
-    __type: 'User',
+    __typename: 'User',
     id: string,
     /**
      * Amount of affiliates the user has\
@@ -122,14 +122,14 @@ export enum VerificationKind {
  * Represents a suspended user
  */
 export interface SuspendedUser {
-    __type: 'SuspendedUser'
+    __typename: 'SuspendedUser'
 }
 
 /**
  * Represents a user that doesn't exist, such as a user that has deactivated or a username that isn't taken
  */
 export interface UnavailableUser {
-    __type: 'UnavailableUser'
+    __typename: 'UnavailableUser'
 }
 
 /**
