@@ -237,7 +237,7 @@ export class TwitterClient {
             ? 'Verified'
         : args.replyPermission === 'mentioned'
             ? 'ByInvitation'
-            : undefined
+            : undefined;
 
         return await request(ENDPOINTS.CreateTweet, this.tokens, {
             conversation_control: mode ? { mode } : undefined,
@@ -254,7 +254,7 @@ export class TwitterClient {
     }
 
     async deleteTweet(id: string) {
-        return await request(ENDPOINTS.DeleteTweet, this.tokens, { tweet_id: id })
+        return await request(ENDPOINTS.DeleteTweet, this.tokens, { tweet_id: id });
     }
 
     async getTweet(id: string, args?: TweetGetArgs) {
@@ -271,12 +271,12 @@ export class TwitterClient {
         return await request(ENDPOINTS.TweetResultByRestId, this.tokens, { tweetId: id });
     }
 
-    async getTweetResults(ids: string[]) {
+    async getTweetResults(ids: [string, ...string[]]) {
         return await request(ENDPOINTS.TweetResultsByRestIds, this.tokens, { tweetIds: ids });
     }
 
     async getHiddenReplies(tweetId: string) {
-        return await request(ENDPOINTS.ModeratedTimeline, this.tokens, { rootTweetId: tweetId })
+        return await request(ENDPOINTS.ModeratedTimeline, this.tokens, { rootTweetId: tweetId });
     }
 
     async getLikes(tweetId: string) {
@@ -340,7 +340,7 @@ export class TwitterClient {
             ? 'Community'
         : permission === 'verified'
             ? 'Verified'
-            : 'ByInvitation'
+            : 'ByInvitation';
 
         return await request(ENDPOINTS.ConversationControlChange, this.tokens, { tweet_id: tweetId, mode });
     }
@@ -368,7 +368,7 @@ export class TwitterClient {
         return await request(ENDPOINTS.UserByRestId, this.tokens, { userId: id });
     }
 
-    async getUsers(ids: string[], args?: ByUsername) {
+    async getUsers(ids: [string, ...string[]], args?: ByUsername) {
         if (args?.byUsername) {
             return await request(ENDPOINTS.UsersByScreenNames, this.tokens, { screen_names: ids });
         }
