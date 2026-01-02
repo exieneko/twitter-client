@@ -19,7 +19,7 @@ a basic twitter api client for javascript & typescript because i love reinventin
         csrf: 'ct0 cookie value'
     });
 
-    const [errors, me] = await twitter.getUser('exieneko', { byUsername: true });
+    const [errors, data] = await twitter.tweet({ text: 'hello world!' });
     ```
 
 ## example
@@ -43,8 +43,8 @@ export {};
 
 ```ts
 // src/hooks.server.ts
-import { TwitterClient } from '@exieneko/twitter-client';
 import type { Handle } from '@sveltejs/kit';
+import { TwitterClient } from '@exieneko/twitter-client';
 
 export const handle: Handle = async ({ event, resolve }) => {
     const authToken = event.cookies.get('auth_token')!;
@@ -57,14 +57,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 ```
 
 ```ts
-// src/routes/api/something/+server.ts
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+// src/routes/[userid]/+page.server.ts
+import type { PageServerLoad } from './$types';
 
-export const GET: RequestHandler = async ({ locals }) => {
-    const [, data] = await locals.twitter.user.get('exieneko', { byUsername: true });
-    return json(data);
-};
+export const load = (async ({ locals, params }) => {
+    const [, user] = await locals.twitter.getUser(params.userid);
+    return { user };
+}) satisfies PageServerLoad;
 ```
 
 ## types
