@@ -630,6 +630,12 @@ export const ENDPOINTS = {
         useOauthKey: true,
         parser: data => !!data.id_str
     },
+    media_metadata_create: {
+        url: v11('media/metadata/create.json'),
+        method: POST,
+        params: {} as { allow_download_status: { allow_download: `${boolean}` }, alt_text: { text: string }, media_id: string },
+        parser: _ => true
+    },
 
 
 

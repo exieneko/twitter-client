@@ -522,7 +522,13 @@ export class TwitterClient {
                 callback?.(chunk, index, chunksNeeded);
             }
 
-            return await uploadFinalize(this.tokens, { id: init!.media_id_string });
+            const final = await uploadFinalize(this.tokens, { id: init!.media_id_string });
+
+            if (!!final.at(1) && !!args.altText) {
+                this.addAltText(init!.media_id_string, args.altText);
+            }
+
+            return final;
         } catch (error) {
             return [[{
                 code: -1,
@@ -538,5 +544,13 @@ export class TwitterClient {
      */
     async mediaStatus(id: string): Promise<ClientResponse<Media>> {
         return await uploadStatus(this.tokens, { id });
+    }
+
+    async addAltText(id: string, text: string) {
+        return await request(ENDPOINTS.media_metadata_create, this.tokens, {
+            allow_download_status: { allow_download: 'true' },
+            alt_text: { text },
+            media_id: id
+        });
     }
 }

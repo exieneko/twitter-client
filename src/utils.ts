@@ -122,6 +122,10 @@ async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, param
             body: endpoint.method === 'post' && body ? body : undefined
         });
 
+        if (!response.headers.get('content-type')?.includes('application/json')) {
+            return [[], endpoint.parser(data)];
+        }
+
         data = await response.json();
     } catch (error) {
         return [[{

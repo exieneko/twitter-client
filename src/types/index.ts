@@ -133,5 +133,6 @@ export interface TweetGetArgs extends CursorOnly {
 
 export interface MediaUploadArgs {
     contentType: string,
+    altText?: string,
     segmentSizeOverride?: number
 }
