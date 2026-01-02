@@ -1,30 +1,20 @@
 # twitter-client
 
-a basic twitter api client for javascript & typescript because i love reinventing the wheel ♡
+A basic Twitter API client for Javascript & Typescript because I love reinventing the wheel ♡
 
 > [!CAUTION]
-> this client uses twitter's free browser api instead of the paid official one. **use at your own risk**, as this may get your account suspended
+> This client uses Twitter's browser API instead of the official paid one. **Use at your own risk**, as this may get your account suspended  
+> Note that all requests will be made from the IP address of the server even if multiple accounts are used
 
-## setup
+## `TwitterClient` class
 
-1. install the package: `npm i @exieneko/twitter-client` / `pnpm add @exieneko/twitter-client`
-2. get your account tokens
-3. initialize the twitter client
+`TwitterClient` can be used to send requests as a single user. Allows creation, deletion and modification to user data, such as creating tweets, following users, etc
 
-    ```ts
-    import { TwitterClient } from '@exieneko/twitter-client';
+### Example
 
-    const twitter = new TwitterClient({
-        authToken: 'auth_token cookie value',
-        csrf: 'ct0 cookie value'
-    });
+(This example implementation uses SvelteKit, adjust for your use case)
 
-    const [errors, data] = await twitter.tweet({ text: 'hello world!' });
-    ```
-
-## example
-
-example implementation in sveltekit
+Declare the Twitter client as a property on the global `Locals` interface
 
 ```ts
 // src/app.d.ts
@@ -41,6 +31,8 @@ declare global {
 export {};
 ```
 
+Initialize `TwitterClient` using the current user's credentials
+
 ```ts
 // src/hooks.server.ts
 import type { Handle } from '@sveltejs/kit';
@@ -56,6 +48,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 };
 ```
 
+The client can be accessed on `event.locals` in any server file
+
 ```ts
 // src/routes/[userid]/+page.server.ts
 import type { PageServerLoad } from './$types';
@@ -66,20 +60,46 @@ export const load = (async ({ locals, params }) => {
 }) satisfies PageServerLoad;
 ```
 
-## types
+## `TwitterPool` class
 
-twitter's response json data is hard to parse and deeply nested, making it hard to navigate
+`TwitterPool` can be used to avoid rate limits by sending each request as a different user.
+The account pool will be sorted with each request to ensure that a different account gets chosen with each request
 
-for easier use, a formatter will parse the data and return a custom object that is easier to work with.
-you can import both the types and the formatter functions
+Only methods that don't get or modify user-dependent data are available
+
+### Example
+
+Define `pool` as a global variable
 
 ```ts
-import type { User } from '@exieneko/twitter-client/types';
+// src/app.d.ts
+import type { TwitterPool } from '@exieneko/twitter-client';
 
-const someUser: User = {
-    __typename: 'User',
-    id: '1234567890',
-    username: 'random_twitter_user',
-    // ...
-};
+declare global {
+    namespace App {}
+    var pool: TwitterPool
+}
+```
+
+In a server file, set the value of the global variable and export it to use in other server files
+
+```ts
+// src/lib/server/twitter.ts
+import { TwitterPool } from '@exieneko/twitter-client';
+
+const pool = global.pool || new TwitterPool( /* ... */ );
+
+if (process.env.NODE_ENV === 'development') {
+    global.pool = pool;
+}
+
+export { pool };
+```
+
+## Types
+
+After receiving the JSON data from Twitter, this package maps it to a custom type structure, which is easier to use
+
+```ts
+import type { Entry, Media, Tweet, User, SuspendedUser } from '@exieneko/twitter-client/types';
 ```
