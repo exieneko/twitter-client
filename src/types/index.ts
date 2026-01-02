@@ -81,6 +81,18 @@ export interface BlockedAccountsGetArgs extends CursorOnly {
     imported?: boolean
 }
 
+export type Visibility = 'private' | 'followers' | 'following' | 'mutuals' | 'public';
+
+export interface UpdateProfileArgs {
+    name: string,
+    description: string,
+    location: string,
+    url: string,
+    birthday: Date,
+    birthYearVisibility: Visibility,
+    birthDayVisibility: Visibility
+}
+
 export interface BirdwatchRateNoteArgs {
     tweetId: string,
     helpful_tags?: BirdwatchHelpfulTag[],

@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import * as format from './formatter/index.js';
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, SuspendedUser, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, SuspendedUser, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
 import { v11, type Endpoint } from './utils.js';
 
 const GET = 'get';
@@ -39,7 +39,6 @@ export const ENDPOINTS = {
         useOauthKey: true,
         parser: format.settings
     },
-    /** @todo */
     account_update_profile: {
         url: v11('account/update_profile.json'),
         method: POST,
@@ -47,15 +46,24 @@ export const ENDPOINTS = {
             birthdate_day: number,
             birthdate_month: number,
             birthdate_year: number,
-            birthdate_visibility: 'self',
-            birthdate_year_visibility: 'self' | 'followers',
+            birthdate_visibility: 'self' | 'followers' | 'following' | 'mutualfollow' | 'public',
+            birthdate_year_visibility: 'self' | 'followers' | 'following' | 'mutualfollow' | 'public',
+            url: string,
             name: string,
             description: string,
             location: string
         },
         variables: {"displayNameMaxLength":50},
         useOauthKey: true,
-        parser: data => data.id_str
+        parser: data => !!data.id_str
+    },
+    account_update_profile_image: {
+        url: v11('account/update_profile_image.json'),
+        method: POST,
+        params: {} as { media_id: string },
+        variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"return_user":true},
+        useOauthKey: true,
+        parser: data => !!data.id_str
     },
     account_verify_credentials: {
         url: v11('account/verify_credentials.json'),

@@ -1,5 +1,5 @@
 import { ENDPOINTS } from './endpoints.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, TimelineGetArgs, TimelineTweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, TimelineGetArgs, TimelineTweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, UpdateProfileArgs } from './types/index.js';
 import { request, uploadAppend, uploadFinalize, uploadInit, uploadStatus, type Tokens } from './utils.js';
 
 export class TwitterClient {
@@ -20,6 +20,24 @@ export class TwitterClient {
 
     async getSettings() {
         return await request(ENDPOINTS.account_settings, this.tokens);
+    }
+
+    async updateProfile(args: UpdateProfileArgs) {
+        return await request(ENDPOINTS.account_update_profile, this.tokens, {
+            name: args.name,
+            description: args.description,
+            location: args.location,
+            url: args.url,
+            birthdate_year: args.birthday.getFullYear(),
+            birthdate_month: args.birthday.getMonth() + 1,
+            birthdate_day: args.birthday.getDate(),
+            birthdate_year_visibility: args.birthYearVisibility === 'private' ? 'self' : args.birthYearVisibility === 'mutuals' ? 'mutualfollow' : args.birthYearVisibility,
+            birthdate_visibility: args.birthDayVisibility === 'private' ? 'self' : args.birthDayVisibility === 'mutuals' ? 'mutualfollow' : args.birthDayVisibility
+        });
+    }
+
+    async setAvatar(mediaId: string) {
+        return await request(ENDPOINTS.account_update_profile_image, this.tokens, { media_id: mediaId });
     }
 
     async verifyCredentials() {
