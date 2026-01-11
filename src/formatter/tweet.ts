@@ -1,4 +1,4 @@
-import { Entry, Media, Retweet, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
+import { DraftTweet, Entry, Media, Retweet, ScheduledTweet, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
 import { cursor, getEntries, user, userLegacy } from './index.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
@@ -262,12 +262,39 @@ export function mediaEntries(instructions: any, gridModule?: { content: object, 
 
 
 
+export function draftTweet(value: any): DraftTweet {
+    return {
+        id: value.rest_id,
+        text: value.tweet_create_request?.status,
+        media_ids: value.tweet_create_request?.media_ids,
+        thread: (value.tweet_create_request?.thread_tweets || []).map((x: any) => ({
+            text: x.status,
+            media_ids: x.media_ids
+        }))
+    };
+}
+
+export function scheduledTweet(value: any): ScheduledTweet {
+    return {
+        id: value.rest_id,
+        send_at: new Date(value.sceduling_info?.execute_at).toISOString(),
+        text: value.tweet_create_request?.status,
+        media_ids: value.tweet_create_request?.media_ids,
+        thread: (value.tweet_create_request?.thread_tweets || []).map((x: any) => ({
+            text: x.status,
+            media_ids: x.media_ids
+        }))
+    };
+}
+
+
+
 export function mediaUpload(value: any): Media {
     return {
         id: value.media_id_string,
         media_key: value.media_key,
         bytes: value.size || 0,
-        contentType: value.image?.image_type || value.video?.video_type || 'image/gif',
+        content_type: value.image?.image_type || value.video?.video_type || 'image/gif',
         expires_in: value.expires_after_secs || 0,
         width: value.image?.w,
         height: value.image?.h,

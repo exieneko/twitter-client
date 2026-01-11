@@ -1,5 +1,5 @@
 import { ENDPOINTS } from './endpoints.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, TimelineGetArgs, TimelineTweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, UpdateProfileArgs } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, ScheduledTweetCreateArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
 import { request, uploadAppend, uploadFinalize, uploadInit, uploadStatus, type Tokens } from './utils.js';
 
 export class TwitterClient {
@@ -239,16 +239,16 @@ export class TwitterClient {
         const requestContext = args?.cursor ? undefined : 'launch';
 
         if (args?.type === 'chronological') {
-            return await request(ENDPOINTS.HomeLatestTimeline, this.tokens, { seenTweetIds, requestContext, ...args });
+            return await request(ENDPOINTS.HomeLatestTimeline, this.tokens, { seenTweetIds, requestContext, cursor: args.cursor });
         }
 
-        return await request(ENDPOINTS.HomeTimeline, this.tokens, { seenTweetIds, requestContext, ...args });
+        return await request(ENDPOINTS.HomeTimeline, this.tokens, { seenTweetIds, requestContext, cursor: args?.cursor });
     }
 
 
 
     // tweet
-    async tweet(args: TweetCreateArgs) {
+    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<ClientResponse<Tweet>> {
         const mode = args.replyPermission === 'following'
             ? 'Community'
         : args.replyPermission === 'verified'
@@ -257,22 +257,92 @@ export class TwitterClient {
             ? 'ByInvitation'
             : undefined;
 
-        return await request(ENDPOINTS.CreateTweet, this.tokens, {
+        const [e, tweet] = await request(ENDPOINTS.CreateTweet, this.tokens, {
+            batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
             conversation_control: mode ? { mode } : undefined,
             media: {
                 media_entities: args.mediaIds?.map(id => ({
                     media_id: id,
                     tagged_users: []
                 })) || [],
-                possibly_sensitive: args.sensitive
+                possibly_sensitive: !!args.sensitive
             },
+            reply: args.replyTo ? {
+                exclude_reply_user_ids: [],
+                in_reply_to_tweet_id: args.replyTo
+            } : undefined,
             semantic_annotation_ids: [],
             tweet_text: args.text || ''
         });
+
+        if (!thread?.length || !tweet?.id) {
+            return [e, tweet];
+        }
+
+        let lastTweetId = tweet.id;
+
+        for (const t of thread) {
+            const [, data] = await request(ENDPOINTS.CreateTweet, this.tokens, {
+                batch_compose: !args.replyTo ? 'BatchSubsequent' : undefined,
+                media: {
+                    media_entities: t.mediaIds?.map(id => ({
+                        media_id: id,
+                        tagged_users: []
+                    })) || [],
+                    possibly_sensitive: !!args.sensitive
+                },
+                reply: {
+                    exclude_reply_user_ids: [],
+                    in_reply_to_tweet_id: lastTweetId
+                },
+                semantic_annotation_ids: [],
+                tweet_text: t.text || ''
+            });
+
+            if (!data) {
+                return [e, tweet];
+            }
+
+            lastTweetId = data.id;
+        }
+
+        return [e, tweet];
     }
+
+    /** @deprecated Use the `createTweet` method instead */
+    tweet = this.createTweet;
 
     async deleteTweet(id: string) {
         return await request(ENDPOINTS.DeleteTweet, this.tokens, { tweet_id: id });
+    }
+
+    async createScheduledTweet(args: ScheduledTweetCreateArgs) {
+        return await request(ENDPOINTS.CreateScheduledTweet, this.tokens, {
+            execute_at: args.sendAt.getTime() / 1000,
+            post_tweet_request: {
+                auto_populate_reply_metadata: false,
+                exclude_reply_user_ids: [],
+                status: args.text || '',
+                media_ids: args.mediaIds || []
+            }
+        });
+    }
+
+    async editScheduledTweet(id: string, args: ScheduledTweetCreateArgs) {
+        return await request(ENDPOINTS.EditScheduledTweet, this.tokens, {
+            execute_at: args.sendAt.getTime() / 1000,
+            post_tweet_request: {
+                auto_populate_reply_metadata: false,
+                exclude_reply_user_ids: [],
+                media_ids: args.mediaIds || [],
+                status: args.text || ''
+            },
+            scheduled_tweet_id: id
+        });
+    }
+
+    async getScheduledTweets(args?: UnsentTweetsGetArgs) {
+        return await request(ENDPOINTS.FetchScheduledTweets, this.tokens, { ascending: !!args?.ascending });
     }
 
     async getTweet(id: string, args?: TweetGetArgs) {

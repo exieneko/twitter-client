@@ -468,15 +468,20 @@ export const ENDPOINTS = {
         url: 'Uf3io9zVp1DsYxrmL5FJ7g/CreateTweet',
         method: POST,
         params: {} as {
+            batch_compose?: 'BatchFirst' | 'BatchSubsequent',
             conversation_control?: {
                 mode: 'Community' | 'Verified' | 'ByInvitation'
             },
             media: {
-                media_entities: Array<{
+                media_entities: {
                     media_id: string,
                     tagged_users: string[]
-                }>,
-                possibly_sensitive?: boolean
+                }[],
+                possibly_sensitive: boolean
+            },
+            reply?: {
+                exclude_reply_user_ids: string[],
+                in_reply_to_tweet_id: string
             },
             semantic_annotation_ids: string[],
             tweet_text: string
@@ -484,6 +489,13 @@ export const ENDPOINTS = {
         variables: {"dark_request":false,"disallowed_reply_options":null},
         features: flags.timeline,
         parser: data => format.tweet(data.data.create_tweet?.result) as Tweet
+    },
+    DeleteTweet: {
+        url: 'VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
+        method: POST,
+        params: {} as { tweet_id: string },
+        variables: {"dark_request":false},
+        parser: data => !!data.delete_tweet
     },
     CreateScheduledTweet: {
         url: 'LCVzRQGxOaGnOnYH01NQXg/CreateScheduledTweet',
@@ -494,19 +506,84 @@ export const ENDPOINTS = {
                 auto_populate_reply_metadata: boolean,
                 exclude_reply_user_ids: string[],
                 media_ids: string[],
-                status: string,
-                thread_tweets: string[]
-                // TODO
+                status: string
             }
         },
         parser: data => data.tweet.rest_id as string
     },
-    DeleteTweet: {
-        url: 'VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
+    EditScheduledTweet: {
+        url: '_mHkQ5LHpRRjSXKOcG6eZw/EditScheduledTweet',
         method: POST,
-        params: {} as { tweet_id: string },
-        variables: {"dark_request":false},
-        parser: data => !!data.delete_tweet
+        params: {} as {
+            execute_at: number,
+            post_tweet_request: {
+                auto_populate_reply_metadata: boolean,
+                exclude_reply_user_ids: string[],
+                media_ids: string[],
+                status: string
+            },
+            scheduled_tweet_id: string
+        },
+        parser: data => data.data.scheduledtweet_put === 'Done'
+    },
+    DeleteScheduledTweet: {
+        url: 'CTOVqej0JBXAZSwkp1US0g/DeleteScheduledTweet',
+        method: POST,
+        params: {} as { scheduled_tweet_id: string },
+        parser: data => data.data.scheduledtweet_delete === 'Done'
+    },
+    CreateDraftTweet: {
+        url: 'cH9HZWz_EW9gnswvA4ZRiQ/CreateDraftTweet',
+        method: POST,
+        params: {} as {
+            post_tweet_request: {
+                auto_populate_reply_metadata: boolean,
+                exclude_reply_user_ids: string[],
+                media_ids: string[],
+                status: string,
+                thread_tweets: {
+                    media_ids: string[],
+                    status: string
+                }[]
+            }
+        },
+        parser: data => data.data.tweet.rest_id
+    },
+    EditDraftTweet: {
+        url: 'JIeXE-I6BZXHfxsgOkyHYQ/EditDraftTweet',
+        method: POST,
+        params: {} as {
+            draft_tweet_id: string,
+            post_tweet_request: {
+                auto_populate_reply_metadata: boolean,
+                exclude_reply_user_ids: string[],
+                media_ids: string[],
+                status: string,
+                thread_tweets: {
+                    media_ids: string[],
+                    status: string
+                }[]
+            }
+        },
+        parser: data => data.data.drafttweet_put === 'Done'
+    },
+    DeleteDraftTweet: {
+        url: 'bkh9G3FGgTldS9iTKWWYYw/DeleteDraftTweet',
+        method: POST,
+        params: {} as { draft_tweet_id: string },
+        parser: data => data.data.drafttweet_delete === 'Done'
+    },
+    FetchDraftTweets: {
+        url: 'ff5ciLFuifghdOtDoJj6Ww/FetchDraftTweets',
+        method: GET,
+        params: {} as { ascending: boolean },
+        parser: data => (data.viewer.draft_list.response_data || []).map(format.draftTweet)
+    },
+    FetchScheduledTweets: {
+        url: 'cmwoO7AWw5zCpd8TaPFQHg/FetchScheduledTweets',
+        method: GET,
+        params: {} as { ascending: boolean },
+        parser: data => (data.viewer.scheduled_tweet_list || []).map(format.scheduledTweet)
     },
     TweetDetail: {
         url: '97JF30KziU00483E_8elBA/TweetDetail',

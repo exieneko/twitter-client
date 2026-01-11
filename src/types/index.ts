@@ -132,15 +132,31 @@ export interface TimelineGetArgs extends CursorOnly {
 
 export interface TweetCreateArgs {
     text?: string,
+    replyTo: string,
     mediaIds?: string[],
     sensitive?: boolean,
-    replyPermission?: TweetReplyPermission
+    replyPermission?: TweetReplyPermission,
+}
+
+export interface ScheduledTweetCreateArgs {
+    sendAt: Date,
+    text?: string,
+    mediaIds?: string[],
+}
+
+export interface ThreadTweetArgs {
+    text?: string,
+    mediaIds?: string[]
 }
 
 export type TweetReplyPermission = 'following' | 'verified' | 'mentioned' | 'none';
 
 export interface TweetGetArgs extends CursorOnly {
     sort?: 'relevant' | 'recent' | 'likes'
+}
+
+export interface UnsentTweetsGetArgs {
+    ascending?: boolean
 }
 
 export interface MediaUploadArgs {
