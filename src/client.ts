@@ -1,5 +1,5 @@
 import { ENDPOINTS } from './endpoints.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
 import { request, uploadAppend, uploadFinalize, uploadInit, uploadStatus, type Tokens } from './utils.js';
 
 export class TwitterClient {
@@ -260,7 +260,7 @@ export class TwitterClient {
 
 
     // tweet
-    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<ClientResponse<Tweet>> {
+    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<ClientResponse<Tweet | TweetTombstone>> {
         const mode = args.replyPermission === 'following'
             ? 'Community'
         : args.replyPermission === 'verified'
@@ -287,6 +287,10 @@ export class TwitterClient {
             tweet_text: args.text || ''
         });
 
+        if (tweet?.__typename === 'TweetTombstone') {
+            return [e, tweet];
+        }
+
         if (!thread?.length || !tweet?.id) {
             return [e, tweet];
         }
@@ -311,7 +315,7 @@ export class TwitterClient {
                 tweet_text: t.text || ''
             });
 
-            if (!data) {
+            if (!data || data.__typename === 'TweetTombstone') {
                 return [e, tweet];
             }
 

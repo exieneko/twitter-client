@@ -7,6 +7,7 @@ import { v11, type Endpoint } from './utils.js';
 const GET = 'get';
 const POST = 'post';
 
+// all graphql query ids last updated on 2026-01-02
 export const ENDPOINTS = {
     // ACCOUNT
     BlockedAccountsAll: {
@@ -490,7 +491,8 @@ export const ENDPOINTS = {
         },
         variables: {"dark_request":false,"disallowed_reply_options":null},
         features: flags.timeline,
-        parser: data => format.tweet(data.data.create_tweet?.result) as Tweet
+        token: OAUTH_KEY,
+        parser: data => format.tweet(data.data.create_tweet?.tweet_results?.result) as Tweet | TweetTombstone
     },
     DeleteTweet: {
         url: 'VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
