@@ -1,5 +1,5 @@
 import { ENDPOINTS } from './endpoints.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, ScheduledTweetCreateArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
 import { request, uploadAppend, uploadFinalize, uploadInit, uploadStatus, type Tokens } from './utils.js';
 
 export class TwitterClient {
@@ -249,6 +249,14 @@ export class TwitterClient {
         return await request(ENDPOINTS.HomeTimeline, this.#tokens, { seenTweetIds, requestContext, cursor: args?.cursor });
     }
 
+    async search(query: string, args?: SearchArgs) {
+        return await request(ENDPOINTS.SearchTimeline, this.#tokens, { rawQuery: query, querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
+    }
+
+    async typeahead(query: string) {
+        return await request(ENDPOINTS.search_typeahead, this.#tokens, { q: query });
+    }
+
 
 
     // tweet
@@ -379,9 +387,12 @@ export class TwitterClient {
         return await request(ENDPOINTS.Retweeters, this.#tokens, { tweetId: tweetId });
     }
 
-    async getQuotedTweets(tweetId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.SearchTimeline, this.#tokens, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as ClientResponse<Entry<TimelineTweet>[]>
+    async getQuoteTweets(tweetId: string, args?: CursorOnly) {
+        return await request(ENDPOINTS.SearchTimeline, this.#tokens, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as ClientResponse<Entry<TimelineTweet>[]>;
     }
+
+    /** @deprecated */
+    getQuotedTweets = this.getQuoteTweets;
 
     async bookmark(tweetId: string) {
         return await request(ENDPOINTS.CreateBookmark, this.#tokens, { tweet_id: tweetId });

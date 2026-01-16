@@ -1,3 +1,4 @@
+import { ALT_TOKEN, OAUTH_KEY } from './consts.js';
 import * as flags from './flags.js';
 import * as format from './formatter/index.js';
 import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, SuspendedUser, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
@@ -36,7 +37,7 @@ export const ENDPOINTS = {
         url: v11('account/settings.json'),
         method: GET,
         variables: {"include_ext_sharing_audiospaces_listening_data_with_followers":true,"include_mention_filter":true,"include_nsfw_user_flag":true,"include_nsfw_admin_flag":true,"include_ranked_timeline":true,"include_alt_text_compose":true,"include_ext_dm_av_call_settings":true,"ext":"ssoConnections","include_country_code":true,"include_ext_dm_nsfw_media_filter":true},
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: format.settings
     },
     account_update_profile: {
@@ -54,7 +55,7 @@ export const ENDPOINTS = {
             location: string
         },
         variables: {"displayNameMaxLength":50},
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     account_update_profile_image: {
@@ -62,13 +63,13 @@ export const ENDPOINTS = {
         method: POST,
         params: {} as { media_id: string },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"return_user":true},
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     account_verify_credentials: {
         url: v11('account/verify_credentials.json'),
         method: GET,
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: format.userLegacy
     },
 
@@ -143,20 +144,20 @@ export const ENDPOINTS = {
         url: 'aoDbu3RHznuiSkQ9aNM67Q/CreateBookmark',
         method: POST,
         params: {} as { tweet_id: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => data.data.tweet_bookmark_put === 'Done'
     },
     DeleteBookmark: {
         url: 'Wlmlj2-xzyS1GN3a6cj-mQ/DeleteBookmark',
         method: POST,
         params: {} as { tweet_id: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => data.data.tweet_bookmark_delete === 'Done'
     },
     BookmarksAllDelete: {
         url: 'skiACZKC1GDYli-M8RzEPQ/BookmarksAllDelete',
         method: POST,
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => data.data.bookmark_all_delete === 'Done'
     },
 
@@ -431,6 +432,7 @@ export const ENDPOINTS = {
         params: {} as { rawQuery: string, querySource: 'typed_query' | 'recent_search_click' | 'tdqt', product: 'Top' | 'Latest' | 'People' | 'Media' | 'Lists', cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
+        token: ALT_TOKEN,
         parser: data => format.searchEntries(data.data.search_by_raw_query.search_timeline.timeline.instructions)
     },
     search_typeahead: {
@@ -705,14 +707,14 @@ export const ENDPOINTS = {
         url: v11('mutes/conversations/create.json'),
         method: POST,
         params: {} as { tweet_id: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     mutes_conversations_destroy: {
         url: v11('mutes/conversations/destroy.json'),
         method: POST,
         params: {} as { tweet_id: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     media_metadata_create: {
@@ -807,7 +809,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     Followers: {
@@ -816,7 +818,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     FollowersYouKnow: {
@@ -825,7 +827,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     BlueVerifiedFollowers: {
@@ -834,7 +836,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     UserCreatorSubscriptions: {
@@ -871,14 +873,14 @@ export const ENDPOINTS = {
         url: v11('friendships/create.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     friendships_destroy: {
         url: v11('friendships/destroy.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     friendships_update: {
@@ -886,14 +888,14 @@ export const ENDPOINTS = {
         method: POST,
         params: {} as { id: string, retweets?: boolean, device?: boolean },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"cursor":-1},
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.relationship.target.id_str
     },
     friendships_cancel: {
         url: v11('friendships/cancel.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     friendships_accept: {
@@ -912,28 +914,28 @@ export const ENDPOINTS = {
         url: v11('blocks/create.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     blocks_destroy: {
         url: v11('blocks/destroy.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     mutes_users_create: {
         url: v11('mutes/users/create.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     mutes_users_destroy: {
         url: v11('mutes/users/destroy.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        useOauthKey: true,
+        token: OAUTH_KEY,
         parser: data => !!data.id_str
     }
 } satisfies Record<string, Endpoint>;

@@ -1,4 +1,4 @@
-import { HEADERS, OAUTH_KEY, PUBLIC_TOKEN } from './consts.js';
+import { HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { Flags } from './flags.js';
 import { mediaUpload } from './formatter/tweet.js';
 import type { ClientResponse, Media, MediaUploadInit } from './types/index.js';
@@ -14,7 +14,7 @@ export interface Endpoint<P extends object = {}, V extends object = {}, R extend
     params?: P,
     variables?: V,
     features?: Flags,
-    useOauthKey?: boolean,
+    token?: string,
     parser: (data: R) => T
 }
 
@@ -57,8 +57,8 @@ async function requestGql<T extends Endpoint>(endpoint: T, tokens: Tokens, param
 
     const headers = {
         ...HEADERS,
-        authorization: endpoint.useOauthKey ? OAUTH_KEY : PUBLIC_TOKEN,
-        'content-type': 'application/json',
+        authorization: endpoint.token || PUBLIC_TOKEN,
+        'content-type': 'application/json; charset=utf-8',
         ...tokenHeaders(tokens)
     };
 
@@ -68,11 +68,11 @@ async function requestGql<T extends Endpoint>(endpoint: T, tokens: Tokens, param
         const response = await (endpoint.method === 'get'
             ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
                 method: endpoint.method,
-                headers: headers
+                headers
             })
             : fetch(url, {
                 method: endpoint.method,
-                headers: headers,
+                headers,
                 body: JSON.stringify({
                     variables: { ...endpoint.variables, ...params },
                     features: endpoint.features,
@@ -108,7 +108,7 @@ async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, param
 
     const headers = {
         ...HEADERS,
-        authorization: endpoint.useOauthKey ? OAUTH_KEY : PUBLIC_TOKEN,
+        authorization: endpoint.token || PUBLIC_TOKEN,
         'content-type': 'application/x-www-form-urlencoded; charset=utf-8',
         ...tokenHeaders(tokens)
     };
@@ -170,7 +170,7 @@ export async function uploadInit(tokens: Tokens, args: { bytes: number, contentT
         method: 'post',
         headers: {
             ...HEADERS,
-            authorization: OAUTH_KEY,
+            authorization: PUBLIC_TOKEN,
             'content-type': 'application/x-www-form-urlencoded; charset=utf-8',
             ...tokenHeaders(tokens)
         },
