@@ -1,5 +1,5 @@
 import { ENDPOINTS } from './endpoints.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
 import { request, uploadAppend, uploadFinalize, uploadInit, uploadStatus, type Tokens } from './utils.js';
 
 export class TwitterClient {
@@ -249,8 +249,8 @@ export class TwitterClient {
         return await request(ENDPOINTS.HomeTimeline, this.#tokens, { seenTweetIds, requestContext, cursor: args?.cursor });
     }
 
-    async search(query: string, args?: SearchArgs) {
-        return await request(ENDPOINTS.SearchTimeline, this.#tokens, { rawQuery: query, querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
+    async search(query: string | QueryBuilder, args?: SearchArgs) {
+        return await request(ENDPOINTS.SearchTimeline, this.#tokens, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
     }
 
     async typeahead(query: string) {
