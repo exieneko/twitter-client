@@ -27,9 +27,26 @@ export * from './args.js';
  */
 export type ClientResponse<T> = [ClientError[], T?];
 
+/**
+ * Represents an error returned by the Twitter API
+ * 
+ * The `code` property will be `-1` if the error is a caught exception that occured during parsing the response data  
+ * If this is the case, all properties except `code` and `message` will be `undefined`. Additionally, `message` will contain the output of `error.stack`
+ */
 export interface ClientError {
+    message: string,
+    locations?: {
+        line: number,
+        column: number
+    }[],
+    path?: string[],
     code: number,
-    message?: string
+    kind?: string, // Validation, Permissions
+    name?: string,
+    source?: string,
+    tracing?: {
+        trace_id: string
+    }
 }
 
 

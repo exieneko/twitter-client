@@ -82,10 +82,10 @@ async function requestGql<T extends Endpoint>(endpoint: T, tokens: Tokens, param
         );
 
         data = await response.json();
-    } catch (error) {
+    } catch (error: any) {
         return [[{
             code: -1,
-            message: String(error)
+            message: String(error.stack)
         }]];
     }
 
@@ -95,10 +95,10 @@ async function requestGql<T extends Endpoint>(endpoint: T, tokens: Tokens, param
 
     try {
         return [data?.errors || [], endpoint.parser(data)];
-    } catch (error) {
+    } catch (error: any) {
         return [[{
             code: -1,
-            message: String(error)
+            message: String(error.stack)
         }]];
     }
 }
@@ -127,10 +127,10 @@ async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, param
         }
 
         data = await response.json();
-    } catch (error) {
+    } catch (error: any) {
         return [[{
             code: -1,
-            message: String(error)
+            message: String(error.stack)
         }]];
     }
 
@@ -140,10 +140,10 @@ async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, param
 
     try {
         return [data?.errors || [], endpoint.parser(data)];
-    } catch (error) {
+    } catch (error: any) {
         return [[{
             code: -1,
-            message: String(error)
+            message: String(error.stack)
         }]];
     }
 }
