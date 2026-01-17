@@ -188,6 +188,22 @@ export type TimelineTweet = Tweet | Retweet | Conversation | TweetTombstone | Cu
 
 
 
+export interface DraftTweet {
+    id: string,
+    text: string,
+    media_ids: string[],
+    thread: {
+        text: string,
+        media_ids: string[]
+    }[]
+}
+
+export interface ScheduledTweet extends DraftTweet {
+    send_at: string
+}
+
+
+
 export interface MediaUploadInit {
     media_id: number,
     media_id_string: string,
@@ -204,7 +220,7 @@ export interface Media {
     /** Size of the media in bytes */
     bytes: number,
     /** Mime type of the media, defaults to `video/mp4` for gifs, since Twitter stores gifs as mp4, but doesn't actually return any mime type on gif uploads specifically */
-    contentType?: string,
+    content_type?: string,
     /** Amount of seconds left until the media id expires */
     expires_in: number,
     /** Width of the image in pixels, `undefined` if the given media is a video or gif */

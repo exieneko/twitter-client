@@ -1,85 +1,56 @@
 # twitter-client
 
-a basic twitter api client for javascript & typescript because i love reinventing the wheel ♡
+Twitter API client for Javascript & Typescript, because I love reinventing the wheel ♡
 
 > [!CAUTION]
-> this client uses twitter's free browser api instead of the paid official one. **use at your own risk**, as this may get your account suspended
+> This client uses Twitter's browser API instead of the official paid one  
+> Using this package may get your account suspended. **Use at your own risk!**
 
-## setup
+## About
 
-1. install the package: `npm i @exieneko/twitter-client` / `pnpm add @exieneko/twitter-client`
-2. get your account tokens
-3. initialize the twitter client
+This package provides a `TwitterClient` class for sending requests to Twitter from a single account. This allows full control over the account, including editing your profile and sending tweets
 
-    ```ts
-    import { TwitterClient } from '@exieneko/twitter-client';
+The `Pool` class can be used for spreading requests out across several automated accounts, but only methods that don't create or modify user-dependent data are allowed
 
-    const twitter = new TwitterClient({
-        authToken: 'auth_token cookie value',
-        csrf: 'ct0 cookie value'
-    });
+## Usage
 
-    const [errors, data] = await twitter.tweet({ text: 'hello world!' });
-    ```
+To use this package, you need a Twitter account to log in with
 
-## example
-
-example implementation in sveltekit
+Since this package will not create a new session using your username and password, you'll need to get the necessary tokens  
+Log in on [twitter.com](https://twitter.com) and get the values for the "auth_token" and "ct0" cookies
 
 ```ts
-// src/app.d.ts
-import type { TwitterClient } from '@exieneko/twitter-client';
-
-declare global {
-    namespace App {
-        interface Locals {
-            twitter: TwitterClient
-        }
-    }
-}
-
-export {};
-```
-
-```ts
-// src/hooks.server.ts
-import type { Handle } from '@sveltejs/kit';
 import { TwitterClient } from '@exieneko/twitter-client';
-
-export const handle: Handle = async ({ event, resolve }) => {
-    const authToken = event.cookies.get('auth_token')!;
-    const csrf = event.cookies.get('ct0')!;
-
-    event.locals.twitter = new TwitterClient({ authToken, csrf });
-
-    return await resolve(event);
-};
-```
-
-```ts
-// src/routes/[userid]/+page.server.ts
-import type { PageServerLoad } from './$types';
-
-export const load = (async ({ locals, params }) => {
-    const [, user] = await locals.twitter.getUser(params.userid);
-    return { user };
-}) satisfies PageServerLoad;
-```
-
-## types
-
-twitter's response json data is hard to parse and deeply nested, making it hard to navigate
-
-for easier use, a formatter will parse the data and return a custom object that is easier to work with.
-you can import both the types and the formatter functions
-
-```ts
 import type { User } from '@exieneko/twitter-client/types';
 
-const someUser: User = {
-    __typename: 'User',
-    id: '1234567890',
-    username: 'random_twitter_user',
+const twitter = new TwitterClient({
+    // Your account tokens are entered when initializing the client
+    // To allow multiple accounts, use `Pool` which requires an array of tokens instead
+    authToken: 'xxxxxxxxxx', // <- auth_token
+    csrf: 'xxxxxxxxxxxxxxx'  // <- ct0
+});
+
+const [errors, tweet] = await twitter.createTweet({ text: 'Hello world!' });
+
+// Errors is always an array, containing errors from the Twitter API, if there are any
+// Errors aren't always fatal and some data can still be returned
+if (errors.length > 0) {
+    console.error(errors[0].message);
+}
+
+// The 2nd element in the array is optional/undefined
+if (tweet?.__typename === 'Tweet') {
+    const user: User = tweet.author;
     // ...
-};
+}
 ```
+
+## Limitations
+
+Twitter has some protections in place to prevent automated requests. This package attempts to bypass as many as possible, but Twitter may change their API over time and it's possible for this package to become outdated
+
+Broken features:
+
++ `verifyCredentials`
++ `unblockUser`
++ and possibly some other v1.1 endpoints in the future

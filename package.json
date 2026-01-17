@@ -1,7 +1,7 @@
 {
   "name": "@exieneko/twitter-client",
-  "description": "a basic twitter api client for javascript & typescript",
-  "version": "0.6.0",
+  "description": "Twitter API client for Javascript",
+  "version": "0.7.0",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -34,7 +34,10 @@
     "build": "pnpm exec tsc"
   },
   "license": "MIT",
-  "keywords": [],
+  "keywords": [
+    "twitter",
+    "twitter-api"
+  ],
   "packageManager": "pnpm@10.12.4",
   "devDependencies": {
     "typescript": "^5.8.3"
