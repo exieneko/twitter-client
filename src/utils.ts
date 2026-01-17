@@ -118,7 +118,7 @@ async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, param
     try {
         const response = await fetch(endpoint.method === 'get' && body ? `${endpoint.url}?${body}` : endpoint.url, {
             method: endpoint.method,
-            headers: headers,
+            headers,
             body: endpoint.method === 'post' && body ? body : undefined
         });
 
@@ -149,7 +149,7 @@ async function requestV11<T extends Endpoint>(endpoint: T, tokens: Tokens, param
 }
 
 export async function request<T extends Endpoint>(endpoint: T, tokens: Tokens, params?: Params<T>): Promise<ClientResponse<ReturnType<T['parser']>>> {
-    if (endpoint.url.startsWith('https://api.twitter.com')) {
+    if (endpoint.url.startsWith('https')) {
         return requestV11(endpoint, tokens, params);
     }
 

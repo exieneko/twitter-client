@@ -555,6 +555,10 @@ export class TwitterClient {
         return await request(ENDPOINTS.friendships_update, this.#tokens, { id: userId, device: false });
     }
 
+    async getFollowRequests(args: CursorOnly) {
+        return await request(ENDPOINTS.friendships_incoming, this.#tokens, { cursor: Number(args?.cursor || '-1') });
+    }
+
     async cancelFollowRequest(userId: string, args?: ByUsername) {
         return await request(ENDPOINTS.friendships_cancel, this.#tokens, args?.byUsername ? { screen_name: userId } : { user_id: userId });
     }

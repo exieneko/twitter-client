@@ -398,8 +398,9 @@ export const ENDPOINTS = {
         method: GET,
         params: {} as { timeline_type: 'All' | 'Verified' | 'Mentions', cursor?: string },
         variables: {"count":40},
-        features: {"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":true,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_enhance_cards_enabled":false},
-        parser: data => format.notificationEntries(data.viewer_v2.user_results.result.notification_timeline.timeline.instructions)
+        // features: {"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":true,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_enhance_cards_enabled":false},
+        features: flags.timeline,
+        parser: data => format.notificationEntries(data.data.viewer_v2.user_results.result.notification_timeline.timeline.instructions)
     },
     badge_count: {
         url: 'https://twitter.com/i/api/2/badge_count/badge_count.json',
@@ -811,7 +812,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     Followers: {
@@ -820,7 +821,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     FollowersYouKnow: {
@@ -829,7 +830,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     BlueVerifiedFollowers: {
@@ -875,14 +876,16 @@ export const ENDPOINTS = {
         url: v11('friendships/create.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        token: OAUTH_KEY,
+        variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1},
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     friendships_destroy: {
         url: v11('friendships/destroy.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        token: OAUTH_KEY,
+        variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1},
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     friendships_update: {
@@ -890,54 +893,64 @@ export const ENDPOINTS = {
         method: POST,
         params: {} as { id: string, retweets?: boolean, device?: boolean },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"cursor":-1},
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => !!data.relationship.target.id_str
     },
     friendships_cancel: {
         url: v11('friendships/cancel.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
+    },
+    friendships_incoming: {
+        url: v11('friendships/incoming.json'),
+        method: GET,
+        params: {} as { cursor: number },
+        variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"stringify_ids":true,"count":100},
+        token: ALT_TOKEN,
+        parser: data => data as { ids: string[], next_cursor_str: string, previous_cursor_str: string }
     },
     friendships_accept: {
         url: v11('friendships/accept.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     friendships_deny: {
         url: v11('friendships/deny.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     blocks_create: {
         url: v11('blocks/create.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     blocks_destroy: {
         url: v11('blocks/destroy.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     mutes_users_create: {
         url: v11('mutes/users/create.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     mutes_users_destroy: {
         url: v11('mutes/users/destroy.json'),
         method: POST,
         params: {} as { user_id: string } | { screen_name: string },
-        token: OAUTH_KEY,
+        token: ALT_TOKEN,
         parser: data => !!data.id_str
     }
 } satisfies Record<string, Endpoint>;
