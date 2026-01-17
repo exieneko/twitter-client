@@ -66,7 +66,7 @@ export interface TweetCreateArgs {
 }
 
 export interface ScheduledTweetCreateArgs {
-    sendAt: Date,
+    sendAt: Date | number,
     text?: string,
     mediaIds?: string[],
 }

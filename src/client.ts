@@ -334,7 +334,7 @@ export class TwitterClient {
 
     async createScheduledTweet(args: ScheduledTweetCreateArgs) {
         return await request(ENDPOINTS.CreateScheduledTweet, this.#tokens, {
-            execute_at: args.sendAt.getTime() / 1000,
+            execute_at: (typeof args.sendAt === 'number' ? args.sendAt : args.sendAt.getTime()) / 1000,
             post_tweet_request: {
                 auto_populate_reply_metadata: false,
                 exclude_reply_user_ids: [],
@@ -346,7 +346,7 @@ export class TwitterClient {
 
     async editScheduledTweet(id: string, args: ScheduledTweetCreateArgs) {
         return await request(ENDPOINTS.EditScheduledTweet, this.#tokens, {
-            execute_at: args.sendAt.getTime() / 1000,
+            execute_at: (typeof args.sendAt === 'number' ? args.sendAt : args.sendAt.getTime()) / 1000,
             post_tweet_request: {
                 auto_populate_reply_metadata: false,
                 exclude_reply_user_ids: [],

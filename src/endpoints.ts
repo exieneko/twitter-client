@@ -513,7 +513,7 @@ export const ENDPOINTS = {
                 status: string
             }
         },
-        parser: data => data.tweet.rest_id as string
+        parser: data => data.data.tweet?.rest_id as string
     },
     EditScheduledTweet: {
         url: '_mHkQ5LHpRRjSXKOcG6eZw/EditScheduledTweet',
