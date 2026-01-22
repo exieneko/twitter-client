@@ -625,7 +625,7 @@ export const ENDPOINTS = {
     Favoriters: {
         url: 'b3OrdeHDQfb9zRMC0fV3bw/Favoriters',
         method: GET,
-        params: {} as { tweetId: string },
+        params: {} as { tweetId: string, cursor?: string },
         variables: {"count":40,"enableRanking":false,"includePromotedContent":false},
         features: flags.timeline,
         parser: data => format.userEntries(data.favoriters_timeline.timeline.instructions)
@@ -633,7 +633,7 @@ export const ENDPOINTS = {
     Retweeters: {
         url: 'wfglZEC0MRgBdxMa_1a5YQ/Retweeters',
         method: GET,
-        params: {} as { tweetId: string },
+        params: {} as { tweetId: string, cursor?: string },
         variables: {"count":40,"enableRanking":false,"includePromotedContent":false},
         features: flags.timeline,
         parser: data => format.userEntries(data.retweeters_timeline.timeline.instructions)

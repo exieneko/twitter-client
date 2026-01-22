@@ -436,10 +436,10 @@ export class TwitterClient {
      * @param args Arguments
      * @returns Slice of notifications
      */
-    async getNotifications(args: NotificationGetArgs) {
-        const type = args.type === 'mentions'
+    async getNotifications(args?: NotificationGetArgs) {
+        const type = args?.type === 'mentions'
             ? 'Mentions'
-        : args.type === 'verified'
+        : args?.type === 'verified'
             ? 'Verified'
             : 'All';
 
@@ -704,10 +704,11 @@ export class TwitterClient {
     /**
      * Gets hidden replies on a tweet
      * @param tweetId 
+     * @param args Cursor only
      * @returns Slice of tweets
      */
-    async getHiddenReplies(tweetId: string) {
-        return await request(ENDPOINTS.ModeratedTimeline, this.#tokens, { rootTweetId: tweetId });
+    async getHiddenReplies(tweetId: string, args?: CursorOnly) {
+        return await request(ENDPOINTS.ModeratedTimeline, this.#tokens, { rootTweetId: tweetId, ...args });
     }
 
     /**
@@ -716,19 +717,21 @@ export class TwitterClient {
      * In ~June 2024, liked tweet were made private, so this method will return an empty array if the tweet wasn't made by you
      * 
      * @param tweetId 
+     * @param args Cursor only
      * @returns Slice of users
      */
-    async getLikes(tweetId: string) {
-        return await request(ENDPOINTS.Favoriters, this.#tokens, { tweetId: tweetId });
+    async getLikes(tweetId: string, args?: CursorOnly) {
+        return await request(ENDPOINTS.Favoriters, this.#tokens, { tweetId: tweetId, ...args });
     }
 
     /**
      * Gets users who retweeted a tweet
      * @param tweetId 
+     * @param args Cursor only
      * @returns Slice of users
      */
-    async getRetweets(tweetId: string) {
-        return await request(ENDPOINTS.Retweeters, this.#tokens, { tweetId: tweetId });
+    async getRetweets(tweetId: string, args?: CursorOnly) {
+        return await request(ENDPOINTS.Retweeters, this.#tokens, { tweetId: tweetId, ...args });
     }
 
     /**

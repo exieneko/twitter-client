@@ -45,7 +45,7 @@ export interface ListCreateArgs {
 }
 
 export interface NotificationGetArgs extends CursorOnly {
-    type: 'all' | 'verified' | 'mentions'
+    type?: 'all' | 'verified' | 'mentions'
 }
 
 export interface SearchArgs extends CursorOnly {
