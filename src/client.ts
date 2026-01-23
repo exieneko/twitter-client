@@ -1,6 +1,8 @@
+import { HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { ENDPOINTS } from './endpoints.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
-import { request, uploadAppend, uploadFinalize, uploadInit, uploadStatus, type Tokens } from './utils.js';
+import { mediaUpload } from './formatter/tweet.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, MediaUploadInit, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
+import { gql, tokenHeaders, toSearchParams, type Endpoint, type Params, type Tokens } from './utils.js';
 
 export class TwitterClient {
     #tokens: Tokens;
@@ -8,6 +10,75 @@ export class TwitterClient {
     constructor(tokens: Tokens) {
         this.#tokens = tokens;
     }
+
+    private headers(token?: string, type: 'gql' | 'v1.1' | 'fd' = 'gql'): Record<string, string> {
+        return type === 'fd' ? {
+            ...HEADERS,
+            authorization: token || PUBLIC_TOKEN,
+            ...tokenHeaders(this.#tokens)
+        } : {
+            ...HEADERS,
+            authorization: token || PUBLIC_TOKEN,
+            'content-type': `${type === 'gql' ? 'application/json' : 'application/x-www-form-urlencoded'}; charset=utf-8`,
+            ...tokenHeaders(this.#tokens)
+        };
+    }
+
+    private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<ClientResponse<ReturnType<T['parser']>>> {
+        const isGql = !endpoint.url.startsWith('https')
+
+        const headers = this.headers(endpoint.token, isGql ? 'gql' : 'v1.1');
+
+        let data: Parameters<Endpoint['parser']>[0] | null = null;
+
+        try {
+            const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
+            const response = await (isGql
+                ? (endpoint.method === 'get'
+                    ? fetch(gql(endpoint.url) + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
+                        method: endpoint.method,
+                        headers
+                    })
+                    : fetch(gql(endpoint.url), {
+                        method: endpoint.method,
+                        headers,
+                        body: JSON.stringify({
+                            variables: { ...endpoint.variables, ...params },
+                            features: endpoint.features,
+                            queryId: endpoint.url.split('/', 1)[0]
+                        })
+                    })
+                )
+                : fetch(endpoint.method === 'get' && body ? `${endpoint.url}?${body}` : endpoint.url, {
+                    method: endpoint.method,
+                    headers,
+                    body: endpoint.method === 'post' && body ? body : undefined
+                })
+            );
+
+            data = await response.json();
+        } catch (error: any) {
+            return [[{
+                code: -1,
+                message: String(error.stack)
+            }]];
+        }
+
+        if (data?.errors && !data.data) {
+            return [data.errors];
+        }
+
+        try {
+            return [data?.errors || [], endpoint.parser(data)];
+        } catch (error: any) {
+            return [[{
+                code: -1,
+                message: String(error.stack)
+            }]];
+        }
+    }
+
+
 
     /**
      * Gets blocked accounts
@@ -22,10 +93,10 @@ export class TwitterClient {
      */
     async getBlockedAccounts(args?: BlockedAccountsGetArgs) {
         if (args?.imported) {
-            return await request(ENDPOINTS.BlockedAccountsImported, this.#tokens, { cursor: args?.cursor });
+            return await this.fetch(ENDPOINTS.BlockedAccountsImported, { cursor: args?.cursor });
         }
 
-        return await request(ENDPOINTS.BlockedAccountsAll, this.#tokens, { cursor: args?.cursor });
+        return await this.fetch(ENDPOINTS.BlockedAccountsAll, { cursor: args?.cursor });
     }
 
     /**
@@ -34,7 +105,7 @@ export class TwitterClient {
      * @returns Slice of muted accounts
      */
     async getMutedAccounts(args?: CursorOnly) {
-        return await request(ENDPOINTS.MutedAccounts, this.#tokens, args);
+        return await this.fetch(ENDPOINTS.MutedAccounts, args);
     }
 
     /**
@@ -42,7 +113,7 @@ export class TwitterClient {
      * @returns Settings
      */
     async getSettings() {
-        return await request(ENDPOINTS.account_settings, this.#tokens);
+        return await this.fetch(ENDPOINTS.account_settings);
     }
 
     /**
@@ -62,7 +133,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async updateProfile(args: UpdateProfileArgs) {
-        return await request(ENDPOINTS.account_update_profile, this.#tokens, {
+        return await this.fetch(ENDPOINTS.account_update_profile, {
             name: args.name,
             description: args.description,
             location: args.location,
@@ -81,7 +152,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async setAvatar(mediaId: string) {
-        return await request(ENDPOINTS.account_update_profile_image, this.#tokens, { media_id: mediaId });
+        return await this.fetch(ENDPOINTS.account_update_profile_image, { media_id: mediaId });
     }
 
     /**
@@ -89,7 +160,7 @@ export class TwitterClient {
      * @returns User
      */
     async verifyCredentials() {
-        return await request(ENDPOINTS.account_verify_credentials, this.#tokens);
+        return await this.fetch(ENDPOINTS.account_verify_credentials);
     }
 
 
@@ -100,7 +171,7 @@ export class TwitterClient {
      * @returns All NN and NNN notes on a tweet
      */
     async getBirdwatchNotesOnTweet(id: string) {
-        return await request(ENDPOINTS.BirdwatchFetchNotes, this.#tokens, { tweet_id: id });
+        return await this.fetch(ENDPOINTS.BirdwatchFetchNotes, { tweet_id: id });
     }
 
     /**
@@ -109,7 +180,7 @@ export class TwitterClient {
      * @returns Birdwatch user
      */
     async getBirdwatchUser(alias: string) {
-        return await request(ENDPOINTS.BirdwatchFetchBirdwatchProfile, this.#tokens, { alias });
+        return await this.fetch(ENDPOINTS.BirdwatchFetchBirdwatchProfile, { alias });
     }
 
     /**
@@ -127,7 +198,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async rateBirdwatchNote(noteId: string, args: BirdwatchRateNoteArgs) {
-        return await request(ENDPOINTS.BirdwatchCreateRating, this.#tokens, {
+        return await this.fetch(ENDPOINTS.BirdwatchCreateRating, {
             data_v2: {
                 helpfulness_level: args.helpful_tags?.length && args.unhelpful_tags?.length ? 'SomewhatHelpful' : args.unhelpful_tags?.length ? 'NotHelpful' : 'Helpful',
                 helpful_tags: args.helpful_tags,
@@ -146,7 +217,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unrateBirdwatchNote(noteId: string) {
-        return await request(ENDPOINTS.BirdwatchDeleteRating, this.#tokens, { note_id: noteId });
+        return await this.fetch(ENDPOINTS.BirdwatchDeleteRating, { note_id: noteId });
     }
 
 
@@ -157,7 +228,7 @@ export class TwitterClient {
      * @returns Slice of bookmarked tweets
      */
     async getBookmarks(args?: CursorOnly) {
-        return await request(ENDPOINTS.Bookmarks, this.#tokens, args);
+        return await this.fetch(ENDPOINTS.Bookmarks, args);
     }
 
     /**
@@ -167,7 +238,7 @@ export class TwitterClient {
      * @returns Slice of bookmarked tweets
      */
     async searchBookmarks(query: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.BookmarkSearchTimeline, this.#tokens, { rawQuery: query, ...args });
+        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: query, ...args });
     }
 
     /**
@@ -175,7 +246,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async clearBookmarks() {
-        return await request(ENDPOINTS.BookmarksAllDelete, this.#tokens);
+        return await this.fetch(ENDPOINTS.BookmarksAllDelete);
     }
 
 
@@ -186,7 +257,7 @@ export class TwitterClient {
      * @returns Community
      */
     async getCommunity(id: string) {
-        return await request(ENDPOINTS.CommunityByRestId, this.#tokens, { communityId: id });
+        return await this.fetch(ENDPOINTS.CommunityByRestId, { communityId: id });
     }
 
     /**
@@ -206,7 +277,7 @@ export class TwitterClient {
             ? 'Recency'
             : 'Relevance';
 
-        return await request(ENDPOINTS.CommunityTweetsTimeline, this.#tokens, { communityId: id, rankingMode, ...args });
+        return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, ...args });
     }
 
     /**
@@ -216,7 +287,7 @@ export class TwitterClient {
      * @returns Slice of media tweets
      */
     async getCommunityMedia(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.CommunityMediaTimeline, this.#tokens, { communityId: id, ...args });
+        return await this.fetch(ENDPOINTS.CommunityMediaTimeline, { communityId: id, ...args });
     }
 
     /**
@@ -225,7 +296,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async joinCommunity(id: string) {
-        return await request(ENDPOINTS.JoinCommunity, this.#tokens, { communityId: id });
+        return await this.fetch(ENDPOINTS.JoinCommunity, { communityId: id });
     }
 
     /**
@@ -234,7 +305,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async leaveCommunity(id: string) {
-        return await request(ENDPOINTS.LeaveCommunity, this.#tokens, { communityId: id });
+        return await this.fetch(ENDPOINTS.LeaveCommunity, { communityId: id });
     }
 
 
@@ -251,10 +322,10 @@ export class TwitterClient {
      */
     async getList(id: string, args?: ListBySlug) {
         if (args?.bySlug) {
-            return await request(ENDPOINTS.ListBySlug, this.#tokens, { listId: id });
+            return await this.fetch(ENDPOINTS.ListBySlug, { listId: id });
         }
 
-        return await request(ENDPOINTS.ListByRestId, this.#tokens, { listId: id });
+        return await this.fetch(ENDPOINTS.ListByRestId, { listId: id });
     }
 
     /**
@@ -264,7 +335,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getListTweets(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.ListLatestTweetsTimeline, this.#tokens, { listId: id, ...args });
+        return await this.fetch(ENDPOINTS.ListLatestTweetsTimeline, { listId: id, ...args });
     }
 
     /**
@@ -272,7 +343,7 @@ export class TwitterClient {
      * @returns Slice of lists
      */
     async getListDiscovery() {
-        return await request(ENDPOINTS.ListsDiscovery, this.#tokens);
+        return await this.fetch(ENDPOINTS.ListsDiscovery);
     }
 
     /**
@@ -281,11 +352,11 @@ export class TwitterClient {
      * @returns Slice of lists
      */
     async listedOn(args?: CursorOnly) {
-        return await request(ENDPOINTS.ListMemberships, this.#tokens, args);
+        return await this.fetch(ENDPOINTS.ListMemberships, args);
     }
 
     async getOwnedLists(userId: string, otherUserId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.ListOwnerships, this.#tokens, { userId, isListMemberTargetUserId: otherUserId, ...args });
+        return await this.fetch(ENDPOINTS.ListOwnerships, { userId, isListMemberTargetUserId: otherUserId, ...args });
     }
 
     /**
@@ -295,7 +366,7 @@ export class TwitterClient {
      * @returns Slice of users on list
      */
     async getListMembers(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.ListMembers, this.#tokens, { listId: id, ...args });
+        return await this.fetch(ENDPOINTS.ListMembers, { listId: id, ...args });
     }
 
     /**
@@ -305,7 +376,7 @@ export class TwitterClient {
      * @returns Slice of users subscribed to the list
      */
     async getListSubscribers(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.ListSubscribers, this.#tokens, { listId: id, ...args });
+        return await this.fetch(ENDPOINTS.ListSubscribers, { listId: id, ...args });
     }
 
     /**
@@ -321,7 +392,7 @@ export class TwitterClient {
      * @returns The created list
      */
     async createList(args: ListCreateArgs) {
-        return await request(ENDPOINTS.CreateList, this.#tokens, { description: args.description || '', isPrivate: !!args.private, ...args });
+        return await this.fetch(ENDPOINTS.CreateList, { description: args.description || '', isPrivate: !!args.private, ...args });
     }
 
     /**
@@ -331,7 +402,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async editList(id: string, args: Required<ListCreateArgs>) {
-        return await request(ENDPOINTS.UpdateList, this.#tokens, { listId: id, isPrivate: args.private, ...args });
+        return await this.fetch(ENDPOINTS.UpdateList, { listId: id, isPrivate: args.private, ...args });
     }
 
     /**
@@ -340,7 +411,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async deleteList(id: string) {
-        return await request(ENDPOINTS.DeleteList, this.#tokens, { listId: id });
+        return await this.fetch(ENDPOINTS.DeleteList, { listId: id });
     }
 
     /**
@@ -351,10 +422,10 @@ export class TwitterClient {
      */
     async setListBanner(listId: string, mediaId: string) {
         if (mediaId) {
-            return await request(ENDPOINTS.EditListBanner, this.#tokens, { listId, mediaId });
+            return await this.fetch(ENDPOINTS.EditListBanner, { listId, mediaId });
         }
 
-        return await request(ENDPOINTS.DeleteListBanner, this.#tokens, { listId });
+        return await this.fetch(ENDPOINTS.DeleteListBanner, { listId });
     }
 
     /**
@@ -364,7 +435,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async listUser(listId: string, userId: string) {
-        return await request(ENDPOINTS.ListAddMember, this.#tokens, { listId, userId });
+        return await this.fetch(ENDPOINTS.ListAddMember, { listId, userId });
     }
 
     /**
@@ -374,7 +445,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unlistUser(listId: string, userId: string) {
-        return await request(ENDPOINTS.ListRemoveMember, this.#tokens, { listId, userId });
+        return await this.fetch(ENDPOINTS.ListRemoveMember, { listId, userId });
     }
 
     /**
@@ -383,7 +454,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async subscribeToList(id: string) {
-        return await request(ENDPOINTS.ListSubscribe, this.#tokens, { listId: id });
+        return await this.fetch(ENDPOINTS.ListSubscribe, { listId: id });
     }
 
     /**
@@ -392,7 +463,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unsubscribeFromList(id: string) {
-        return await request(ENDPOINTS.ListUnsubscribe, this.#tokens, { listId: id });
+        return await this.fetch(ENDPOINTS.ListUnsubscribe, { listId: id });
     }
 
     /**
@@ -401,7 +472,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async pinList(id: string) {
-        return await request(ENDPOINTS.PinTimeline, this.#tokens, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
+        return await this.fetch(ENDPOINTS.PinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
     }
 
     /**
@@ -410,17 +481,17 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unpinList(id: string) {
-        return await request(ENDPOINTS.UnpinTimeline, this.#tokens, {
+        return await this.fetch(ENDPOINTS.UnpinTimeline, {
             pinnedTimelineItem: { id, pinned_timeline_type: 'List' }
         });
     }
 
     async muteList(id: string) {
-        return await request(ENDPOINTS.MuteList, this.#tokens, { listId: id });
+        return await this.fetch(ENDPOINTS.MuteList, { listId: id });
     }
 
     async unmuteList(id: string) {
-        return await request(ENDPOINTS.UnmuteList, this.#tokens, { listId: id });
+        return await this.fetch(ENDPOINTS.UnmuteList, { listId: id });
     }
 
 
@@ -443,7 +514,7 @@ export class TwitterClient {
             ? 'Verified'
             : 'All';
 
-        return await request(ENDPOINTS.NotificationsTimeline, this.#tokens, { timeline_type: type, ...args });
+        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: type, ...args });
     }
 
     /**
@@ -452,7 +523,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getNotifiedTweets(args?: CursorOnly) {
-        return await request(ENDPOINTS.device_follow, this.#tokens, args);
+        return await this.fetch(ENDPOINTS.device_follow, args);
     }
 
     /**
@@ -460,7 +531,7 @@ export class TwitterClient {
      * @param cursor 
      */
     async lastSeenCursor(cursor: string) {
-        return await request(ENDPOINTS.last_seen_cursor, this.#tokens, { cursor });
+        return await this.fetch(ENDPOINTS.last_seen_cursor, { cursor });
     }
 
     /**
@@ -468,7 +539,7 @@ export class TwitterClient {
      * @returns Unread count
      */
     async getUnreadCount() {
-        return await request(ENDPOINTS.badge_count, this.#tokens);
+        return await this.fetch(ENDPOINTS.badge_count);
     }
 
     
@@ -492,10 +563,10 @@ export class TwitterClient {
         const requestContext = args?.cursor ? undefined : 'launch';
 
         if (args?.type === 'chronological') {
-            return await request(ENDPOINTS.HomeLatestTimeline, this.#tokens, { seenTweetIds, requestContext, cursor: args.cursor });
+            return await this.fetch(ENDPOINTS.HomeLatestTimeline, { seenTweetIds, requestContext, cursor: args.cursor });
         }
 
-        return await request(ENDPOINTS.HomeTimeline, this.#tokens, { seenTweetIds, requestContext, cursor: args?.cursor });
+        return await this.fetch(ENDPOINTS.HomeTimeline, { seenTweetIds, requestContext, cursor: args?.cursor });
     }
 
     /**
@@ -513,7 +584,7 @@ export class TwitterClient {
      * @see `types/QueryBuilder`
      */
     async search(query: string | QueryBuilder, args?: SearchArgs) {
-        return await request(ENDPOINTS.SearchTimeline, this.#tokens, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
     }
 
     /**
@@ -522,7 +593,7 @@ export class TwitterClient {
      * @returns Typeahead
      */
     async typeahead(query: string) {
-        return await request(ENDPOINTS.search_typeahead, this.#tokens, { q: query });
+        return await this.fetch(ENDPOINTS.search_typeahead, { q: query });
     }
 
 
@@ -551,7 +622,7 @@ export class TwitterClient {
             ? 'ByInvitation'
             : undefined;
 
-        const [e, tweet] = await request(ENDPOINTS.CreateTweet, this.#tokens, {
+        const [e, tweet] = await this.fetch(ENDPOINTS.CreateTweet, {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
             conversation_control: mode ? { mode } : undefined,
             media: {
@@ -580,7 +651,7 @@ export class TwitterClient {
         let lastTweetId = tweet.id;
 
         for (const t of thread) {
-            const [, data] = await request(ENDPOINTS.CreateTweet, this.#tokens, {
+            const [, data] = await this.fetch(ENDPOINTS.CreateTweet, {
                 batch_compose: !args.replyTo ? 'BatchSubsequent' : undefined,
                 media: {
                     media_entities: t.mediaIds?.map(id => ({
@@ -616,7 +687,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async deleteTweet(id: string) {
-        return await request(ENDPOINTS.DeleteTweet, this.#tokens, { tweet_id: id });
+        return await this.fetch(ENDPOINTS.DeleteTweet, { tweet_id: id });
     }
 
     /**
@@ -633,7 +704,7 @@ export class TwitterClient {
      * @returns 
      */
     async createScheduledTweet(args: ScheduledTweetCreateArgs) {
-        return await request(ENDPOINTS.CreateScheduledTweet, this.#tokens, {
+        return await this.fetch(ENDPOINTS.CreateScheduledTweet, {
             execute_at: (typeof args.sendAt === 'number' ? args.sendAt : args.sendAt.getTime()) / 1000,
             post_tweet_request: {
                 auto_populate_reply_metadata: false,
@@ -645,7 +716,7 @@ export class TwitterClient {
     }
 
     async editScheduledTweet(id: string, args: ScheduledTweetCreateArgs) {
-        return await request(ENDPOINTS.EditScheduledTweet, this.#tokens, {
+        return await this.fetch(ENDPOINTS.EditScheduledTweet, {
             execute_at: (typeof args.sendAt === 'number' ? args.sendAt : args.sendAt.getTime()) / 1000,
             post_tweet_request: {
                 auto_populate_reply_metadata: false,
@@ -658,7 +729,7 @@ export class TwitterClient {
     }
 
     async getScheduledTweets(args?: UnsentTweetsGetArgs) {
-        return await request(ENDPOINTS.FetchScheduledTweets, this.#tokens, { ascending: !!args?.ascending });
+        return await this.fetch(ENDPOINTS.FetchScheduledTweets, { ascending: !!args?.ascending });
     }
 
     /**
@@ -680,7 +751,7 @@ export class TwitterClient {
             ? 'Likes'
             : 'Relevance';
 
-        return await request(ENDPOINTS.TweetDetail, this.#tokens, { focalTweetId: id, rankingMode, ...args });
+        return await this.fetch(ENDPOINTS.TweetDetail, { focalTweetId: id, rankingMode, ...args });
     }
 
     /**
@@ -689,7 +760,7 @@ export class TwitterClient {
      * @returns Tweet
      */
     async getTweetResult(id: string) {
-        return await request(ENDPOINTS.TweetResultByRestId, this.#tokens, { tweetId: id });
+        return await this.fetch(ENDPOINTS.TweetResultByRestId, { tweetId: id });
     }
 
     /**
@@ -698,7 +769,7 @@ export class TwitterClient {
      * @returns Array of tweets
      */
     async getTweetResults(ids: [string, ...string[]]) {
-        return await request(ENDPOINTS.TweetResultsByRestIds, this.#tokens, { tweetIds: ids });
+        return await this.fetch(ENDPOINTS.TweetResultsByRestIds, { tweetIds: ids });
     }
 
     /**
@@ -708,7 +779,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getHiddenReplies(tweetId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.ModeratedTimeline, this.#tokens, { rootTweetId: tweetId, ...args });
+        return await this.fetch(ENDPOINTS.ModeratedTimeline, { rootTweetId: tweetId, ...args });
     }
 
     /**
@@ -721,7 +792,7 @@ export class TwitterClient {
      * @returns Slice of users
      */
     async getLikes(tweetId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.Favoriters, this.#tokens, { tweetId: tweetId, ...args });
+        return await this.fetch(ENDPOINTS.Favoriters, { tweetId: tweetId, ...args });
     }
 
     /**
@@ -731,7 +802,7 @@ export class TwitterClient {
      * @returns Slice of users
      */
     async getRetweets(tweetId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.Retweeters, this.#tokens, { tweetId: tweetId, ...args });
+        return await this.fetch(ENDPOINTS.Retweeters, { tweetId: tweetId, ...args });
     }
 
     /**
@@ -744,7 +815,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getQuoteTweets(tweetId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.SearchTimeline, this.#tokens, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as ClientResponse<Entry<TimelineTweet>[]>;
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as ClientResponse<Entry<TimelineTweet>[]>;
     }
 
     /** @deprecated typo, use `getQuotedTweets` instead */
@@ -756,7 +827,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async bookmark(tweetId: string) {
-        return await request(ENDPOINTS.CreateBookmark, this.#tokens, { tweet_id: tweetId });
+        return await this.fetch(ENDPOINTS.CreateBookmark, { tweet_id: tweetId });
     }
 
     /**
@@ -765,7 +836,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unbookmark(tweetId: string) {
-        return await request(ENDPOINTS.DeleteBookmark, this.#tokens, { tweet_id: tweetId });
+        return await this.fetch(ENDPOINTS.DeleteBookmark, { tweet_id: tweetId });
     }
 
     /**
@@ -774,7 +845,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async like(tweetId: string) {
-        return await request(ENDPOINTS.FavoriteTweet, this.#tokens, { tweet_id: tweetId });
+        return await this.fetch(ENDPOINTS.FavoriteTweet, { tweet_id: tweetId });
     }
 
     /**
@@ -783,7 +854,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unlike(tweetId: string) {
-        return await request(ENDPOINTS.UnfavoriteTweet, this.#tokens, { tweet_id: tweetId });
+        return await this.fetch(ENDPOINTS.UnfavoriteTweet, { tweet_id: tweetId });
     }
 
     /**
@@ -792,7 +863,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async retweet(tweetId: string) {
-        return await request(ENDPOINTS.CreateRetweet, this.#tokens, { tweet_id: tweetId });
+        return await this.fetch(ENDPOINTS.CreateRetweet, { tweet_id: tweetId });
     }
 
     /**
@@ -801,7 +872,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unretweet(tweetId: string) {
-        return await request(ENDPOINTS.DeleteRetweet, this.#tokens, { source_tweet_id: tweetId });
+        return await this.fetch(ENDPOINTS.DeleteRetweet, { source_tweet_id: tweetId });
     }
 
     /**
@@ -810,7 +881,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async hideTweet(id: string) {
-        return await request(ENDPOINTS.ModerateTweet, this.#tokens, { tweetId: id });
+        return await this.fetch(ENDPOINTS.ModerateTweet, { tweetId: id });
     }
 
     /**
@@ -819,7 +890,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unhideTweet(id: string) {
-        return await request(ENDPOINTS.UnmoderateTweet, this.#tokens, { tweetId: id });
+        return await this.fetch(ENDPOINTS.UnmoderateTweet, { tweetId: id });
     }
 
     /**
@@ -828,7 +899,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async pinTweet(id: string) {
-        return await request(ENDPOINTS.PinTweet, this.#tokens, { tweet_id: id });
+        return await this.fetch(ENDPOINTS.PinTweet, { tweet_id: id });
     }
 
     /**
@@ -837,7 +908,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unpinTweet(id: string) {
-        return await request(ENDPOINTS.UnpinTweet, this.#tokens, { tweet_id: id });
+        return await this.fetch(ENDPOINTS.UnpinTweet, { tweet_id: id });
     }
 
     /**
@@ -848,7 +919,7 @@ export class TwitterClient {
      */
     async changeReplyPermission(tweetId: string, permission?: TweetReplyPermission) {
         if (!permission || permission === 'none') {
-            return await request(ENDPOINTS.ConversationControlDelete, this.#tokens, { tweet_id: tweetId });
+            return await this.fetch(ENDPOINTS.ConversationControlDelete, { tweet_id: tweetId });
         }
 
         const mode = permission === 'following'
@@ -857,7 +928,7 @@ export class TwitterClient {
             ? 'Verified'
             : 'ByInvitation';
 
-        return await request(ENDPOINTS.ConversationControlChange, this.#tokens, { tweet_id: tweetId, mode });
+        return await this.fetch(ENDPOINTS.ConversationControlChange, { tweet_id: tweetId, mode });
     }
 
     /**
@@ -866,7 +937,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unmention(id: string) {
-        return await request(ENDPOINTS.UnmentionUserFromConversation, this.#tokens, { tweet_id: id });
+        return await this.fetch(ENDPOINTS.UnmentionUserFromConversation, { tweet_id: id });
     }
 
     /**
@@ -875,7 +946,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async muteTweet(id: string) {
-        return await request(ENDPOINTS.mutes_conversations_create, this.#tokens, { tweet_id: id });
+        return await this.fetch(ENDPOINTS.mutes_conversations_create, { tweet_id: id });
     }
 
     /**
@@ -884,7 +955,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unmuteTweet(id: string) {
-        return await request(ENDPOINTS.mutes_conversations_destroy, this.#tokens, { tweet_id: id });
+        return await this.fetch(ENDPOINTS.mutes_conversations_destroy, { tweet_id: id });
     }
 
 
@@ -898,10 +969,10 @@ export class TwitterClient {
      */
     async getUser(id: string, args?: ByUsername) {
         if (args?.byUsername) {
-            return await request(ENDPOINTS.UserByScreenName, this.#tokens, { screen_name: id });
+            return await this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id });
         }
 
-        return await request(ENDPOINTS.UserByRestId, this.#tokens, { userId: id });
+        return await this.fetch(ENDPOINTS.UserByRestId, { userId: id });
     }
 
     /**
@@ -912,10 +983,10 @@ export class TwitterClient {
      */
     async getUsers(ids: [string, ...string[]], args?: ByUsername) {
         if (args?.byUsername) {
-            return await request(ENDPOINTS.UsersByScreenNames, this.#tokens, { screen_names: ids });
+            return await this.fetch(ENDPOINTS.UsersByScreenNames, { screen_names: ids });
         }
 
-        return await request(ENDPOINTS.UsersByRestIds, this.#tokens, { userIds: ids });
+        return await this.fetch(ENDPOINTS.UsersByRestIds, { userIds: ids });
     }
 
     /**
@@ -925,7 +996,7 @@ export class TwitterClient {
      * @returns Slice of user tweets
      */
     async getUserTweets(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.UserTweets, this.#tokens, { userId: id, ...args });
+        return await this.fetch(ENDPOINTS.UserTweets, { userId: id, ...args });
     }
 
     /**
@@ -935,7 +1006,7 @@ export class TwitterClient {
      * @returns Slice of user tweets
      */
     async getUserReplies(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.UserTweetsAndReplies, this.#tokens, { userId: id, ...args });
+        return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, ...args });
     }
 
     /**
@@ -945,7 +1016,7 @@ export class TwitterClient {
      * @returns Slice of user media tweets
      */
     async getUserMedia(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.UserMedia, this.#tokens, { userId: id, ...args });
+        return await this.fetch(ENDPOINTS.UserMedia, { userId: id, ...args });
     }
 
     /**
@@ -958,7 +1029,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getUserLikes(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.Likes, this.#tokens, { userId: id, ...args });
+        return await this.fetch(ENDPOINTS.Likes, { userId: id, ...args });
     }
 
     /**
@@ -968,7 +1039,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getUserHighlightedTweets(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.UserHighlightsTweets, this.#tokens, { userId: id, ...args });
+        return await this.fetch(ENDPOINTS.UserHighlightsTweets, { userId: id, ...args });
     }
 
     /**
@@ -978,7 +1049,7 @@ export class TwitterClient {
      * @returns Slice of users
      */
     async getFollowing(userId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.Following, this.#tokens, { userId: userId, ...args });
+        return await this.fetch(ENDPOINTS.Following, { userId: userId, ...args });
     }
 
     /**
@@ -988,7 +1059,7 @@ export class TwitterClient {
      * @returns Slice of users
      */
     async getFollowers(userId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.Followers, this.#tokens, { userId: userId, ...args });
+        return await this.fetch(ENDPOINTS.Followers, { userId: userId, ...args });
     }
 
     /**
@@ -998,7 +1069,7 @@ export class TwitterClient {
      * @returns Slice of users
      */
     async getFollowersYouKnow(userId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.FollowersYouKnow, this.#tokens, { userId: userId, ...args });
+        return await this.fetch(ENDPOINTS.FollowersYouKnow, { userId: userId, ...args });
     }
 
     /**
@@ -1008,7 +1079,7 @@ export class TwitterClient {
      * @returns Slice of users
      */
     async getVerifiedFollowers(userId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.BlueVerifiedFollowers, this.#tokens, { userId: userId, ...args });
+        return await this.fetch(ENDPOINTS.BlueVerifiedFollowers, { userId: userId, ...args });
     }
 
     /**
@@ -1021,7 +1092,7 @@ export class TwitterClient {
      * @returns Slice of users
      */
     async getSuperFollowing(userId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.UserCreatorSubscriptions, this.#tokens, { userId: userId, ...args });
+        return await this.fetch(ENDPOINTS.UserCreatorSubscriptions, { userId: userId, ...args });
     }
 
     /**
@@ -1031,7 +1102,7 @@ export class TwitterClient {
      * @returns Slice of users
      */
     async getAffiliates(userId: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.UserBusinessProfileTeamTimeline, this.#tokens, { userId: userId, teamName: 'NotAssigned', ...args });
+        return await this.fetch(ENDPOINTS.UserBusinessProfileTeamTimeline, { userId: userId, teamName: 'NotAssigned', ...args });
     }
 
     /**
@@ -1041,7 +1112,7 @@ export class TwitterClient {
      * @returns Slice of lists
      */
     async getUserLists(id: string, args?: CursorOnly) {
-        return await request(ENDPOINTS.CombinedLists, this.#tokens, { userId: id, ...args });
+        return await this.fetch(ENDPOINTS.CombinedLists, { userId: id, ...args });
     }
 
     /**
@@ -1051,7 +1122,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async followUser(id: string, args?: ByUsername) {
-        return await request(ENDPOINTS.friendships_create, this.#tokens, args?.byUsername ? { screen_name: id } : { user_id: id });
+        return await this.fetch(ENDPOINTS.friendships_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1061,7 +1132,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unfollowUser(id: string, args?: ByUsername) {
-        return await request(ENDPOINTS.friendships_destroy, this.#tokens, args?.byUsername ? { screen_name: id } : { user_id: id });
+        return await this.fetch(ENDPOINTS.friendships_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1070,7 +1141,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async enableRetweets(userId: string) {
-        return await request(ENDPOINTS.friendships_update, this.#tokens, { id: userId, retweets: true });
+        return await this.fetch(ENDPOINTS.friendships_update, { id: userId, retweets: true });
     }
 
     /**
@@ -1079,7 +1150,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async disableRetweets(userId: string) {
-        return await request(ENDPOINTS.friendships_update, this.#tokens, { id: userId, retweets: false });
+        return await this.fetch(ENDPOINTS.friendships_update, { id: userId, retweets: false });
     }
 
     /**
@@ -1088,7 +1159,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async enableNotifications(userId: string) {
-        return await request(ENDPOINTS.friendships_update, this.#tokens, { id: userId, device: true });
+        return await this.fetch(ENDPOINTS.friendships_update, { id: userId, device: true });
     }
 
     /**
@@ -1097,7 +1168,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async disableNotifications(userId: string) {
-        return await request(ENDPOINTS.friendships_update, this.#tokens, { id: userId, device: false });
+        return await this.fetch(ENDPOINTS.friendships_update, { id: userId, device: false });
     }
 
     /**
@@ -1106,7 +1177,7 @@ export class TwitterClient {
      * @returns User ids
      */
     async getFollowRequests(args: CursorOnly) {
-        return await request(ENDPOINTS.friendships_incoming, this.#tokens, { cursor: Number(args?.cursor || '-1') });
+        return await this.fetch(ENDPOINTS.friendships_incoming, { cursor: Number(args?.cursor || '-1') });
     }
 
     /**
@@ -1116,7 +1187,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async cancelFollowRequest(userId: string, args?: ByUsername) {
-        return await request(ENDPOINTS.friendships_cancel, this.#tokens, args?.byUsername ? { screen_name: userId } : { user_id: userId });
+        return await this.fetch(ENDPOINTS.friendships_cancel, args?.byUsername ? { screen_name: userId } : { user_id: userId });
     }
 
     /**
@@ -1126,7 +1197,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async acceptFollowRequest(userId: string, args?: ByUsername) {
-        return await request(ENDPOINTS.friendships_accept, this.#tokens, args?.byUsername ? { screen_name: userId } : { user_id: userId });
+        return await this.fetch(ENDPOINTS.friendships_accept, args?.byUsername ? { screen_name: userId } : { user_id: userId });
     }
 
     /**
@@ -1136,7 +1207,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async declineFollowRequest(userId: string, args?: ByUsername) {
-        return await request(ENDPOINTS.friendships_deny, this.#tokens, args?.byUsername ? { screen_name: userId } : { user_id: userId });
+        return await this.fetch(ENDPOINTS.friendships_deny, args?.byUsername ? { screen_name: userId } : { user_id: userId });
     }
 
     /**
@@ -1146,7 +1217,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async blockUser(id: string, args?: ByUsername) {
-        return await request(ENDPOINTS.blocks_create, this.#tokens, args?.byUsername ? { screen_name: id } : { user_id: id });
+        return await this.fetch(ENDPOINTS.blocks_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1156,7 +1227,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unblockUser(id: string, args?: ByUsername) {
-        return await request(ENDPOINTS.blocks_destroy, this.#tokens, args?.byUsername ? { screen_name: id } : { user_id: id });
+        return await this.fetch(ENDPOINTS.blocks_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1166,7 +1237,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async muteUser(id: string, args?: ByUsername) {
-        return await request(ENDPOINTS.mutes_users_create, this.#tokens, args?.byUsername ? { screen_name: id } : { user_id: id });
+        return await this.fetch(ENDPOINTS.mutes_users_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1176,10 +1247,75 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async unmuteUser(id: string, args?: ByUsername) {
-        return await request(ENDPOINTS.mutes_users_destroy, this.#tokens, args?.byUsername ? { screen_name: id } : { user_id: id });
+        return await this.fetch(ENDPOINTS.mutes_users_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
 
+
+
+    private async uploadInit(args: { bytes: number, contentType: string }): Promise<ClientResponse<MediaUploadInit>> {
+        const body = new URLSearchParams({
+            command: 'INIT',
+            total_bytes: args.bytes.toString(),
+            media_type: args.contentType,
+            media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
+        });
+
+        const response = await fetch('https://upload.x.com/1.1/media/upload.json', {
+            method: 'post',
+            headers: this.headers(PUBLIC_TOKEN, 'v1.1'),
+            body
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return [[], data as MediaUploadInit];
+        }
+
+        return [[{
+            code: -1,
+            message: await response.text()
+        }]];
+    }
+
+    private async uploadAppend(id: string, args: { data: ArrayBuffer, index: number, contentType: string }) {
+        const body = new URLSearchParams({
+            command: 'APPEND',
+            media_id: id,
+            segment_index: args.index.toString()
+        }).toString();
+
+        let formData = new FormData();
+        formData.append('media', new Blob([args.data], { type: args.contentType }));
+
+        return await fetch(`https://upload.x.com/1.1/media/upload.json?${body}`, {
+            method: 'post',
+            headers: this.headers(PUBLIC_TOKEN, 'fd'),
+            body: formData
+        });
+    }
+
+    private async uploadFinalize(id: string): Promise<ClientResponse<Media>> {
+        const response = await fetch(`https://upload.x.com/1.1/media/upload.json?command=FINALIZE&media_id=${id}`, {
+            method: 'post',
+            headers: this.headers(PUBLIC_TOKEN, 'v1.1')
+        });
+
+        try {
+            if (!response.ok) {
+                const { errors } = await response.json();
+                return [errors ?? []];
+            }
+
+            const data = await response.json();
+            return [[], mediaUpload(data)];
+        } catch (error) {
+            return [[{
+                code: -1,
+                message: await response.text()
+            }]];
+        }
+    }
 
     /**
      * Sends several requests to upload a media file
@@ -1197,7 +1333,7 @@ export class TwitterClient {
      */
     async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<ClientResponse<Media>> {
         try {
-            const [errors, init] = await uploadInit(this.#tokens, {
+            const [errors, init] = await this.uploadInit({
                 bytes: media.byteLength,
                 contentType: args.contentType
             });
@@ -1212,12 +1348,7 @@ export class TwitterClient {
             const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
 
             for (const [index, chunk] of chunks.entries()) {
-                const response = await uploadAppend(this.#tokens, {
-                    id: init!.media_id_string,
-                    data: chunk,
-                    index,
-                    contentType: args.contentType
-                });
+                const response = await this.uploadAppend(init!.media_id_string, { data: chunk, index, contentType: args.contentType });
 
                 if (!response.ok) {
                     const { errors } = await response.json();
@@ -1232,7 +1363,7 @@ export class TwitterClient {
                 callback?.(chunk, index, chunksNeeded);
             }
 
-            const final = await uploadFinalize(this.#tokens, { id: init!.media_id_string });
+            const final = await this.uploadFinalize(init!.media_id_string);
 
             if (!!final.at(1) && !!args.altText) {
                 this.addAltText(init!.media_id_string, args.altText);
@@ -1253,7 +1384,24 @@ export class TwitterClient {
      * @returns {Promise<ClientResponse<Media>>} Information about the uploaded file
      */
     async mediaStatus(id: string): Promise<ClientResponse<Media>> {
-        return await uploadStatus(this.#tokens, { id });
+        const response = await fetch(`https://upload.x.com/1.1/media/upload.json?command=STATUS&media_id=${id}`, {
+            headers: this.headers(PUBLIC_TOKEN, 'v1.1')
+        });
+
+        try {
+            if (!response.ok) {
+                const { errors } = await response.json();
+                return [errors ?? []];
+            }
+
+            const data = await response.json();
+            return [[], mediaUpload(data)];
+        } catch (error) {
+            return [[{
+                code: -1,
+                message: await response.text()
+            }]];
+        }
     }
 
     /**
@@ -1263,7 +1411,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async addAltText(id: string, text: string) {
-        return await request(ENDPOINTS.media_metadata_create, this.#tokens, {
+        return await this.fetch(ENDPOINTS.media_metadata_create, {
             allow_download_status: { allow_download: 'true' },
             alt_text: { text },
             media_id: id
