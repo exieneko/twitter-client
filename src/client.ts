@@ -1,5 +1,4 @@
-import { HEADERS, PUBLIC_TOKEN } from './consts.js';
-import { ENDPOINTS } from './endpoints.js';
+import { ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { mediaUpload } from './formatter/tweet.js';
 import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, MediaUploadInit, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
 import { gql, tokenHeaders, toSearchParams, type Endpoint, type Params, type Tokens } from './utils.js';

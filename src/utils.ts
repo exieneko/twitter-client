@@ -1,7 +1,4 @@
-import { HEADERS, PUBLIC_TOKEN } from './consts.js';
-import { Flags } from './flags.js';
-import { mediaUpload } from './formatter/tweet.js';
-import type { ClientResponse, Media, MediaUploadInit } from './types/index.js';
+import type { Flags } from './flags.js';
 
 export interface Tokens {
     authToken: string,
