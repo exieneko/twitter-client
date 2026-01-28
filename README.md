@@ -49,8 +49,6 @@ if (tweet?.__typename === 'Tweet') {
 
 Twitter has some protections in place to prevent automated requests. This package attempts to bypass as many as possible, but Twitter may change their API over time and it's possible for this package to become outdated
 
-Broken features:
-
-+ `verifyCredentials`
-+ `unblockUser`
-+ and possibly some other v1.1 endpoints in the future
+Additionally, older v1.1 endpoints require an `x-client-transaction-id` header which is generated on the client side.
+Any endpoints requiring this will return a 404 error, but some can be bypassed by using an alternate token  
+Most notably, `getSettings`, `verifyCredentials`, and `unblockUser` are broken
