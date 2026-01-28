@@ -1,4 +1,4 @@
-import type { Entry, TimelineList, TimelineTweet, TimelineUser, Typeahead } from '../types/index.js';
+import type { Slice, TimelineList, TimelineTweet, TimelineUser, Typeahead } from '../types/index.js';
 import { cursor, entries, getEntries, list, mediaEntries, userEntries } from './index.js';
 
 export function typeahead(value: any): Typeahead {
@@ -10,7 +10,7 @@ export function typeahead(value: any): Typeahead {
     };
 }
 
-export function searchEntries(instructions: any): Entry<TimelineTweet>[] | Entry<TimelineUser>[] | Entry<TimelineList>[] {
+export function searchEntries(instructions: any): Slice<TimelineTweet | TimelineUser | TimelineList> {
     const value: any[] = getEntries(instructions);
 
     if (value.at(0)?.entryId?.includes('tweet') || value.at(5)?.entryId.includes('tweet')) {
@@ -28,21 +28,23 @@ export function searchEntries(instructions: any): Entry<TimelineTweet>[] | Entry
     if (value.length <= 3 && !!value.find(entry => entry.entryId === 'list-search-0')) {
         const entries = value.find(entry => entry.entryId === 'list-search-0')?.content?.items;
 
-        return [
-            ...value.filter(entry => entry?.content?.__typename === 'TimelineTimelineCursor').map(entry => ({
-                id: entry.entryId,
-                content: cursor(entry.content)
-            })),
-            ...(
-                value.map(entry => ({
+        return {
+            entries: [
+                ...value.filter(entry => entry?.content?.__typename === 'TimelineTimelineCursor').map(entry => ({
                     id: entry.entryId,
-                    content: entry.entryId.includes('cursor')
-                        ? cursor(entry.content)
-                        : list(entry.content.itemContent.list)
-                }))
-            )
-        ]
+                    content: cursor(entry.content)
+                })),
+                ...(
+                    value.map(entry => ({
+                        id: entry.entryId,
+                        content: entry.entryId.includes('cursor')
+                            ? cursor(entry.content)
+                            : list(entry.content.itemContent.list)
+                    }))
+                )
+            ]
+        };
     }
 
-    return [];
+    return { entries: [] };
 }

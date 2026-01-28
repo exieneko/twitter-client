@@ -1,4 +1,4 @@
-import type { Entry, List, TimelineList, UnavailableList, User } from '../types/index.js';
+import type { List, Slice, TimelineList, UnavailableList, User } from '../types/index.js';
 import { cursor, getEntries, user } from './index.js';
 
 export function list(value: any): List | UnavailableList {
@@ -26,23 +26,27 @@ export function list(value: any): List | UnavailableList {
 
 
 
-export function listEntries(instructions: any): Entry<TimelineList>[] {
+export function listEntries(instructions: any): Slice<TimelineList> {
     const value: any[] = getEntries(instructions);
 
-    return value.map(entry => ({
-        id: entry.entryId,
-        content: entry.entryId.includes('cursor')
-            ? cursor(entry.content)
-            : list(entry.content.itemContent.list)
-    }));
+    return {
+        entries: value.map(entry => ({
+            id: entry.entryId,
+            content: entry.entryId.includes('cursor')
+                ? cursor(entry.content)
+                : list(entry.content.itemContent.list)
+        }))
+    };
 }
 
-export function listDiscoveryEntries(instructions: any): Entry<List>[] {
+export function listDiscoveryEntries(instructions: any): Slice<List> {
     // @ts-ignore
     const value: any[] = getEntries(instructions).find((entry: any) => entry.entryId.includes('discovery'))?.content?.items || [];
 
-    return value.map(entry => ({
-        id: entry.entryId,
-        content: list(entry.item.itemContent.list) as List
-    }));
+    return {
+        entries: value.map(entry => ({
+            id: entry.entryId,
+            content: list(entry.item.itemContent.list) as List
+        }))
+    };
 }

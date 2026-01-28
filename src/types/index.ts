@@ -1,5 +1,3 @@
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag } from './birdwatch.js';
-
 export * from './account.js';
 export * from './birdwatch.js';
 export * from './community.js';
@@ -12,15 +10,29 @@ export * from './user.js';
 export * from './internal/index.js';
 
 /**
- * Represents any timeline entry
+ * Represents any timeline entry with a unique id
  */
-export interface Entry<T> {
+export interface Entry<T extends { __typename: string }> {
     id: string,
     content: T
 }
 
+export interface Segment {
+    id: string,
+    name: string
+}
+
 /**
- * Represents a timeline cursor\
+ * Represents a timeline slice
+ */
+export interface Slice<T extends { __typename: string }> {
+    id?: string,
+    segments?: Segment[],
+    entries: Entry<T | Cursor>[]
+}
+
+/**
+ * Represents a timeline cursor  
  * The direction shows where the timeline continues from
  */
 export interface Cursor {

@@ -1,4 +1,4 @@
-import type { Entry, Notification, TimelineNotification, TimelineTweet, UnreadCount, User } from '../types/index.js';
+import type { Notification, Slice, TimelineNotification, TimelineTweet, UnreadCount, User } from '../types/index.js';
 import { CursorDirection, NotificationKind } from '../types/index.js';
 import { cursor, getEntries, tweet as formatTweet, tweetLegacy, user } from './index.js';
 
@@ -92,42 +92,46 @@ export function notification(value: any, notificationKind: string): Notification
     };
 }
 
-export function notificationEntries(instructions: any): Entry<TimelineNotification>[] {
+export function notificationEntries(instructions: any): Slice<TimelineNotification> {
     const value: any[] = getEntries(instructions);
 
-    return value.map(entry => ({
-        id: entry.entryId,
-        content: entry.content?.__typename === 'TimelineTimelineCursor'
-            ? cursor(entry.content)
-            : notification(entry.content.itemContent, entry.content.clientEventInfo.element)
-    }));
+    return {
+        entries: value.map(entry => ({
+            id: entry.entryId,
+            content: entry.content?.__typename === 'TimelineTimelineCursor'
+                ? cursor(entry.content)
+                : notification(entry.content.itemContent, entry.content.clientEventInfo.element)
+        }))
+    };
 }
 
-export function deviceFollowEntries(value: any[], globalObjects: any): Entry<TimelineTweet>[] {
-    return value.map(entry => {
-        if (Object.hasOwn(entry.content, 'operation')) {
-            const cursor = entry.content.operation.cursor;
+export function deviceFollowEntries(value: any[], globalObjects: any): Slice<TimelineTweet> {
+    return {
+        entries: value.map(entry => {
+            if (Object.hasOwn(entry.content, 'operation')) {
+                const cursor = entry.content.operation.cursor;
+
+                return {
+                    id: entry.entryId,
+                    content: {
+                        __typename: 'Cursor',
+                        direction: cursor.cursorType === 'Top' ? CursorDirection.Top : CursorDirection.Bottom,
+                        value: cursor.value
+                    }
+                };
+            }
+
+            const tweetId = entry.content.item.content.tweet.id;
+
+            const tweet = globalObjects.tweets[tweetId];
+            const author = globalObjects.users[tweet.user_id_str];
+            const quotedTweet = tweet.quoted_status_id_str ? globalObjects.tweets[tweet.quoted_status_id_str] : undefined;
+            const quotedTweetAuthor = quotedTweet ? globalObjects.users[quotedTweet.user_id_str] : undefined;
 
             return {
                 id: entry.entryId,
-                content: {
-                    __typename: 'Cursor',
-                    direction: cursor.cursorType === 'Top' ? CursorDirection.Top : CursorDirection.Bottom,
-                    value: cursor.value
-                }
+                content: tweetLegacy(tweet, author, quotedTweet, quotedTweetAuthor)
             };
-        }
-
-        const tweetId = entry.content.item.content.tweet.id;
-
-        const tweet = globalObjects.tweets[tweetId];
-        const author = globalObjects.users[tweet.user_id_str];
-        const quotedTweet = tweet.quoted_status_id_str ? globalObjects.tweets[tweet.quoted_status_id_str] : undefined;
-        const quotedTweetAuthor = quotedTweet ? globalObjects.users[quotedTweet.user_id_str] : undefined;
-
-        return {
-            id: entry.entryId,
-            content: tweetLegacy(tweet, author, quotedTweet, quotedTweetAuthor)
-        };
-    });
+        })
+    };
 }

@@ -1,5 +1,5 @@
-import { Entry, SuspendedUser, TimelineUser, UnavailableUser, User, VerificationKind } from '../types/index.js';
 import { cursor, getEntries } from './index.js';
+import { VerificationKind, type Slice, type SuspendedUser, type TimelineUser, type UnavailableUser, type User } from '../types/index.js';
 
 export function user(value: any): User | SuspendedUser | UnavailableUser {
     if (!value) {
@@ -119,13 +119,15 @@ export function userLegacy(value: any): User {
 
 
 
-export function userEntries(instructions: any): Entry<TimelineUser>[] {
+export function userEntries(instructions: any): Slice<TimelineUser> {
     const value: any[] = getEntries(instructions);
 
-    return value.map(entry => ({
-        id: entry.entryId,
-        content: entry.content.__typename === 'TimelineTimelineCursor'
-            ? cursor(entry.content)
-            : user(entry.content.itemContent.user_results?.result)
-    }));
+    return {
+        entries: value.map(entry => ({
+            id: entry.entryId,
+            content: entry.content.__typename === 'TimelineTimelineCursor'
+                ? cursor(entry.content)
+                : user(entry.content.itemContent.user_results?.result)
+        }))
+    };
 }

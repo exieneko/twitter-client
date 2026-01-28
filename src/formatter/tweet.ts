@@ -1,4 +1,4 @@
-import { DraftTweet, Entry, Media, Retweet, ScheduledTweet, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
+import { DraftTweet, Entry, Media, Retweet, ScheduledTweet, Slice, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
 import { cursor, getEntries, user, userLegacy } from './index.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
@@ -231,33 +231,37 @@ export function entry(value: any): Entry<TimelineTweet> | undefined {
     }
 }
 
-export function entries(instructions: any): Entry<TimelineTweet>[] {
-    return getEntries(instructions).map(entry).filter(x => !!x) as any;
+export function entries(instructions: any): Slice<TimelineTweet> {
+    return {
+        entries: getEntries<TimelineTweet>(instructions).map(entry).filter(x => !!x)
+    };
 }
 
-export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Entry<TimelineTweet>[] {
+export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Slice<TimelineTweet> {
     const value: any[] = getEntries(instructions);
 
     const grid = gridModule?.content ?? value.find(entry => entry.content.__typename === 'TimelineTimelineModule')?.content;
 
-    return [
-        ...value.filter(entry => entry.content.__typename === 'TimelineTimelineCursor').map(entry => ({
-            id: entry.entryId,
-            content: cursor(entry.content)
-        })),
-        ...(
-            grid
-                ? grid[gridModule?.key ?? 'items'].map((item: any) => ({
-                    id: item.entryId,
-                    content: item.item.itemContent.__typename === 'TimelineTimelineCursor'
-                        ? cursor(item.item.itemContent)
-                        : tweet(item.item.itemContent.tweet_results?.result, {
-                            hasHiddenReplies: item.item.itemContent.hasModeratedReplies
-                        })
-                }))
-                : []
-        )
-    ];
+    return {
+        entries: [
+            ...value.filter(entry => entry.content.__typename === 'TimelineTimelineCursor').map(entry => ({
+                id: entry.entryId,
+                content: cursor(entry.content)
+            })),
+            ...(
+                grid
+                    ? grid[gridModule?.key ?? 'items'].map((item: any) => ({
+                        id: item.entryId,
+                        content: item.item.itemContent.__typename === 'TimelineTimelineCursor'
+                            ? cursor(item.item.itemContent)
+                            : tweet(item.item.itemContent.tweet_results?.result, {
+                                hasHiddenReplies: item.item.itemContent.hasModeratedReplies
+                            })
+                    }))
+                    : []
+            )
+        ]
+    };
 }
 
 

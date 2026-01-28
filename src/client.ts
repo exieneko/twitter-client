@@ -1,6 +1,6 @@
 import { ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { mediaUpload } from './formatter/tweet.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, MediaUploadInit, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, TwitterResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, MediaUploadInit, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs, Slice } from './types/index.js';
 import { gql, tokenHeaders, toSearchParams, type Endpoint, type Params, type Tokens } from './utils.js';
 
 export class TwitterClient {
@@ -23,7 +23,7 @@ export class TwitterClient {
         };
     }
 
-    private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<ClientResponse<ReturnType<T['parser']>>> {
+    private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<TwitterResponse<ReturnType<T['parser']>>> {
         const isGql = !endpoint.url.startsWith('https')
 
         const headers = this.headers(endpoint.token, isGql ? 'gql' : 'v1.1');
@@ -57,23 +57,32 @@ export class TwitterClient {
 
             data = await response.json();
         } catch (error: any) {
-            return [[{
-                code: -1,
-                message: String(error.stack)
-            }]];
+            return {
+                errors: [{
+                    code: -1,
+                    message: String(error.stack)
+                }]
+            };
         }
 
         if (data?.errors && !data.data) {
-            return [data.errors];
+            return {
+                errors: data.errors
+            };
         }
 
         try {
-            return [data?.errors || [], endpoint.parser(data)];
+            return {
+                errors: data?.errors || [],
+                data: endpoint.parser(data)
+            };
         } catch (error: any) {
-            return [[{
-                code: -1,
-                message: String(error.stack)
-            }]];
+            return {
+                errors: [{
+                    code: -1,
+                    message: String(error.stack)
+                }]
+            };
         }
     }
 
@@ -612,7 +621,7 @@ export class TwitterClient {
      * @param thread Additional tweets to reply to the root tweet with (may be slow, as Twitter doesn't offer a built-in solution for this, so each request is made individually)
      * @returns Created tweet
      */
-    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<ClientResponse<Tweet | TweetTombstone>> {
+    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet | TweetTombstone>> {
         const mode = args.replyPermission === 'following'
             ? 'Community'
         : args.replyPermission === 'verified'
@@ -621,7 +630,7 @@ export class TwitterClient {
             ? 'ByInvitation'
             : undefined;
 
-        const [e, tweet] = await this.fetch(ENDPOINTS.CreateTweet, {
+        const { errors, data: tweet } = await this.fetch(ENDPOINTS.CreateTweet, {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
             conversation_control: mode ? { mode } : undefined,
             media: {
@@ -640,17 +649,17 @@ export class TwitterClient {
         });
 
         if (tweet?.__typename === 'TweetTombstone') {
-            return [e, tweet];
+            return { errors, data: tweet };
         }
 
         if (!thread?.length || !tweet?.id) {
-            return [e, tweet];
+            return { errors, data: tweet };
         }
 
         let lastTweetId = tweet.id;
 
         for (const t of thread) {
-            const [, data] = await this.fetch(ENDPOINTS.CreateTweet, {
+            const { data } = await this.fetch(ENDPOINTS.CreateTweet, {
                 batch_compose: !args.replyTo ? 'BatchSubsequent' : undefined,
                 media: {
                     media_entities: t.mediaIds?.map(id => ({
@@ -668,13 +677,13 @@ export class TwitterClient {
             });
 
             if (!data || data.__typename === 'TweetTombstone') {
-                return [e, tweet];
+                return { errors, data: tweet };
             }
 
             lastTweetId = data.id;
         }
 
-        return [e, tweet];
+        return { errors, data: tweet };
     }
 
     /** @deprecated Use the `createTweet` method instead */
@@ -814,7 +823,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getQuoteTweets(tweetId: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as ClientResponse<Entry<TimelineTweet>[]>;
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as TwitterResponse<Slice<TimelineTweet>>;
     }
 
     /** @deprecated typo, use `getQuotedTweets` instead */
@@ -1252,7 +1261,7 @@ export class TwitterClient {
 
 
 
-    private async uploadInit(args: { bytes: number, contentType: string }): Promise<ClientResponse<MediaUploadInit>> {
+    private async uploadInit(args: { bytes: number, contentType: string }): Promise<TwitterResponse<MediaUploadInit>> {
         const body = new URLSearchParams({
             command: 'INIT',
             total_bytes: args.bytes.toString(),
@@ -1268,13 +1277,18 @@ export class TwitterClient {
 
         if (response.ok) {
             const data = await response.json();
-            return [[], data as MediaUploadInit];
+            return {
+                errors: [],
+                data: data as MediaUploadInit
+            };
         }
 
-        return [[{
-            code: -1,
-            message: await response.text()
-        }]];
+        return {
+            errors: [{
+                code: -1,
+                message: await response.text()
+            }]
+        };
     }
 
     private async uploadAppend(id: string, args: { data: ArrayBuffer, index: number, contentType: string }) {
@@ -1294,7 +1308,7 @@ export class TwitterClient {
         });
     }
 
-    private async uploadFinalize(id: string): Promise<ClientResponse<Media>> {
+    private async uploadFinalize(id: string): Promise<TwitterResponse<Media>> {
         const response = await fetch(`https://upload.x.com/1.1/media/upload.json?command=FINALIZE&media_id=${id}`, {
             method: 'post',
             headers: this.headers(PUBLIC_TOKEN, 'v1.1')
@@ -1303,23 +1317,28 @@ export class TwitterClient {
         try {
             if (!response.ok) {
                 const { errors } = await response.json();
-                return [errors ?? []];
+                return { errors: errors ?? [] };
             }
 
             const data = await response.json();
-            return [[], mediaUpload(data)];
+            return {
+                errors: [],
+                data: mediaUpload(data)
+            };
         } catch (error) {
-            return [[{
-                code: -1,
-                message: await response.text()
-            }]];
+            return {
+                errors: [{
+                    code: -1,
+                    message: await response.text()
+                }]
+            };
         }
     }
 
     /**
      * Sends several requests to upload a media file
      * 
-     * Arguments
+     * Arguments:
      * 
      * + `contentType: string` - Mime type of the uploaded media
      * + `altText?: string` - If set, calls `this.addAltText` to immediately add ALT text to the media
@@ -1330,15 +1349,15 @@ export class TwitterClient {
      * @param callback Function called after each chunk is uploaded
      * @returns Information about the uploaded file
      */
-    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<ClientResponse<Media>> {
+    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<TwitterResponse<Media>> {
         try {
-            const [errors, init] = await this.uploadInit({
+            const { errors, data: init } = await this.uploadInit({
                 bytes: media.byteLength,
                 contentType: args.contentType
             });
 
             if (errors.length) {
-                return [errors];
+                return { errors };
             }
 
             const chunkSize = args.segmentSizeOverride || 1_084_576;
@@ -1353,7 +1372,7 @@ export class TwitterClient {
                     const { errors } = await response.json();
 
                     if (!!errors) {
-                        return [errors];
+                        return { errors };
                     }
 
                     throw response.statusText;
@@ -1364,25 +1383,27 @@ export class TwitterClient {
 
             const final = await this.uploadFinalize(init!.media_id_string);
 
-            if (!!final.at(1) && !!args.altText) {
+            if (!!final.data && !!args.altText) {
                 this.addAltText(init!.media_id_string, args.altText);
             }
 
             return final;
         } catch (error) {
-            return [[{
-                code: -1,
-                message: String(error)
-            }]];
+            return {
+                errors: [{
+                    code: -1,
+                    message: String(error)
+                }]
+            };
         }
     }
 
     /**
      * Check the current status of an uploaded media file
      * @param {string} id Media id
-     * @returns {Promise<ClientResponse<Media>>} Information about the uploaded file
+     * @returns {Promise<TwitterResponse<Media>>} Information about the uploaded file
      */
-    async mediaStatus(id: string): Promise<ClientResponse<Media>> {
+    async mediaStatus(id: string): Promise<TwitterResponse<Media>> {
         const response = await fetch(`https://upload.x.com/1.1/media/upload.json?command=STATUS&media_id=${id}`, {
             headers: this.headers(PUBLIC_TOKEN, 'v1.1')
         });
@@ -1390,16 +1411,21 @@ export class TwitterClient {
         try {
             if (!response.ok) {
                 const { errors } = await response.json();
-                return [errors ?? []];
+                return { errors: errors ?? [] };
             }
 
             const data = await response.json();
-            return [[], mediaUpload(data)];
+            return {
+                errors: [],
+                data: mediaUpload(data)
+            };
         } catch (error) {
-            return [[{
-                code: -1,
-                message: await response.text()
-            }]];
+            return {
+                errors: [{
+                    code: -1,
+                    message: await response.text()
+                }]
+            };
         }
     }
 

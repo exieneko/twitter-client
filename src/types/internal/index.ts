@@ -1,16 +1,14 @@
 export * from './args.js';
 
 /**
- * Response tuple containing `errors` and `data` if the errors aren't fatal
+ * Response object containing `errors` and `data` if there are no errors or they aren't fatal
  * 
  * # Examples
  * 
- * Destructure tuple and handle errors before handling data:
- * 
  * ```ts
- * const [errors, entries] = await twitter.getTimeline();
+ * const { errors, data: entries } = await twitter.getTimeline();
  * 
- * if (!errors.length) {
+ * if (errors.length === 0) {
  *     console.error(`errors: ${errors}`);
  *     return;
  * }
@@ -21,11 +19,14 @@ export * from './args.js';
  * Or just assume there are no errors:
  * 
  * ```ts
- * const [, user] = await twitter.getUser('123456');
+ * const { data: user } = await twitter.getUser('123456');
  * console.log(user?.name);
  * ```
  */
-export type ClientResponse<T> = [ClientError[], T?];
+export interface TwitterResponse<T> {
+    errors: TwitterError[],
+    data?: T
+}
 
 /**
  * Represents an error returned by the Twitter API
@@ -33,7 +34,7 @@ export type ClientResponse<T> = [ClientError[], T?];
  * The `code` property will be `-1` if the error is a caught exception that occured during parsing the response data  
  * If this is the case, all properties except `code` and `message` will be `undefined`. Additionally, `message` will contain the output of `error.stack`
  */
-export interface ClientError {
+export interface TwitterError {
     message: string,
     locations?: {
         line: number,
