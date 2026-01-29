@@ -1,9 +1,9 @@
 export function v11(route: string) {
-    return `https://api.twitter.com/1.1/${route}`;
+    return `https://api.%DOMAIN%/1.1/${route}`;
 }
 
-export function gql(route: string) {
-    return `https://twitter.com/i/api/graphql/${route}`;
+export function gql(domain: string, route: string) {
+    return `https://${domain}/i/api/graphql/${route}`;
 }
 
 export function toSearchParams(obj: object) {

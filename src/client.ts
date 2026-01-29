@@ -2,52 +2,60 @@ import { ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { mediaUpload } from './formatter/tweet.js';
 import type { Media, MediaUploadInit, TweetKind, Tweet, TweetTombstone, Slice } from './types/index.js';
 import { gql, toSearchParams } from './utils/index.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs } from './utils/types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options } from './utils/types/index.js';
 import { QueryBuilder } from './utils/types/querybuilder.js';
 
 export class TwitterClient {
     #tokens: Tokens;
+    #options: Options;
 
-    constructor(tokens: Tokens) {
+    constructor(tokens: Tokens, options?: Partial<Options>) {
         this.#tokens = tokens;
+        this.#options = {
+            domain: 'x.com',
+            language: 'en',
+            longTweetBehavior: 'Force',
+            ...options
+        };
     }
 
     private headers(token?: string, type: 'gql' | 'v1.1' | 'fd' = 'gql'): Record<string, string> {
-        function tokenHeaders(tokens: Tokens) {
+        function tokenHeaders(tokens: Tokens, options: Options) {
             return {
                 'x-csrf-token': tokens.csrf,
-                cookie: `auth_token=${tokens.authToken}; ct0=${tokens.csrf}; lang=en`
+                cookie: `auth_token=${tokens.authToken}; ct0=${tokens.csrf}; lang=${options.language}`
             };
         }
 
         return type === 'fd' ? {
             ...HEADERS,
+            'Accept-Language': `${this.#options.language};q=0.5`,
             authorization: token || PUBLIC_TOKEN,
-            ...tokenHeaders(this.#tokens)
+            'x-twitter-client-language': this.#options.language,
+            ...tokenHeaders(this.#tokens, this.#options)
         } : {
             ...HEADERS,
+            'Accept-Language': `${this.#options.language};q=0.5`,
             authorization: token || PUBLIC_TOKEN,
-            'content-type': `${type === 'gql' ? 'application/json' : 'application/x-www-form-urlencoded'}; charset=utf-8`,
-            ...tokenHeaders(this.#tokens)
+            'x-twitter-client-language': this.#options.language,
+            'Content-Type': `${type === 'gql' ? 'application/json' : 'application/x-www-form-urlencoded'}; charset=utf-8`,
+            ...tokenHeaders(this.#tokens, this.#options)
         };
     }
 
     private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<TwitterResponse<ReturnType<T['parser']>>> {
         const isGql = !endpoint.url.startsWith('https');
-
         const headers = this.headers(endpoint.token, isGql ? 'gql' : 'v1.1');
-
-        let data: Parameters<Endpoint['parser']>[0] | null = null;
 
         try {
             const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
             const response = await (isGql
-                ? (endpoint.method === 'get'
-                    ? fetch(gql(endpoint.url) + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
+                ? (endpoint.method === 'GET'
+                    ? fetch(gql(this.#options.domain, endpoint.url) + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
                         method: endpoint.method,
                         headers
                     })
-                    : fetch(gql(endpoint.url), {
+                    : fetch(gql(this.#options.domain, endpoint.url), {
                         method: endpoint.method,
                         headers,
                         body: JSON.stringify({
@@ -57,34 +65,34 @@ export class TwitterClient {
                         })
                     })
                 )
-                : fetch(endpoint.method === 'get' && body ? `${endpoint.url}?${body}` : endpoint.url, {
+                : fetch(endpoint.method === 'GET' && body ? `${endpoint.url.replace('%DOMAIN%', this.#options.domain)}?${body}` : endpoint.url.replace('%DOMAIN%', this.#options.domain), {
                     method: endpoint.method,
                     headers,
-                    body: endpoint.method === 'post' && body ? body : undefined
+                    body: endpoint.method === 'POST' && body ? body : undefined
                 })
             );
 
-            data = await response.json();
-        } catch (error: any) {
-            return {
-                errors: [{
-                    code: -1,
-                    message: String(error.stack)
-                }]
-            };
-        }
+            const data: Parameters<Endpoint['parser']>[0] = await response.json();
 
-        if (data?.errors && !data.data) {
-            return {
-                errors: data.errors
-            };
-        }
+            if (data?.errors && !data.data) {
+                return {
+                    errors: data.errors
+                };
+            }
 
-        try {
-            return {
-                errors: data?.errors || [],
-                data: endpoint.parser(data)
-            };
+            try {
+                return {
+                    errors: data?.errors || [],
+                    data: endpoint.parser(data)
+                };
+            } catch (error: any) {
+                return {
+                    errors: [{
+                        code: -1,
+                        message: String(error.stack)
+                    }]
+                };
+            }
         } catch (error: any) {
             return {
                 errors: [{
@@ -638,6 +646,17 @@ export class TwitterClient {
      * @returns Created tweet
      */
     async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet | TweetTombstone>> {
+        const text = args.text || '';
+
+        if (text.length > 280 && this.#options.longTweetBehavior === 'Fail') {
+            return {
+                errors: [{
+                    code: -1,
+                    message: 'Tweet exceeded character limit'
+                }]
+            };
+        }
+
         const mode = args.replyPermission === 'Following'
             ? 'Community'
         : args.replyPermission === 'Verified'
@@ -645,6 +664,15 @@ export class TwitterClient {
         : args.replyPermission === 'Mentioned'
             ? 'ByInvitation'
             : undefined;
+
+        if (text.length > 280 && (this.#options.longTweetBehavior === 'NoteTweet' || this.#options.longTweetBehavior === 'NoteTweetUnchecked')) {
+            return {
+                errors: [{
+                    code: -1,
+                    message: 'Unimplemented'
+                }]
+            };
+        }
 
         const { errors, data: tweet } = await this.fetch(ENDPOINTS.CreateTweet, {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
@@ -661,7 +689,7 @@ export class TwitterClient {
                 in_reply_to_tweet_id: args.replyTo
             } : undefined,
             semantic_annotation_ids: [],
-            tweet_text: args.text || ''
+            tweet_text: text
         });
 
         if (tweet?.__typename === 'TweetTombstone') {
@@ -1285,8 +1313,8 @@ export class TwitterClient {
             media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
         });
 
-        const response = await fetch('https://upload.x.com/1.1/media/upload.json', {
-            method: 'post',
+        const response = await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json`, {
+            method: 'POST',
             headers: this.headers(PUBLIC_TOKEN, 'v1.1'),
             body
         });
@@ -1317,16 +1345,16 @@ export class TwitterClient {
         let formData = new FormData();
         formData.append('media', new Blob([args.data], { type: args.contentType }));
 
-        return await fetch(`https://upload.x.com/1.1/media/upload.json?${body}`, {
-            method: 'post',
+        return await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json?${body}`, {
+            method: 'POST',
             headers: this.headers(PUBLIC_TOKEN, 'fd'),
             body: formData
         });
     }
 
     private async uploadFinalize(id: string): Promise<TwitterResponse<Media>> {
-        const response = await fetch(`https://upload.x.com/1.1/media/upload.json?command=FINALIZE&media_id=${id}`, {
-            method: 'post',
+        const response = await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json?command=FINALIZE&media_id=${id}`, {
+            method: 'POST',
             headers: this.headers(PUBLIC_TOKEN, 'v1.1')
         });
 
@@ -1420,7 +1448,7 @@ export class TwitterClient {
      * @returns {Promise<TwitterResponse<Media>>} Information about the uploaded file
      */
     async mediaStatus(id: string): Promise<TwitterResponse<Media>> {
-        const response = await fetch(`https://upload.x.com/1.1/media/upload.json?command=STATUS&media_id=${id}`, {
+        const response = await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json?command=STATUS&media_id=${id}`, {
             headers: this.headers(PUBLIC_TOKEN, 'v1.1')
         });
 

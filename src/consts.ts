@@ -9,11 +9,11 @@ export const ALT_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAAFXzAwAAAAAAMHCxpeSDG1gLNLg
 export const OAUTH_KEY = 'Bearer AAAAAAAAAAAAAAAAAAAAAG5LOQEAAAAAbEKsIYYIhrfOQqm4H8u7xcahRkU%3Dz98HKmzbeXdKqBfUDmElcqYl0cmmKY9KdS2UoNIz3Phapgsowi';
 
 export const HEADERS = {
-    connection: 'keep-alive',
+    Accept: '*/*',
+    Connection: 'keep-alive',
     'x-twitter-active-user': 'yes',
     'x-twitter-auth-type': 'OAuth2Session',
-    'x-twitter-client-language': 'en',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
 };
 
 // all graphql query ids last updated on 2026-01-02
@@ -21,7 +21,7 @@ export const ENDPOINTS = {
     // ACCOUNT
     BlockedAccountsAll: {
         url: 'cViKW5oZPiIce0MOSKYblw/BlockedAccountsAll',
-        method: 'get',
+        method: 'GET',
         params: {} as { cursor?: string },
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline,
@@ -29,7 +29,7 @@ export const ENDPOINTS = {
     },
     BlockedAccountsImported: {
         url: 'CJ8VCYGYHBNu2Dq2AdgO2w/BlockedAccountsImported',
-        method: 'get',
+        method: 'GET',
         params: {} as { cursor?: string },
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline,
@@ -37,7 +37,7 @@ export const ENDPOINTS = {
     },
     MutedAccounts: {
         url: 'mJA1YbOoJTyoB64W9hd6ZQ/MutedAccounts',
-        method: 'get',
+        method: 'GET',
         params: {} as { cursor?: string },
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline,
@@ -45,14 +45,14 @@ export const ENDPOINTS = {
     },
     account_settings: {
         url: v11('account/settings.json'),
-        method: 'get',
+        method: 'GET',
         variables: {"include_ext_sharing_audiospaces_listening_data_with_followers":true,"include_mention_filter":true,"include_nsfw_user_flag":true,"include_nsfw_admin_flag":true,"include_ranked_timeline":true,"include_alt_text_compose":true,"include_ext_dm_av_call_settings":true,"ext":"ssoConnections","include_country_code":true,"include_ext_dm_nsfw_media_filter":true},
         token: OAUTH_KEY,
         parser: format.settings
     },
     account_update_profile: {
         url: v11('account/update_profile.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as {
             birthdate_day: number,
             birthdate_month: number,
@@ -70,7 +70,7 @@ export const ENDPOINTS = {
     },
     account_update_profile_image: {
         url: v11('account/update_profile_image.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { media_id: string },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"return_user":true},
         token: OAUTH_KEY,
@@ -78,7 +78,7 @@ export const ENDPOINTS = {
     },
     account_verify_credentials: {
         url: v11('account/verify_credentials.json'),
-        method: 'get',
+        method: 'GET',
         token: OAUTH_KEY,
         parser: format.userLegacy
     },
@@ -89,28 +89,28 @@ export const ENDPOINTS = {
     /** @todo segmented timelines need to be implemented for this to work */
     BirdwatchFetchGlobalTimeline: {
         url: 'rG-k-eTUj0YhAqXkSNJbiQ/BirdwatchFetchGlobalTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { cursor?: string },
         features: flags.timeline,
         parser: _ => _
     },
     BirdwatchFetchNotes: {
         url: 'dG85JgBxwnAt_PYNZTyvTg/BirdwatchFetchNotes',
-        method: 'get',
+        method: 'GET',
         params: {} as { tweet_id: string },
         features: flags.birdwatch,
         parser: data => format.birdwatchTweet(data.tweet_result_by_rest_id.result)
     },
     BirdwatchFetchBirdwatchProfile: {
         url: 'id9iGfEQF47W1kvRBHUmRQ/BirdwatchFetchBirdwatchProfile',
-        method: 'get',
+        method: 'GET',
         params: {} as { alias: string },
         features: { responsive_web_birdwatch_top_contributor_enabled: true },
         parser: data => format.birdwatchUser(data.birdwatch_profile_by_alias)
     },
     BirdwatchCreateRating: {
         url: 'gbshFt1Vmddrlio4vHWhhQ/BirdwatchCreateRating',
-        method: 'post',
+        method: 'POST',
         params: {} as {
             data_v2: {
                 helpful_tags?: BirdwatchHelpfulTag[],
@@ -126,7 +126,7 @@ export const ENDPOINTS = {
     },
     BirdwatchDeleteRating: {
         url: 'OpvCOyOoQClUND66zDzrnA/BirdwatchDeleteRating',
-        method: 'post',
+        method: 'POST',
         params: {} as { note_id: string },
         parser: data => data.data.birdwatchnote_rating_delete === 'Done'
     },
@@ -136,7 +136,7 @@ export const ENDPOINTS = {
     // BOOKMARKS
     Bookmarks: {
         url: 'E6jlrZG4703s0mcA9DfNKQ/Bookmarks',
-        method: 'get',
+        method: 'GET',
         params: {} as { cursor?: string },
         variables: {"count":50,"includePromotedContent":false},
         features: flags.timeline,
@@ -144,7 +144,7 @@ export const ENDPOINTS = {
     },
     BookmarkSearchTimeline: {
         url: '9467z_eRSDs6mi8CHRLxnA/BookmarkSearchTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { rawQuery: string, cursor?: string },
         variables: {"count":50},
         features: flags.timeline,
@@ -152,21 +152,21 @@ export const ENDPOINTS = {
     },
     CreateBookmark: {
         url: 'aoDbu3RHznuiSkQ9aNM67Q/CreateBookmark',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         token: OAUTH_KEY,
         parser: data => data.data.tweet_bookmark_put === 'Done'
     },
     DeleteBookmark: {
         url: 'Wlmlj2-xzyS1GN3a6cj-mQ/DeleteBookmark',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         token: OAUTH_KEY,
         parser: data => data.data.tweet_bookmark_delete === 'Done'
     },
     BookmarksAllDelete: {
         url: 'skiACZKC1GDYli-M8RzEPQ/BookmarksAllDelete',
-        method: 'post',
+        method: 'POST',
         token: OAUTH_KEY,
         parser: data => data.data.bookmark_all_delete === 'Done'
     },
@@ -176,14 +176,14 @@ export const ENDPOINTS = {
     // COMMUNITY
     CommunityByRestId: {
         url: 'iO-Ycgd1CdS0xk9nQYMCaA/CommunityByRestId',
-        method: 'get',
+        method: 'GET',
         params: {} as { communityId: string },
         features: flags.short,
         parser: data => format.community(data.data.communityResults.result)
     },
     CommunityTweetsTimeline: {
         url: 'ZoPkicnDp0_M60vVsWxf7w/CommunityTweetsTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { communityId: string, rankingMode: 'Relevance' | 'Recency', cursor?: string },
         variables: {"count":20,"displayLocation":"Community","withCommunity":true},
         features: flags.timeline,
@@ -191,7 +191,7 @@ export const ENDPOINTS = {
     },
     CommunityMediaTimeline: {
         url: '_DJU-HFPmQZX0_nclxm0Qg/CommunityMediaTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { communityId: string, cursor?: string },
         variables: {"count":20,"displayLocation":"Community","withCommunity":true},
         features: flags.timeline,
@@ -202,14 +202,14 @@ export const ENDPOINTS = {
     },
     JoinCommunity: {
         url: 'b9bfcMQtJqWWCoyuM91Cpw/JoinCommunity',
-        method: 'get',
+        method: 'GET',
         params: {} as { communityId: string },
         features: flags.short,
         parser: data => !!data.data.community_join.id_str
     },
     LeaveCommunity: {
         url: 'LLQ-xxy7KYe7VJFtRO31ig/LeaveCommunity',
-        method: 'get',
+        method: 'GET',
         params: {} as { communityId: string },
         features: flags.short,
         parser: data => !!data.data.community_leave.id_str
@@ -220,21 +220,21 @@ export const ENDPOINTS = {
     // LIST
     ListByRestId: {
         url: 'Tzkkg-NaBi_y1aAUUb6_eQ/ListByRestId',
-        method: 'get',
+        method: 'GET',
         params: {} as { listId: string },
         features: flags.short,
         parser: data => format.list(data.data.list)
     },
     ListBySlug: {
         url: 'kPoa5ip1Zl3rYF0T-e2HcA/ListBySlug',
-        method: 'get',
+        method: 'GET',
         params: {} as { listId: string },
         features: flags.short,
         parser: data => format.list(data.data.list)
     },
     ListLatestTweetsTimeline: {
         url: 'fqNUs_6rqLf89u_2waWuqg/ListLatestTweetsTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { listId: string, cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
@@ -243,21 +243,21 @@ export const ENDPOINTS = {
     /** @todo */
     ListsManagementPageTimeline: {
         url: 'mjBb_n_f5Ci-eIysajMRWQ/ListsManagementPageTimeline',
-        method: 'get',
+        method: 'GET',
         variables: {"count":100},
         features: flags.timeline,
         parser: _ => _
     },
     ListsDiscovery: {
         url: 'WcZy_1yhZQ5zOabw_WElww/ListsDiscovery',
-        method: 'get',
+        method: 'GET',
         variables: {"count":40},
         features: flags.timeline,
         parser: data => format.listEntries(data.data.list_discovery_list_mixer_timeline.timeline.instructions)
     },
     ListMemberships: {
         url: 'X6U9LAaMZ5C8MvPM12aK2A/ListMemberships',
-        method: 'get',
+        method: 'GET',
         params: {} as { cursor?: string },
         variables: {"count":20},
         features: flags.timeline,
@@ -265,7 +265,7 @@ export const ENDPOINTS = {
     },
     ListOwnerships: {
         url: 'k0_MqdZDcbfRtDVuuk2Dig/ListOwnerships',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, isListMemberTargetUserId: string, cursor?: string },
         variables: {"count":20},
         features: flags.timeline,
@@ -273,7 +273,7 @@ export const ENDPOINTS = {
     },
     ListMembers: {
         url: 'Bnhcen0kdsMAU1tW7U79qQ/ListMembers',
-        method: 'get',
+        method: 'GET',
         params: {} as { listId: string, cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
@@ -281,7 +281,7 @@ export const ENDPOINTS = {
     },
     ListSubscribers: {
         url: '5EDvteYto4oDpMVpPG1cPw/ListSubscribers',
-        method: 'get',
+        method: 'GET',
         params: {} as { listId: string, cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
@@ -289,7 +289,7 @@ export const ENDPOINTS = {
     },
     ListCreationRecommendedUsers: {
         url: 'nD2vOulHcOJhgSQH5ICIIg/ListCreationRecommendedUsers',
-        method: 'get',
+        method: 'GET',
         params: {} as { listId: string, cursor?: string },
         variables: {"count":20},
         features: flags.timeline,
@@ -297,7 +297,7 @@ export const ENDPOINTS = {
     },
     ListEditRecommendedUsers: {
         url: 'lEEGoONAojgrJ1oXe3yoUA/ListEditRecommendedUsers',
-        method: 'get',
+        method: 'GET',
         params: {} as { listId: string, cursor?: string },
         variables: {"count":20},
         features: flags.timeline,
@@ -305,7 +305,7 @@ export const ENDPOINTS = {
     },
     CombinedLists: {
         url: 'NFidCm38TCj56xu-yOqOXA/CombinedLists',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":100},
         features: flags.timeline,
@@ -313,88 +313,88 @@ export const ENDPOINTS = {
     },
     CreateList: {
         url: 'CzrvV0ePRFW1dPgLY6an7g/CreateList',
-        method: 'post',
+        method: 'POST',
         params: {} as { name: string, description: string, isPrivate: boolean },
         features: flags.short,
         parser: data => format.list(data.list) as List
     },
     DeleteList: {
         url: 'UnN9Th1BDbeLjpgjGSpL3Q/DeleteList',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string },
         parser: data => data.list_delete === 'Done'
     },
     UpdateList: {
         url: 'CToNDwmbHSq5tqV0ExBFeg/UpdateList',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string, name: string, description: string, isPrivate: boolean },
         parser: data => !!data.data.list.id_str
     },
     EditListBanner: {
         url: 'CChy7omMr21Rx5xgqzTDeA/EditListBanner',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string, mediaId: string },
         features: flags.short,
         parser: data => !!data.data.list.id_str
     },
     DeleteListBanner: {
         url: 'uT6t6CXdWqMF9UBPaQgxjw/DeleteListBanner',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string },
         features: flags.short,
         parser: data => !!data.data.list.id_str
     },
     ListAddMember: {
         url: 'EadD8ivrhZhYQr2pDmCpjA/ListAddMember',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string, userId: string },
         features: flags.short,
         parser: data => !!data.data.list.id_str
     },
     ListRemoveMember: {
         url: 'B5tMzrMYuFHJex_4EXFTSw/ListRemoveMember',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string, userId: string },
         features: flags.short,
         parser: data => !!data.data.list.id_str
     },
     ListSubscribe: {
         url: 'qItCdxZic3vKHuF2nwO5cg/ListSubscribe',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string },
         features: flags.short,
         parser: data => !!data.data.list_subscribe_v3.id_str
     },
     ListUnsubscribe: {
         url: 'lJyQ2Rp6vk4h5czTYqOeLA/ListUnsubscribe',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string },
         features: flags.short,
         parser: data => !!data.data.list.id_str
     },
     PinTimeline: {
         url: 'y62a1ZmM0tI0kjTj4j8-LA/PinTimeline',
-        method: 'post',
+        method: 'POST',
         params: {} as { pinnedTimelineItem: { id: string, pinned_timeline_type: 'List' } },
         features: flags.short,
         parser: data => !!data.data.pin_timeline.updated_pinned_timeline.list.id_str
     },
     UnpinTimeline: {
         url: '_flfMJhBPURJJLxAuIFAfw/UnpinTimeline',
-        method: 'post',
+        method: 'POST',
         params: {} as { pinnedTimelineItem: { id: string, pinned_timeline_type: 'List' } },
         features: flags.short,
         parser: data => !!data.data.unpin_timeline.updated_pinned_timeline.list.id_str
     },
     MuteList: {
         url: 'ZYyanJsskNUcltu9bliMLA/MuteList',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string },
         parser: data => data.data.list === 'Done'
     },
     UnmuteList: {
         url: 'pMZrHRNsmEkXgbn3tOyr7Q/UnmuteList',
-        method: 'post',
+        method: 'POST',
         params: {} as { listId: string },
         parser: data => data.data.list === 'Done'
     },
@@ -404,7 +404,7 @@ export const ENDPOINTS = {
     // NOTIFICATIONS
     NotificationsTimeline: {
         url: 'Ev6UMJRROInk_RMH2oVbBg/NotificationsTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { timeline_type: 'All' | 'Verified' | 'Mentions', cursor?: string },
         variables: {"count":40},
         // features: {"rweb_video_screen_enabled":false,"profile_label_improvements_pcf_label_in_post_enabled":true,"rweb_tipjar_consumption_enabled":true,"verified_phone_label_enabled":false,"creator_subscriptions_tweet_preview_api_enabled":true,"responsive_web_graphql_timeline_navigation_enabled":true,"responsive_web_graphql_skip_user_profile_image_extensions_enabled":false,"premium_content_api_read_enabled":false,"communities_web_enable_tweet_community_results_fetch":true,"c9s_tweet_anatomy_moderator_badge_enabled":true,"responsive_web_grok_analyze_button_fetch_trends_enabled":false,"responsive_web_grok_analyze_post_followups_enabled":true,"responsive_web_jetfuel_frame":true,"responsive_web_grok_share_attachment_enabled":true,"articles_preview_enabled":true,"responsive_web_edit_tweet_api_enabled":true,"graphql_is_translatable_rweb_tweet_is_translatable_enabled":true,"view_counts_everywhere_api_enabled":true,"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"tweet_awards_web_tipping_enabled":false,"responsive_web_grok_show_grok_translated_post":false,"responsive_web_grok_analysis_button_from_backend":true,"creator_subscriptions_quote_tweet_preview_enabled":false,"freedom_of_speech_not_reach_fetch_enabled":true,"standardized_nudges_misinfo":true,"tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"responsive_web_grok_image_annotation_enabled":true,"responsive_web_enhance_cards_enabled":false},
@@ -413,19 +413,19 @@ export const ENDPOINTS = {
     },
     badge_count: {
         url: 'https://twitter.com/i/api/2/badge_count/badge_count.json',
-        method: 'get',
+        method: 'GET',
         variables: {"supports_ntab_urt":1},
         parser: format.unreadCount
     },
     last_seen_cursor: {
         url: 'https://twitter.com/i/api/2/notifications/all/last_seen_cursor.json',
-        method: 'post',
+        method: 'POST',
         params: {} as { cursor: string },
         parser: data => data.cursor
     },
     device_follow: {
         url: 'https://twitter.com/i/api/2/notifications/device_follow.json',
-        method: 'get',
+        method: 'GET',
         params: {} as { cursor?: string },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_has_nft_avatar":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"cards_platform":"Web-12","include_cards":1,"include_ext_alt_text":true,"include_ext_limited_action_results":true,"include_quote_count":true,"include_reply_count":1,"tweet_mode":"extended","include_ext_views":true,"include_entities":true,"include_user_entities":true,"include_ext_media_color":true,"include_ext_media_availability":true,"include_ext_sensitive_media_warning":true,"include_ext_trusted_friends_metadata":true,"send_error_codes":true,"simple_quoted_tweet":true,"count":20,"requestContext":"launch","ext":"mediaStats%2ChighlightedLabel%2ChasNftAvatar%2CvoiceInfo%2CbirdwatchPivot%2CsuperFollowMetadata%2CunmentionInfo%2CeditControl"},
         parser: data => format.deviceFollowEntries(
@@ -439,7 +439,7 @@ export const ENDPOINTS = {
     // SEARCH
     SearchTimeline: {
         url: 'M1jEez78PEfVfbQLvlWMvQ/SearchTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { rawQuery: string, querySource: 'typed_query' | 'recent_search_click' | 'tdqt', product: 'Top' | 'Latest' | 'People' | 'Media' | 'Lists', cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
@@ -448,7 +448,7 @@ export const ENDPOINTS = {
     },
     search_typeahead: {
         url: v11('search/typeahead.json'),
-        method: 'get',
+        method: 'GET',
         params: {} as { q: string },
         variables: {"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"src":"search_box","result_type":"events,users,topics,lists"},
         parser: format.typeahead
@@ -459,7 +459,7 @@ export const ENDPOINTS = {
     // TIMELINE
     HomeLatestTimeline: {
         url: '_qO7FJzShSKYWi9gtboE6A/HomeLatestTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { seenTweetIds: string[], requestContext?: 'launch', cursor?: string },
         variables: {"count":20,"includePromotedContent":false,"latestControlAvailable":true,"withCommunity":true},
         features: flags.timeline,
@@ -467,7 +467,7 @@ export const ENDPOINTS = {
     },
     HomeTimeline: {
         url: 'V7xdnRnvW6a8vIsMr9xK7A/HomeTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { seenTweetIds: string[], requestContext?: 'launch', cursor?: string },
         variables: {"count":20,"includePromotedContent":false,"latestControlAvailable":true,"withCommunity":true},
         features: flags.timeline,
@@ -479,7 +479,7 @@ export const ENDPOINTS = {
     // TWEET
     CreateTweet: {
         url: 'Uf3io9zVp1DsYxrmL5FJ7g/CreateTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as {
             batch_compose?: 'BatchFirst' | 'BatchSubsequent',
             conversation_control?: {
@@ -506,14 +506,14 @@ export const ENDPOINTS = {
     },
     DeleteTweet: {
         url: 'VaenaVgh5q5ih7kvyVjgtg/DeleteTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         variables: {"dark_request":false},
         parser: data => !!data.delete_tweet
     },
     CreateScheduledTweet: {
         url: 'LCVzRQGxOaGnOnYH01NQXg/CreateScheduledTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as {
             execute_at: number,
             post_tweet_request: {
@@ -527,7 +527,7 @@ export const ENDPOINTS = {
     },
     EditScheduledTweet: {
         url: '_mHkQ5LHpRRjSXKOcG6eZw/EditScheduledTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as {
             execute_at: number,
             post_tweet_request: {
@@ -542,13 +542,13 @@ export const ENDPOINTS = {
     },
     DeleteScheduledTweet: {
         url: 'CTOVqej0JBXAZSwkp1US0g/DeleteScheduledTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { scheduled_tweet_id: string },
         parser: data => data.data.scheduledtweet_delete === 'Done'
     },
     CreateDraftTweet: {
         url: 'cH9HZWz_EW9gnswvA4ZRiQ/CreateDraftTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as {
             post_tweet_request: {
                 auto_populate_reply_metadata: boolean,
@@ -565,7 +565,7 @@ export const ENDPOINTS = {
     },
     EditDraftTweet: {
         url: 'JIeXE-I6BZXHfxsgOkyHYQ/EditDraftTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as {
             draft_tweet_id: string,
             post_tweet_request: {
@@ -583,25 +583,25 @@ export const ENDPOINTS = {
     },
     DeleteDraftTweet: {
         url: 'bkh9G3FGgTldS9iTKWWYYw/DeleteDraftTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { draft_tweet_id: string },
         parser: data => data.data.drafttweet_delete === 'Done'
     },
     FetchDraftTweets: {
         url: 'ff5ciLFuifghdOtDoJj6Ww/FetchDraftTweets',
-        method: 'get',
+        method: 'GET',
         params: {} as { ascending: boolean },
         parser: data => (data.viewer.draft_list.response_data || []).map(format.draftTweet)
     },
     FetchScheduledTweets: {
         url: 'cmwoO7AWw5zCpd8TaPFQHg/FetchScheduledTweets',
-        method: 'get',
+        method: 'GET',
         params: {} as { ascending: boolean },
         parser: data => (data.viewer.scheduled_tweet_list || []).map(format.scheduledTweet)
     },
     TweetDetail: {
         url: '97JF30KziU00483E_8elBA/TweetDetail',
-        method: 'get',
+        method: 'GET',
         params: {} as { focalTweetId: string, rankingMode: 'Relevance' | 'Recency' | 'Likes', cursor?: string },
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline,
@@ -609,7 +609,7 @@ export const ENDPOINTS = {
     },
     TweetResultByRestId: {
         url: 'aFvUsJm2c-oDkJV75blV6g/TweetResultByRestId',
-        method: 'get',
+        method: 'GET',
         params: {} as { tweetId: string },
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline,
@@ -617,7 +617,7 @@ export const ENDPOINTS = {
     },
     TweetResultsByRestIds: {
         url: '-R17e8UqwApFGdMxa3jASA/TweetResultsByRestIds',
-        method: 'get',
+        method: 'GET',
         params: {} as { tweetIds: string[] },
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline,
@@ -625,7 +625,7 @@ export const ENDPOINTS = {
     },
     ModeratedTimeline: {
         url: 'ftAt_EqbCL3YVp0VURo8iQ/ModeratedTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { rootTweetId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":false},
         features: flags.timeline,
@@ -633,7 +633,7 @@ export const ENDPOINTS = {
     },
     Favoriters: {
         url: 'b3OrdeHDQfb9zRMC0fV3bw/Favoriters',
-        method: 'get',
+        method: 'GET',
         params: {} as { tweetId: string, cursor?: string },
         variables: {"count":40,"enableRanking":false,"includePromotedContent":false},
         features: flags.timeline,
@@ -641,7 +641,7 @@ export const ENDPOINTS = {
     },
     Retweeters: {
         url: 'wfglZEC0MRgBdxMa_1a5YQ/Retweeters',
-        method: 'get',
+        method: 'GET',
         params: {} as { tweetId: string, cursor?: string },
         variables: {"count":40,"enableRanking":false,"includePromotedContent":false},
         features: flags.timeline,
@@ -649,89 +649,89 @@ export const ENDPOINTS = {
     },
     FavoriteTweet: {
         url: 'ZYKSe-w7KEslx3JhSIk5LA/FavoriteTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         parser: data => data.data.favorite_tweet === 'Done'
     },
     UnfavoriteTweet: {
         url: 'lI07N6Otwv1PhnEgXILM7A/UnfavoriteTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         parser: data => data.data.unfavorite_tweet === 'Done'
     },
     CreateRetweet: {
         url: 'LFho5rIi4xcKO90p9jwG7A/CreateRetweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         variables: {"dark_request":false},
         parser: data => !!data.data.create_retweet?.retweet_results?.result?.rest_id
     },
     DeleteRetweet: {
         url: 'G4MoqBiE6aqyo4QWAgCy4w/DeleteRetweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { source_tweet_id: string },
         variables: {"dark_request":false},
         parser: data => !!data.data.unretweet?.source_retweet_results?.result?.rest_id
     },
     ModerateTweet: {
         url: 'pjFnHGVqCjTcZol0xcBJjw/ModerateTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweetId: string },
         parser: data => data.data.tweet_moderate_put === 'Done'
     },
     UnmoderateTweet: {
         url: 'pVSyu6PA57TLvIE4nN2tsA/UnmoderateTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweetId: string },
         parser: data => data.data.tweet_unmoderate_put === 'Done'
     },
     PinTweet: {
         url: 'VIHsNu89pK-kW35JpHq7Xw/PinTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         parser: data => data.data.pin_tweet?.message?.includes('success') as boolean
     },
     UnpinTweet: {
         url: 'BhKei844ypCyLYCg0nwigw/UnpinTweet',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         parser: data => data.data.unpin_tweet?.message?.includes('success') as boolean
     },
     ConversationControlChange: {
         url: 'hb1elGcj6769uT8qVYqtjw/ConversationControlChange',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string, mode: 'Community' | 'Verified' | 'ByInvitation' },
         parser: data => data.data.tweet_conversation_control_put === 'Done'
     },
     ConversationControlDelete: {
         url: 'OoMO_aSZ1ZXjegeamF9QmA/ConversationControlDelete',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         parser: data => data.data.tweet_conversation_control_delete === 'Done'
     },
     UnmentionUserFromConversation: {
         url: 'xVW9j3OqoBRY9d6_2OONEg/UnmentionUserFromConversation',
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         parser: data => data.data.unmention_user === 'Done'
     },
     mutes_conversations_create: {
         url: v11('mutes/conversations/create.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     mutes_conversations_destroy: {
         url: v11('mutes/conversations/destroy.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { tweet_id: string },
         token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
     media_metadata_create: {
         url: v11('media/metadata/create.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { allow_download_status: { allow_download: `${boolean}` }, alt_text: { text: string }, media_id: string },
         parser: _ => true
     },
@@ -741,35 +741,35 @@ export const ENDPOINTS = {
     // USER
     UserByScreenName: {
         url: '-oaLodhGbbnzJBACb1kk2Q/UserByScreenName',
-        method: 'get',
+        method: 'GET',
         params: {} as { screen_name: string },
         features: flags.user,
         parser: data => format.user(data.data.user.result)
     },
     UsersByScreenNames: {
         url: 'ujL_oXbgVlDHQzWSTgzvnA/UsersByScreenNames',
-        method: 'get',
+        method: 'GET',
         params: {} as { screen_names: string[] },
         features: flags.user,
         parser: data => data.data.users.map((user: any) => format.user(user?.result)) as (User | UnavailableUser)[]
     },
     UserByRestId: {
         url: 'Bbaot8ySMtJD7K2t01gW7A/UserByRestId',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string },
         features: flags.user,
         parser: data => format.user(data.data.user.result)
     },
     UsersByRestIds: {
         url: 'xavgLWWbFH8wm_8MQN8plQ/UsersByRestIds',
-        method: 'get',
+        method: 'GET',
         params: {} as { userIds: string[] },
         features: flags.user,
         parser: data => data.data.users.map((user: any) => format.user(user?.result)) as (User | UnavailableUser)[]
     },
     UserTweets: {
         url: '-V26I6Pb5xDZ3C7BWwCQ_Q/UserTweets',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
@@ -777,7 +777,7 @@ export const ENDPOINTS = {
     },
     UserTweetsAndReplies: {
         url: '61HQnvcGP870hiE-hCbG4A/UserTweetsAndReplies',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
@@ -785,7 +785,7 @@ export const ENDPOINTS = {
     },
     UserMedia: {
         url: 'MMnr49cP_nldzCTfeVDRtA/UserMedia',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
@@ -793,7 +793,7 @@ export const ENDPOINTS = {
     },
     Likes: {
         url: 'JR2gceKucIKcVNB_9JkhsA/Likes',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
@@ -801,7 +801,7 @@ export const ENDPOINTS = {
     },
     UserHighlightsTweets: {
         url: 'QzHVmkiRhEfSMY_BRkxFRQ/UserHighlightsTweets',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
@@ -809,7 +809,7 @@ export const ENDPOINTS = {
     },
     UserSuperFollowTweets: {
         url: 'toCUR18_0OFliE5VXqwHfg/UserSuperFollowTweets',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
@@ -817,7 +817,7 @@ export const ENDPOINTS = {
     },
     Following: {
         url: 'BEkNpEt5pNETESoqMsTEGA/Following',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
@@ -826,7 +826,7 @@ export const ENDPOINTS = {
     },
     Followers: {
         url: 'kuFUYP9eV1FPoEy4N-pi7w/Followers',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
@@ -835,7 +835,7 @@ export const ENDPOINTS = {
     },
     FollowersYouKnow: {
         url: 'G3jEqceFeMKS559RiF4UDw/FollowersYouKnow',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
@@ -844,7 +844,7 @@ export const ENDPOINTS = {
     },
     BlueVerifiedFollowers: {
         url: '8a7QJe2CCHf4AWcs-1P6KQ/BlueVerifiedFollowers',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
@@ -853,7 +853,7 @@ export const ENDPOINTS = {
     },
     UserCreatorSubscriptions: {
         url: 'fl06vhYypYRcRxgLKO011Q/UserCreatorSubscriptions',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
@@ -861,7 +861,7 @@ export const ENDPOINTS = {
     },
     UserCreatorSubscribers: {
         url: '0X21EWewnvqLxCWZwWrnpg/UserCreatorSubscribers',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
@@ -869,7 +869,7 @@ export const ENDPOINTS = {
     },
     UserBusinessProfileTeamTimeline: {
         url: 'KFaAofDlKP7bnzskNWmjwA/UserBusinessProfileTeamTimeline',
-        method: 'get',
+        method: 'GET',
         params: {} as { userId: string, teamName: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
@@ -877,13 +877,13 @@ export const ENDPOINTS = {
     },
     RemoveFollower: {
         url: 'QpNfg0kpPRfjROQ_9eOLXA/RemoveFollower',
-        method: 'post',
+        method: 'POST',
         params: {} as { target_user_id: string },
         parser: data => data.data.remove_follower?.unfollow_success_reason === 'Unfollowed'
     },
     friendships_create: {
         url: v11('friendships/create.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1},
         token: ALT_TOKEN,
@@ -891,7 +891,7 @@ export const ENDPOINTS = {
     },
     friendships_destroy: {
         url: v11('friendships/destroy.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1},
         token: ALT_TOKEN,
@@ -899,7 +899,7 @@ export const ENDPOINTS = {
     },
     friendships_update: {
         url: v11('friendships/update.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { id: string, retweets?: boolean, device?: boolean },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"cursor":-1},
         token: ALT_TOKEN,
@@ -907,14 +907,14 @@ export const ENDPOINTS = {
     },
     friendships_cancel: {
         url: v11('friendships/cancel.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     friendships_incoming: {
         url: v11('friendships/incoming.json'),
-        method: 'get',
+        method: 'GET',
         params: {} as { cursor: number },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"stringify_ids":true,"count":100},
         token: ALT_TOKEN,
@@ -922,42 +922,42 @@ export const ENDPOINTS = {
     },
     friendships_accept: {
         url: v11('friendships/accept.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     friendships_deny: {
         url: v11('friendships/deny.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     blocks_create: {
         url: v11('blocks/create.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     blocks_destroy: {
         url: v11('blocks/destroy.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     mutes_users_create: {
         url: v11('mutes/users/create.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         token: ALT_TOKEN,
         parser: data => !!data.id_str
     },
     mutes_users_destroy: {
         url: v11('mutes/users/destroy.json'),
-        method: 'post',
+        method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
         token: ALT_TOKEN,
         parser: data => !!data.id_str
