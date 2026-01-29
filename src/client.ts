@@ -1,6 +1,6 @@
 import { ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { mediaUpload } from './formatter/tweet.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, TwitterResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, MediaUploadInit, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs, Slice } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, TwitterResponse, CommunityTimelineGetArgs, CursorOnly, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, MediaUploadInit, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TweetKind, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs, Slice } from './types/index.js';
 import { gql, tokenHeaders, toSearchParams, type Endpoint, type Params, type Tokens } from './utils.js';
 
 export class TwitterClient {
@@ -823,7 +823,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getQuoteTweets(tweetId: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as TwitterResponse<Slice<TimelineTweet>>;
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as TwitterResponse<Slice<TweetKind>>;
     }
 
     /** @deprecated typo, use `getQuotedTweets` instead */

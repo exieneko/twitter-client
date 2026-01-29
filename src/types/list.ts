@@ -1,4 +1,4 @@
-import type { Cursor, User } from './index.js';
+import type { User } from './index.js';
 
 /**
  * Represents a Twitter user list
@@ -40,4 +40,4 @@ export interface UnavailableList {
 /**
  * Union type representing all list types that can be present in a timeline
  */
-export type TimelineList = List | UnavailableList | Cursor;
+export type ListKind = List | UnavailableList;

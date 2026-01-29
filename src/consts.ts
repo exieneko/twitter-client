@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import * as format from './formatter/index.js';
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, SuspendedUser, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
 import { v11, type Endpoint } from './utils.js';
 
 export const PUBLIC_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
@@ -750,7 +750,7 @@ export const ENDPOINTS = {
         method: 'get',
         params: {} as { screen_names: string[] },
         features: flags.user,
-        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as User | SuspendedUser | UnavailableUser[]
+        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as (User | UnavailableUser)[]
     },
     UserByRestId: {
         url: 'Bbaot8ySMtJD7K2t01gW7A/UserByRestId',
@@ -764,7 +764,7 @@ export const ENDPOINTS = {
         method: 'get',
         params: {} as { userIds: string[] },
         features: flags.user,
-        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as User | SuspendedUser | UnavailableUser[]
+        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as (User | UnavailableUser)[]
     },
     UserTweets: {
         url: '-V26I6Pb5xDZ3C7BWwCQ_Q/UserTweets',

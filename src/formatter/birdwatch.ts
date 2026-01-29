@@ -1,5 +1,4 @@
 import type { BirdwatchNote, BirdwatchNotesOnTweet, BirdwatchUser } from '../types/birdwatch.js';
-import { BirdwatchTweetMisleadingTag as MisleadingTag, BirdwatchTweetNotMisleadingTag as NotMisleadingTag, BirdwatchNoteStatus, BirdwatchHelpfulTag as HelpfulTag, BirdwatchUnhelpfulTag as UnhelpfulTag } from '../types/birdwatch.js';
 
 export function birdwatchUser(value: any, is_ai?: boolean): BirdwatchUser {
     return {
@@ -41,24 +40,20 @@ export function birdwatchNote(value: any): BirdwatchNote {
         lang: value.language || 'en',
         media_matches_count: value.media_note_matches_v2?.match_count || Number(value.media_note_matches) || 0,
         status: value.rating_status === 'CurrentlyRatedHelpful'
-            ? BirdwatchNoteStatus.Helpful
+            ? 'RatedHelpful'
         : value.rating_status === 'CurrentlyRatedNotHelpful'
-            ? BirdwatchNoteStatus.Unhelpful
-            : BirdwatchNoteStatus.Unrated,
+            ? 'RatedUnhelpful'
+            : 'Unrated',
         tags: {
             ...(value.classification !== 'NotMisleading' ? {
                 __typename: 'MisleadingTweet',
-                tweet_misleading_tags: (value.data_v1.misleading_tags || [])
-                    .map((s: string) => s in MisleadingTag ? MisleadingTag[s as keyof typeof MisleadingTag] : MisleadingTag.Other)
+                tweet_misleading_tags: value.data_v1.misleading_tags || []
             } : {
                 __typename: 'NoNoteNeeded',
-                tweet_not_misleading_tags: (value.data_v1.not_misleading_tags || [])
-                    .map((s: string) => s in NotMisleadingTag ? NotMisleadingTag[s as keyof typeof NotMisleadingTag] : NotMisleadingTag.Other)
+                tweet_not_misleading_tags: value.data_v1.not_misleading_tags || []
             }),
-            note_helpful_tags: (value.helpful_tags || [])
-                .map((s: string) => s in HelpfulTag ? HelpfulTag[s as keyof typeof HelpfulTag] : HelpfulTag.Other),
-            note_unhelpful_tags: (value.not_helpful_tags || [])
-                .map((s: string) => s in UnhelpfulTag ? UnhelpfulTag[s as keyof typeof UnhelpfulTag] : UnhelpfulTag.Other)
+            note_helpful_tags: value.helpful_tags || [],
+            note_unhelpful_tags: value.not_helpful_tags || []
         },
         text: value.data_v1.summary?.text,
         tweet_id: value.tweet_results?.result?.rest_id!

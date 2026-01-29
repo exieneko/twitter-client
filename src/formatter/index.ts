@@ -1,4 +1,4 @@
-import { Cursor, CursorDirection } from '../types/index.js';
+import type { Cursor } from '../types/index.js';
 
 export * from './account.js';
 export * from './birdwatch.js';
@@ -12,9 +12,13 @@ export * from './user.js';
 export function cursor(value: any): Cursor {
     return {
         __typename: 'Cursor',
-        direction: value.cursorType in CursorDirection
-            ? CursorDirection[value.cursorType as keyof typeof CursorDirection]
-            : CursorDirection.ShowSpam,
+        direction: value.cursorType === 'Top'
+            ? 'Top'
+        : value.cursorType === 'ShowMore'
+            ? 'ShowMore'
+        : value.cursorType === 'ShowMoreThreads'
+            ? 'ShowSpam'
+            : 'Bottom',
         value: value.value
     };
 }

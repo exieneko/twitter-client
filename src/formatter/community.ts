@@ -1,7 +1,7 @@
-import { CommunityRole, type Community, type User, type UnavailableCommunity } from '../types/index.js';
 import { user } from './user.js';
+import type { CommunityKind, User } from '../types/index.js';
 
-export function community(value: any): Community | UnavailableCommunity {
+export function community(value: any): CommunityKind {
     if (!value || value.__typename === 'CommunityUnavailable') {
         return { __typename: 'UnavailableCommunity' };
     }
@@ -24,13 +24,13 @@ export function community(value: any): Community | UnavailableCommunity {
         role: (() => {
             switch (value.role) {
                 case 'NonMember':
-                    return CommunityRole.Guest;
+                    return 'Guest';
                 case 'Member':
-                    return CommunityRole.Member;
+                    return 'Member';
                 case 'Moderator':
-                    return CommunityRole.Moderator;
+                    return 'Moderator';
                 default:
-                    return CommunityRole.Owner;
+                    return 'Owner';
             }
         })(),
         rules: value.rules?.map((rule: any) => ({

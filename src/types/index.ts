@@ -41,9 +41,4 @@ export interface Cursor {
     value: string
 }
 
-export enum CursorDirection {
-    Top = 'Top',
-    Bottom = 'Bottom',
-    ShowMore = 'ShowMore',
-    ShowSpam = 'ShowMoreThreads'
-}
+export type CursorDirection = 'Top' | 'Bottom' | 'ShowMore' | 'ShowSpam';

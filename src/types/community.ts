@@ -39,12 +39,7 @@ export interface Community {
     topic: string
 }
 
-export enum CommunityRole {
-    Guest = 'Guest',
-    Member = 'Member',
-    Moderator = 'Moderator',
-    Owner = 'Owner'
-}
+export type CommunityRole = 'Guest' | 'Member' | 'Moderator' | 'Owner';
 
 
 
@@ -54,3 +49,5 @@ export enum CommunityRole {
 export interface UnavailableCommunity {
     __typename: 'UnavailableCommunity'
 }
+
+export type CommunityKind = Community | UnavailableCommunity;

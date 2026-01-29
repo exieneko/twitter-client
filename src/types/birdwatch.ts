@@ -82,58 +82,24 @@ interface HelpfulnessCount {
 /**
  * Status of a Birdwatch note
  */
-export enum BirdwatchNoteStatus {
-    Helpful = 'RatedHelpful',
-    Unhelpful = 'RatedUnhelpful',
-    Unrated = 'Unrated'
-}
+export type BirdwatchNoteStatus = 'RatedHelpful' | 'RatedUnhelpful' | 'Unrated';
 
 /**
  * Tags showing why a Birdwatch note is helpful
  */
-export enum BirdwatchHelpfulTag {
-    GoodSources = 'GoodSources',
-    Clear = 'Clear',
-    AddressesClaim = 'AddressesClaim',
-    ImportantContext = 'ImportantContext',
-    UnbiasedLanguage = 'UnbiasedLanguage',
-    Other = 'Other'
-}
+export type BirdwatchHelpfulTag = 'GoodSources' | 'Clear' | 'AddressesClaim' | 'ImportantContext' | 'UnbiasedLanguage' | 'Other';
 
 /**
  * Tags showing why a Birdwatch note isn't helpful
  */
-export enum BirdwatchUnhelpfulTag {
-    NoSources = 'NoSources',
-    IrrelevantSources = 'IrrelevantSources',
-    Incorrect = 'Incorrect',
-    OpinionSpeculation = 'OpinionSpeculation',
-    Unclear = 'Unclear',
-    MissingKeyPoints = 'MissingKeyPoints',
-    Rude = 'Rude',
-    TwitterViolationAny = 'TwitterViolationAny',
-    Other = 'Other'
-}
+export type BirdwatchUnhelpfulTag = 'NoSources' | 'IrrelevantSources' | 'Incorrect' | 'OpinionSpeculation' | 'Unclear' | 'MissingKeyPoints' | 'Rude' | 'TwitterViolationAny' | 'Other';
 
 /**
  * Applied to a tweet by a Birdwatch note that wants to be displayed under the tweet
  */
-export enum BirdwatchTweetMisleadingTag {
-    FactualError = 'FactualError',
-    MisinterpretedSatire = 'MisinterpretedSatire',
-    MissingImportantContext = 'MissingImportantContext',
-    ManipulatedMedia = 'ManipulatedMedia',
-    OutdatedInformation = 'OutdatedInformation',
-    DisputedClaimAsFact = 'DisputedClaimAsFact',
-    Other = 'Other'
-}
+export type BirdwatchTweetMisleadingTag = 'FactualError' | 'MisinterpretedSatire' | 'MissingImportantContext' | 'ManipulatedMedia' | 'OutdatedInformation' | 'DisputedClaimAsFact' | 'Other';
 
 /**
  * Applied to a tweet by a Birdwatch note that wants no other notes displayed under the tweet, since it doesn't need one
  */
-export enum BirdwatchTweetNotMisleadingTag {
-    FactuallyCorrect = 'FactuallyCorrect',
-    ClearlySatire = 'ClearlySatire',
-    PersonalOpinion = 'Opinion',
-    Other = 'Other'
-}
+export type BirdwatchTweetNotMisleadingTag = 'FactuallyCorrect' | 'ClearlySatire' | 'Opinion' | 'Other';

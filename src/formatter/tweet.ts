@@ -1,11 +1,11 @@
-import { DraftTweet, Entry, Media, Retweet, ScheduledTweet, Slice, TimelineTweet, Tweet, TweetMedia, TweetPlatform, TweetTombstone, TweetUnavailableReason, TweetVideo, User } from '../types/index.js';
 import { cursor, getEntries, user, userLegacy } from './index.js';
+import type { DraftTweet, Entry, Media, Retweet, ScheduledTweet, Slice, TweetKind, Tweet, TweetMedia, TweetTombstone, TweetVideo, User, Cursor } from '../types/index.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
     if (!value) {
         return {
             __typename: 'TweetTombstone',
-            reason: TweetUnavailableReason.Unavailable
+            reason: 'Unavailable'
         };
     }
 
@@ -17,20 +17,20 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         return {
             __typename: 'TweetTombstone',
             reason: text.includes('estimates your age')
-                ? TweetUnavailableReason.AgeVerificationRequired
+                ? 'AgeVerificationRequired'
             : text.includes('limits who can view their')
-                ? TweetUnavailableReason.AuthorProtected
+                ? 'AuthorProtected'
             : text.includes('suspended')
-                ? TweetUnavailableReason.AuthorSuspended
+                ? 'AuthorSuspended'
             : text.includes('no longer exists')
-                ? TweetUnavailableReason.AuthorUnavailable
+                ? 'AuthorUnavailable'
             : text.includes('violated')
-                ? TweetUnavailableReason.ViolatedRules
+                ? 'ViolatedRules'
             : text.includes('withheld')
-                ? TweetUnavailableReason.Withheld
+                ? 'Withheld'
             : text.includes('deleted')
-                ? TweetUnavailableReason.Deleted
-                : TweetUnavailableReason.Unavailable
+                ? 'Deleted'
+                : 'Unavailable'
         };
     }
 
@@ -51,9 +51,6 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
     }
 
     const tweetMedia = (t.legacy.entities.media as {}[])?.map(media) ?? [];
-
-    const s: string | undefined = t.source.includes('Twitter Web') ? 'web' : t.source.match(/>Twitter\s(.*?)</)?.at(1);
-    const source = s?.startsWith('for ') ? s.slice(4) : s;
 
     return {
         __typename: 'Tweet',
@@ -87,20 +84,8 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         liked: !!t.legacy.favorited,
         likes_count: t.legacy.favorite_count || 0,
         media: tweetMedia,
-        platform: (() => {
-            switch (source?.toLowerCase()) {
-                case 'web':
-                    return TweetPlatform.Web
-                case 'android':
-                    return TweetPlatform.Android
-                case 'iphone':
-                    return TweetPlatform.IPhone
-                case 'ipad':
-                    return TweetPlatform.IPad
-                default:
-                    return TweetPlatform.Other
-            }
-        })(),
+        platform: null,
+        source: t.source.match(/>(.*?)</)?.at(1) || t.source,
         quote_tweets_count: t.legacy.quote_count || 0,
         quoted_tweet: t.quoted_status_result?.result
             ? tweet(t.quoted_status_result?.result) as Tweet
@@ -179,7 +164,8 @@ export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTw
         liked: !!tweet.favorited,
         likes_count: tweet.favorite_count || 0,
         media: tweetMedia,
-        platform: TweetPlatform.Web,
+        platform: null,
+        source: tweet.source,
         quote_tweets_count: tweet.quote_count || 0,
         quoted_tweet: quotedTweet && quotedTweetAuthor ? tweetLegacy(quotedTweet, quotedTweetAuthor) : undefined,
         quoted_tweet_id: tweet.quoted_status_id_str || undefined,
@@ -194,7 +180,7 @@ export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTw
 
 
 
-export function entry(value: any): Entry<TimelineTweet> | undefined {
+export function entry(value: any): Entry<TweetKind | Cursor> | undefined {
     if (value.content.__typename === 'TimelineTimelineCursor') {
         return {
             id: value.entryId,
@@ -231,13 +217,13 @@ export function entry(value: any): Entry<TimelineTweet> | undefined {
     }
 }
 
-export function entries(instructions: any): Slice<TimelineTweet> {
+export function entries(instructions: any): Slice<TweetKind> {
     return {
-        entries: getEntries<TimelineTweet>(instructions).map(entry).filter(x => !!x)
+        entries: getEntries<TweetKind>(instructions).map(entry).filter(x => !!x)
     };
 }
 
-export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Slice<TimelineTweet> {
+export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Slice<TweetKind> {
     const value: any[] = getEntries(instructions);
 
     const grid = gridModule?.content ?? value.find(entry => entry.content.__typename === 'TimelineTimelineModule')?.content;

@@ -1,7 +1,7 @@
 import { cursor, getEntries } from './index.js';
-import { VerificationKind, type Slice, type SuspendedUser, type TimelineUser, type UnavailableUser, type User } from '../types/index.js';
+import type { Slice, UserKind, User } from '../types/index.js';
 
-export function user(value: any): User | SuspendedUser | UnavailableUser {
+export function user(value: any): UserKind {
     if (!value) {
         return { __typename: 'UnavailableUser' };
     }
@@ -58,14 +58,14 @@ export function user(value: any): User | SuspendedUser | UnavailableUser {
             url: value.legacy.entities.url?.urls?.at(0)?.expanded_url?.replace(/\/$/, ''),
             verified,
             verification_kind: verified_type === 'Government'
-                ? VerificationKind.Government
+                ? 'Government'
             : verified_type === 'Business'
-                ? VerificationKind.Business
+                ? 'Business'
             : !verified_type && !verified
-                ? VerificationKind.Unverified
+                ? 'Unverified'
             : verified
-                ? VerificationKind.Blue
-                : VerificationKind.Unverified,
+                ? 'Blue'
+                : 'Unverified',
             want_retweets: !!value.legacy.want_retweets,
             want_notifications: !!value.legacy.notifications
         };
@@ -110,8 +110,8 @@ export function userLegacy(value: any): User {
         listed_count: value.listed_count || 0,
         username: value.screen_name,
         url: undefined,
-        verified: value.ext_is_blue_verified,
-        verification_kind: VerificationKind.Blue,
+        verified: !!value.ext_is_blue_verified,
+        verification_kind: !!value.ext_is_blue_verified ? 'Blue' : 'Unverified',
         want_retweets: !!value.want_retweets,
         want_notifications: !!value.notification
     }
@@ -119,7 +119,7 @@ export function userLegacy(value: any): User {
 
 
 
-export function userEntries(instructions: any): Slice<TimelineUser> {
+export function userEntries(instructions: any): Slice<UserKind> {
     const value: any[] = getEntries(instructions);
 
     return {

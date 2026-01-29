@@ -1,5 +1,5 @@
-import type { List, Slice, TimelineList, UnavailableList, User } from '../types/index.js';
 import { cursor, getEntries, user } from './index.js';
+import type { List, Slice, ListKind, UnavailableList, User } from '../types/index.js';
 
 export function list(value: any): List | UnavailableList {
     if (!value || !value.created_at) {
@@ -26,7 +26,7 @@ export function list(value: any): List | UnavailableList {
 
 
 
-export function listEntries(instructions: any): Slice<TimelineList> {
+export function listEntries(instructions: any): Slice<ListKind> {
     const value: any[] = getEntries(instructions);
 
     return {

@@ -107,32 +107,19 @@ export interface User {
     want_notifications: boolean
 }
 
-export enum VerificationKind {
-    /** No verification */
-    Unverified = 'Unverified',
-    /** Verification for buying Twitter Blue, being the affiliate of a business account, or having a legacy checkmark */
-    Blue = 'Blue',
-    /** Verification for being a business or organization, aka gold checkmark */
-    Business = 'Business',
-    /** Verification for being a government official, aka gray checkmark */
-    Government = 'Government'
-}
+/** 
+ * + `Unverified` - No verification
+ * + `Blue` - Verification for buying Twitter Blue, being the affiliate of a business account, or having a legacy checkmark
+ * + `Business` - Verification for being a business or organization, aka gold checkmark
+ * + `Government` - Verification for being a government official, aka gray checkmark
+*/
+export type VerificationKind = 'Unverified' | 'Blue' | 'Business' | 'Government';
 
 /**
- * Represents a suspended user
- */
-export interface SuspendedUser {
-    __typename: 'SuspendedUser'
-}
-
-/**
- * Represents a user that doesn't exist, such as a user that has deactivated or a username that isn't taken
+ * Represents a user that doesn't exist, such as a user that has been suspended deactivated or a username that isn't taken
  */
 export interface UnavailableUser {
-    __typename: 'UnavailableUser'
+    __typename: 'UnavailableUser' | 'SuspendedUser'
 }
 
-/**
- * Union type representing all user types that can be present in a timeline
- */
-export type TimelineUser = User | SuspendedUser | UnavailableUser | Cursor;
+export type UserKind = User | UnavailableUser;

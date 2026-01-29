@@ -1,5 +1,5 @@
-import type { Slice, TimelineList, TimelineTweet, TimelineUser, Typeahead } from '../types/index.js';
 import { cursor, entries, getEntries, list, mediaEntries, userEntries } from './index.js';
+import type { Slice, ListKind, TweetKind, UserKind, Typeahead } from '../types/index.js';
 
 export function typeahead(value: any): Typeahead {
     return {
@@ -10,7 +10,7 @@ export function typeahead(value: any): Typeahead {
     };
 }
 
-export function searchEntries(instructions: any): Slice<TimelineTweet | TimelineUser | TimelineList> {
+export function searchEntries(instructions: any): Slice<TweetKind | UserKind | ListKind> {
     const value: any[] = getEntries(instructions);
 
     if (value.at(0)?.entryId?.includes('tweet') || value.at(5)?.entryId.includes('tweet')) {

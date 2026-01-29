@@ -1,6 +1,5 @@
-import type { Notification, Slice, TimelineNotification, TimelineTweet, UnreadCount, User } from '../types/index.js';
-import { CursorDirection, NotificationKind } from '../types/index.js';
 import { cursor, getEntries, tweet as formatTweet, tweetLegacy, user } from './index.js';
+import type { Notification, Slice, TweetKind, UnreadCount, User } from '../types/index.js';
 
 export function unreadCount(value: any): UnreadCount {
     return {
@@ -13,74 +12,74 @@ export function notification(value: any, notificationKind: string): Notification
     const type = (() => {
         switch (notificationKind) {
             case 'device_follow_tweet_notification_entry':
-                return NotificationKind.NewTweets;
+                return 'NewTweets';
             case 'generic_magic_rec_pyle_recommended':
-                return NotificationKind.RecommendedTweets;
+                return 'RecommendedTweets';
 
             case 'users_mentioned_you':
-                return NotificationKind.Mentioned;
+                return 'Mentioned';
             case 'users_followed_you':
-                return NotificationKind.NewFollowers;
+                return 'NewFollowers';
             case 'users_liked_your_tweet':
-                return NotificationKind.TweetLiked;
+                return 'TweetLiked';
             case 'users_retweeted_your_tweet':
-                return NotificationKind.TweetRetweeted;
+                return 'TweetRetweeted';
             case 'users_liked_your_retweet':
-                return NotificationKind.RetweetLiked;
+                return 'RetweetLiked';
             case 'users_retweeted_your_tweet':
-                return NotificationKind.RetweetRetweeted;
+                return 'RetweetRetweeted';
             case 'users_added_you_to_lists':
-                return NotificationKind.AddedToList;
+                return 'AddedToList';
             case 'users_subscribed_to_your_list':
-                return NotificationKind.ListSubscribedTo;
+                return 'ListSubscribedTo';
             case 'generic_poll_voter_summary':
-                return NotificationKind.PollFinished;
+                return 'PollFinished';
 
             case 'generic_birdwatch_needs_your_help':
-                return NotificationKind.BirdwatchNoteNeedsHelp;
+                return 'BirdwatchNoteNeedsHelp';
             case 'generic_birdwatch_helpful_valid_rater':
-                return NotificationKind.BirdwatchNoteRatedHelpful;
+                return 'BirdwatchNoteRatedHelpful';
             case 'generic_birdwatch_not_helpful_valid_rater':
-                return NotificationKind.BirdwatchNoteRatedNotHelpful;
+                return 'BirdwatchNoteRatedNotHelpful';
             case 'generic_birdwatch_delete_post_rater':
-                return NotificationKind.BirdwatchNoteRatedDeleted;
+                return 'BirdwatchNoteRatedDeleted';
 
             case 'generic_login_notification':
-                return NotificationKind.LoggedIn;
+                return 'LoggedIn';
             case 'generic_report_received':
-                return NotificationKind.ReportReceived;
+                return 'ReportReceived';
             case 'generic_report_update':
-                return NotificationKind.ReportUpdate;
+                return 'ReportUpdate';
             case 'generic_subscription_promotion_premium':
-                return NotificationKind.Advertisement;
+                return 'Advertisement';
             default:
-                return NotificationKind.Unknown;
+                return 'Unknown';
         }
     })();
 
-    const _t = type === NotificationKind.Mentioned ? formatTweet(value.tweet_results.result) : undefined
+    const _t = type === 'Mentioned' ? formatTweet(value.tweet_results.result) : undefined
     const tweet = _t?.__typename === 'Tweet' ? _t : undefined;
 
     return {
         __typename: 'Notification',
         id: value.id || tweet?.id,
         created_at: new Date(value.timestamp_ms).toISOString(),
-        objectId: type === NotificationKind.Mentioned
+        objectId: type === 'Mentioned'
             ? tweet?.id
-        : [NotificationKind.TweetLiked, NotificationKind.TweetRetweeted, NotificationKind.RetweetLiked, NotificationKind.RetweetRetweeted].includes(type)
+        : ['TweetLiked', 'TweetRetweeted', 'RetweetLiked', 'RetweetRetweeted'].includes(type)
             ? value.template?.target_objects?.at(0)?.result?.rest_id
-        : [NotificationKind.AddedToList, NotificationKind.ListSubscribedTo].includes(type)
+        : ['AddedToList', 'ListSubscribedTo'].includes(type)
             ? value.notification_url?.url?.match(/lists\/(\d+?)$/)?.at(1)
         : type.startsWith('Birdwatch')
             ? value.notification_url?.url?.match(/birdwatch\/n\/(\d+?)(\?src|$)/)?.at(1)
-        : type === NotificationKind.ReportUpdate
+        : type === 'ReportUpdate'
             ? value?.rich_message?.text
             : undefined,
-        text: [NotificationKind.AddedToList, NotificationKind.ListSubscribedTo].includes(type)
+        text: ['AddedToList', 'ListSubscribedTo'].includes(type)
             ? value.rich_message?.text?.match(/List\s(.*?)$/)?.at(1)
         : type.startsWith('Birdwatch')
             ? value.template?.additional_context?.text
-        : type === NotificationKind.ReportUpdate
+        : type === 'ReportUpdate'
             ? value?.rich_message?.text
             : undefined,
         type,
@@ -92,7 +91,7 @@ export function notification(value: any, notificationKind: string): Notification
     };
 }
 
-export function notificationEntries(instructions: any): Slice<TimelineNotification> {
+export function notificationEntries(instructions: any): Slice<Notification> {
     const value: any[] = getEntries(instructions);
 
     return {
@@ -105,7 +104,7 @@ export function notificationEntries(instructions: any): Slice<TimelineNotificati
     };
 }
 
-export function deviceFollowEntries(value: any[], globalObjects: any): Slice<TimelineTweet> {
+export function deviceFollowEntries(value: any[], globalObjects: any): Slice<TweetKind> {
     return {
         entries: value.map(entry => {
             if (Object.hasOwn(entry.content, 'operation')) {
@@ -115,7 +114,7 @@ export function deviceFollowEntries(value: any[], globalObjects: any): Slice<Tim
                     id: entry.entryId,
                     content: {
                         __typename: 'Cursor',
-                        direction: cursor.cursorType === 'Top' ? CursorDirection.Top : CursorDirection.Bottom,
+                        direction: cursor.cursorType === 'Top' ? 'Top' : 'Bottom',
                         value: cursor.value
                     }
                 };
