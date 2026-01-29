@@ -7,8 +7,6 @@ export * from './search.js';
 export * from './tweet.js';
 export * from './user.js';
 
-export * from './internal/index.js';
-
 /**
  * Represents any timeline entry with a unique id
  */

@@ -1,23 +1,33 @@
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag } from '../index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag } from '../../types/index.js';
+
+
+export interface CursorOnly {
+    cursor?: string
+}
+
+export interface BySlug {
+    bySlug?: boolean
+}
 
 export interface ByUsername {
     byUsername?: boolean
 }
 
+
+
 export interface BlockedAccountsGetArgs extends CursorOnly {
     imported?: boolean
 }
 
-export type Visibility = 'private' | 'followers' | 'following' | 'mutuals' | 'public';
-
+export type BirthDateVisibility = 'Private' | 'Followers' | 'Following' | 'Mutuals' | 'Public';
 export interface UpdateProfileArgs {
     name: string,
     description: string,
     location: string,
     url: string,
     birthday: Date,
-    birthYearVisibility: Visibility,
-    birthDayVisibility: Visibility
+    birthYearVisibility: BirthDateVisibility,
+    birthDayVisibility: BirthDateVisibility
 }
 
 export interface BirdwatchRateNoteArgs {
@@ -26,16 +36,9 @@ export interface BirdwatchRateNoteArgs {
     unhelpful_tags?: BirdwatchUnhelpfulTag[]
 }
 
-export interface CommunityTimelineGetArgs {
-    sort?: 'relevant' | 'recent'
-}
-
-export interface CursorOnly {
-    cursor?: string
-}
-
-export interface ListBySlug {
-    bySlug?: boolean
+export type CommunitySort = 'Relevant' | 'Recent';
+export interface CommunityTimelineGetArgs extends CursorOnly {
+    sort?: CommunitySort
 }
 
 export interface ListCreateArgs {
@@ -44,19 +47,23 @@ export interface ListCreateArgs {
     private?: boolean
 }
 
+export type NotificationTimelineType = 'All' | 'Verified' | 'Mentions';
 export interface NotificationGetArgs extends CursorOnly {
-    type?: 'all' | 'verified' | 'mentions'
+    type?: NotificationTimelineType
 }
 
+export type SearchTimelineType = 'Relevant' | 'Latest' | 'Media' | 'Users' | 'Lists';
 export interface SearchArgs extends CursorOnly {
-    type?: 'algorithmical' | 'chronological' | 'media' | 'users' | 'lists'
+    type?: SearchTimelineType
 }
 
+export type TimelineType = 'Algorithmical' | 'Chronological';
 export interface TimelineGetArgs extends CursorOnly {
-    type?: 'algorithmical' | 'chronological',
+    type?: TimelineType,
     seenTweetIds?: string[]
 }
 
+export type TweetReplyPermission = 'Following' | 'Verified' | 'Mentioned' | 'None';
 export interface TweetCreateArgs {
     text?: string,
     replyTo: string,
@@ -76,10 +83,10 @@ export interface ThreadTweetArgs {
     mediaIds?: string[]
 }
 
-export type TweetReplyPermission = 'following' | 'verified' | 'mentioned' | 'none';
 
+export type TweetSort = 'Relevant' | 'Recent' | 'Likes';
 export interface TweetGetArgs extends CursorOnly {
-    sort?: 'relevant' | 'recent' | 'likes'
+    sort?: TweetSort
 }
 
 export interface UnsentTweetsGetArgs {

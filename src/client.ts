@@ -1,7 +1,9 @@
 import { ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { mediaUpload } from './formatter/tweet.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, TwitterResponse, CommunityTimelineGetArgs, CursorOnly, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, MediaUploadInit, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TweetKind, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs, Slice } from './types/index.js';
-import { gql, tokenHeaders, toSearchParams, type Endpoint, type Params, type Tokens } from './utils.js';
+import type { Media, MediaUploadInit, TweetKind, Tweet, TweetTombstone, Slice } from './types/index.js';
+import { gql, toSearchParams } from './utils/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs } from './utils/types/index.js';
+import { QueryBuilder } from './utils/types/querybuilder.js';
 
 export class TwitterClient {
     #tokens: Tokens;
@@ -11,6 +13,13 @@ export class TwitterClient {
     }
 
     private headers(token?: string, type: 'gql' | 'v1.1' | 'fd' = 'gql'): Record<string, string> {
+        function tokenHeaders(tokens: Tokens) {
+            return {
+                'x-csrf-token': tokens.csrf,
+                cookie: `auth_token=${tokens.authToken}; ct0=${tokens.csrf}; lang=en`
+            };
+        }
+
         return type === 'fd' ? {
             ...HEADERS,
             authorization: token || PUBLIC_TOKEN,
@@ -24,7 +33,7 @@ export class TwitterClient {
     }
 
     private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<TwitterResponse<ReturnType<T['parser']>>> {
-        const isGql = !endpoint.url.startsWith('https')
+        const isGql = !endpoint.url.startsWith('https');
 
         const headers = this.headers(endpoint.token, isGql ? 'gql' : 'v1.1');
 
@@ -134,8 +143,8 @@ export class TwitterClient {
      * + `location: string`
      * + `url: string`
      * + `birthday: Date` - Birthday represented by a `Date` (time ignored)
-     * + `birthYearVisibility: 'private' | 'followers' | 'following' | 'mutuals' | 'public'` - Visibility of birth year
-     * + `birthDayVisibility: 'private' | 'followers' | 'following' | 'mutuals' | 'public'` - Visibility of birth day
+     * + `birthYearVisibility: 'Private' | 'Followers' | 'Following' | 'Mutuals' | 'Public'` - Visibility of birth year
+     * + `birthDayVisibility: 'Private' | 'Followers' | 'Following' | 'Mutuals' | 'Public'` - Visibility of birth day
      * 
      * @param args Arguments
      * @returns `true` on success
@@ -149,8 +158,24 @@ export class TwitterClient {
             birthdate_year: args.birthday.getFullYear(),
             birthdate_month: args.birthday.getMonth() + 1,
             birthdate_day: args.birthday.getDate(),
-            birthdate_year_visibility: args.birthYearVisibility === 'private' ? 'self' : args.birthYearVisibility === 'mutuals' ? 'mutualfollow' : args.birthYearVisibility,
-            birthdate_visibility: args.birthDayVisibility === 'private' ? 'self' : args.birthDayVisibility === 'mutuals' ? 'mutualfollow' : args.birthDayVisibility
+            birthdate_year_visibility: args.birthYearVisibility === 'Private'
+                ? 'self'
+            : args.birthYearVisibility === 'Mutuals'
+                ? 'mutualfollow'
+            : args.birthYearVisibility === 'Followers'
+                ? 'followers'
+            : args.birthYearVisibility === 'Following'
+                ? 'following'
+                : 'public',
+            birthdate_visibility: args.birthDayVisibility === 'Private'
+                ? 'self'
+            : args.birthDayVisibility === 'Mutuals'
+                ? 'mutualfollow'
+            : args.birthDayVisibility === 'Followers'
+                ? 'followers'
+            : args.birthDayVisibility === 'Following'
+                ? 'following'
+                : 'public'
         });
     }
 
@@ -273,7 +298,7 @@ export class TwitterClient {
      * 
      * Arguments:
      * 
-     * + `sort?: 'relevant' | 'recent' = 'relevant'` - Sort tweets by
+     * + `sort?: 'Relevant' | 'Recent' = 'Relevant'` - Sort tweets by
      * + `cursor?: string`
      * 
      * @param id Community id
@@ -281,10 +306,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getCommunityTweets(id: string, args?: CommunityTimelineGetArgs) {
-        const rankingMode = args?.sort === 'recent'
-            ? 'Recency'
-            : 'Relevance';
-
+        const rankingMode = args?.sort === 'Recent' ? 'Recency' : 'Relevance';
         return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, ...args });
     }
 
@@ -328,7 +350,7 @@ export class TwitterClient {
      * @param args Arguments
      * @returns List matching the id
      */
-    async getList(id: string, args?: ListBySlug) {
+    async getList(id: string, args?: BySlug) {
         if (args?.bySlug) {
             return await this.fetch(ENDPOINTS.ListBySlug, { listId: id });
         }
@@ -509,20 +531,14 @@ export class TwitterClient {
      * 
      * Arguments:
      * 
-     * + `type: 'all' | 'verified' | 'mentions'` - Filter notifications?
+     * + `type?: 'All' | 'Verified' | 'Mentions' = 'All'` - Filter notifications?
      * + `cursor?: string`
      * 
      * @param args Arguments
      * @returns Slice of notifications
      */
     async getNotifications(args?: NotificationGetArgs) {
-        const type = args?.type === 'mentions'
-            ? 'Mentions'
-        : args?.type === 'verified'
-            ? 'Verified'
-            : 'All';
-
-        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: type, ...args });
+        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: args?.type || 'All', ...args });
     }
 
     /**
@@ -559,7 +575,7 @@ export class TwitterClient {
      * 
      * Arguments:
      * 
-     * + `type?: 'algorithmical' | 'chronological' = 'algorithmical'` - Type of timeline to fetch
+     * + `type?: 'Algorithmical' | 'Chronological' = 'Algorithmical'` - Type of timeline to fetch
      * + `seenTweetIds?: string[] = []` - ids of already seen tweets
      * + `cursor?: string`
      * 
@@ -570,7 +586,7 @@ export class TwitterClient {
         const seenTweetIds = args?.seenTweetIds ?? [];
         const requestContext = args?.cursor ? undefined : 'launch';
 
-        if (args?.type === 'chronological') {
+        if (args?.type === 'Chronological') {
             return await this.fetch(ENDPOINTS.HomeLatestTimeline, { seenTweetIds, requestContext, cursor: args.cursor });
         }
 
@@ -583,13 +599,13 @@ export class TwitterClient {
      * 
      * Arguments:
      * 
-     * + `type?: 'algorithmical' | 'chronological' | 'media' | 'users' | 'lists' = 'algorithmical` - Type of data to search through. `'media'` will have the same effect as putting `filter:media` in the query
+     * + `type?: 'Algorithmical' | 'Chronological' | 'Media' | 'Users' | 'Lists' = 'Algorithmical` - Type of data to search through. `'media'` will have the same effect as putting `filter:media` in the query
      * + `cursor?: string`
      * 
      * @param query Query as string or using QueryBuilder
      * @param args Arguments
      * @returns Slice of tweets, users, or lists depending on 
-     * @see `types/QueryBuilder`
+     * @see `utils/types/querybuilder.ts/QueryBuilder`
      */
     async search(query: string | QueryBuilder, args?: SearchArgs) {
         return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
@@ -622,11 +638,11 @@ export class TwitterClient {
      * @returns Created tweet
      */
     async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet | TweetTombstone>> {
-        const mode = args.replyPermission === 'following'
+        const mode = args.replyPermission === 'Following'
             ? 'Community'
-        : args.replyPermission === 'verified'
+        : args.replyPermission === 'Verified'
             ? 'Verified'
-        : args.replyPermission === 'mentioned'
+        : args.replyPermission === 'Mentioned'
             ? 'ByInvitation'
             : undefined;
 
@@ -745,7 +761,7 @@ export class TwitterClient {
      * 
      * Arguments:
      * 
-     * + `sort?: 'relevant' | 'recent' | 'likes' = 'relevant'` - Sort replies by?
+     * + `sort?: 'Relevant' | 'Recent' | 'Likes' = 'Relevant'` - Sort replies by?
      * + `cursor?: string`
      * 
      * @param id 
@@ -753,9 +769,9 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     async getTweet(id: string, args?: TweetGetArgs) {
-        const rankingMode = args?.sort === 'recent'
+        const rankingMode = args?.sort === 'Recent'
             ? 'Recency'
-        : args?.sort === 'likes'
+        : args?.sort === 'Likes'
             ? 'Likes'
             : 'Relevance';
 
@@ -926,13 +942,13 @@ export class TwitterClient {
      * @returns `true` on success
      */
     async changeReplyPermission(tweetId: string, permission?: TweetReplyPermission) {
-        if (!permission || permission === 'none') {
+        if (!permission || permission === 'None') {
             return await this.fetch(ENDPOINTS.ConversationControlDelete, { tweet_id: tweetId });
         }
 
-        const mode = permission === 'following'
+        const mode = permission === 'Following'
             ? 'Community'
-        : permission === 'verified'
+        : permission === 'Verified'
             ? 'Verified'
             : 'ByInvitation';
 

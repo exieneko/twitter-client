@@ -1,6 +1,5 @@
 import { TwitterClient } from './client.js';
-import type { ByUsername, CommunityTimelineGetArgs, CursorOnly, ListBySlug, MediaUploadArgs, TweetGetArgs } from './types/index.js';
-import type { Tokens } from './utils.js';
+import type { ByUsername, CommunityTimelineGetArgs, CursorOnly, BySlug, MediaUploadArgs, Tokens, TweetGetArgs } from './utils/types/index.js';
 
 interface Account {
     id: number,
@@ -42,7 +41,7 @@ export class TwitterPool {
 
 
 
-    async getList(id: string, args?: ListBySlug) {
+    async getList(id: string, args?: BySlug) {
         return await this.client().getList(id, args);
     }
 
