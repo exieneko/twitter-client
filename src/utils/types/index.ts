@@ -83,6 +83,7 @@ export interface Endpoint<P extends object = {}, V extends object = {}, R extend
     variables?: V,
     features?: Flags,
     token?: string,
+    requiresTransactionId?: boolean,
     parser: (data: R) => T
 }
 

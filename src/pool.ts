@@ -9,23 +9,35 @@ interface Account {
 }
 
 export class TwitterPool {
-    private accounts: Account[];
+    #accounts: Account[] = [];
 
-    constructor(tokens: [Tokens, ...Tokens[]]) {
-        this.accounts = tokens.map((t, i) => ({
-            id: i,
-            client: new TwitterClient(t),
-            uses: 0
-        }));
+    private constructor() {}
+
+    static async new(tokens: [Tokens, ...Tokens[]]): Promise<TwitterPool> {
+        let pool = new TwitterPool();
+        pool.setAccounts(tokens);
+        return pool;
     }
 
+
+
     private client() {
-        const account = this.accounts.toSorted((a, b) => b.uses - a.uses)[0];
-        this.accounts[this.accounts.findIndex(({ id }) => id === account.id)].uses++;
+        const account = this.#accounts.toSorted((a, b) => b.uses - a.uses)[0];
+        this.#accounts[this.#accounts.findIndex(({ id }) => id === account.id)].uses++;
         return account.client;
     }
 
 
+
+    private async setAccounts(tokens: [Tokens, ...Tokens[]]) {
+        this.#accounts = await Promise.all(
+            tokens.map(async (t, i) => ({
+                id: i,
+                client: await TwitterClient.new(t),
+                uses: 0
+            }))
+        );
+    }
 
     async getCommunity(id: string) {
         return await this.client().getCommunity(id);

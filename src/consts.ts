@@ -11,9 +11,9 @@ export const OAUTH_KEY = 'Bearer AAAAAAAAAAAAAAAAAAAAAG5LOQEAAAAAbEKsIYYIhrfOQqm
 export const HEADERS = {
     Accept: '*/*',
     Connection: 'keep-alive',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
     'x-twitter-active-user': 'yes',
-    'x-twitter-auth-type': 'OAuth2Session',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
+    'x-twitter-auth-type': 'OAuth2Session'
 };
 
 // all graphql query ids last updated on 2026-01-02
@@ -47,7 +47,7 @@ export const ENDPOINTS = {
         url: v11('account/settings.json'),
         method: 'GET',
         variables: {"include_ext_sharing_audiospaces_listening_data_with_followers":true,"include_mention_filter":true,"include_nsfw_user_flag":true,"include_nsfw_admin_flag":true,"include_ranked_timeline":true,"include_alt_text_compose":true,"include_ext_dm_av_call_settings":true,"ext":"ssoConnections","include_country_code":true,"include_ext_dm_nsfw_media_filter":true},
-        token: OAUTH_KEY,
+        requiresTransactionId: true,
         parser: format.settings
     },
     account_update_profile: {
@@ -65,7 +65,7 @@ export const ENDPOINTS = {
             location: string
         },
         variables: {"displayNameMaxLength":50},
-        token: OAUTH_KEY,
+        requiresTransactionId: true,
         parser: data => !!data.id_str
     },
     account_update_profile_image: {
@@ -73,13 +73,13 @@ export const ENDPOINTS = {
         method: 'POST',
         params: {} as { media_id: string },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"return_user":true},
-        token: OAUTH_KEY,
+        requiresTransactionId: true,
         parser: data => !!data.id_str
     },
     account_verify_credentials: {
         url: v11('account/verify_credentials.json'),
         method: 'GET',
-        token: OAUTH_KEY,
+        requiresTransactionId: true,
         parser: format.userLegacy
     },
 
@@ -945,7 +945,7 @@ export const ENDPOINTS = {
         url: v11('blocks/destroy.json'),
         method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
-        token: ALT_TOKEN,
+        requiresTransactionId: true,
         parser: data => !!data.id_str
     },
     mutes_users_create: {
