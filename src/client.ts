@@ -5,7 +5,7 @@ import { hrtime } from 'process';
 import { MAX_ACCEPTABLE_REQUEST_TIME, ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { mediaUpload } from './formatter/tweet.js';
 import type { Media, MediaUploadInit, TweetKind, Tweet, TweetTombstone, Slice } from './types/index.js';
-import { gql, isGql, toSearchParams } from './utils/index.js';
+import { gql, endpointType, toSearchParams, v11 } from './utils/index.js';
 import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options } from './utils/types/index.js';
 import { QueryBuilder } from './utils/types/querybuilder.js';
 
@@ -19,7 +19,7 @@ export class TwitterClient {
         this.#tokens = tokens;
         this.#options = options;
 
-        if (this.#options.language === 'en-US') {
+        if (this.#options.language === 'en-US' || this.#options.language === 'en-GB') {
             this.#options.language = 'en';
         }
     }
@@ -79,9 +79,9 @@ export class TwitterClient {
 
 
     private async getTransactionId(endpoint: Endpoint): Promise<string> {
-        const path = isGql(endpoint)
-            ? `/i/api/graphql/${endpoint.url}`.split('?', 1)[0]
-            : endpoint.url.split(`%DOMAIN%`, 2).at(-1)!.split('?', 1)[0];
+        const path = endpointType(endpoint) === 'gql'
+            ? `/i/api/graphql/${endpoint.url}`
+            : endpoint.url.split('?', 1)[0];
 
         const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
 
@@ -130,24 +130,22 @@ export class TwitterClient {
     private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<TwitterResponse<ReturnType<T['parser']>>> {
         const headers = this.getHeaders(
             endpoint.token,
-            isGql(endpoint)
-                ? 'gql'
-                : 'v1.1',
-            endpoint.requiresTransactionId
-                ? await this.getTransactionId(endpoint)
-                : undefined
+            endpointType(endpoint) === 'gql' ? 'gql' : 'v1.1',
+            endpoint.requiresTransactionId ? await this.getTransactionId(endpoint) : undefined
         );
 
-        const url = isGql(endpoint)
+        const url = endpointType(endpoint) === 'gql'
             ? gql(this.#options.domain, endpoint.url)
-            : endpoint.url.replace('%DOMAIN%', this.#options.domain);
+        : endpointType(endpoint) === 'v1.1'
+            ? v11(this.#options.domain, endpoint.url)
+            : 'https://' + this.#options.domain + endpoint.url;
 
         try {
             const start = hrtime.bigint();
             this.log(`${endpoint.method} ${url}`);
 
             const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
-            const response = await (isGql(endpoint)
+            const response = await (endpointType(endpoint) === 'gql'
                 ? (endpoint.method === 'GET'
                     ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
                         method: endpoint.method,

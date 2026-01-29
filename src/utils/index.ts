@@ -1,15 +1,21 @@
 import type { Endpoint } from './types/index.js';
 
-export function v11(route: string) {
-    return `https://api.%DOMAIN%/1.1/${route}`;
+export function v11(domain: string, route: string) {
+    return `https://api.${domain}/${route}`;
 }
 
 export function gql(domain: string, route: string) {
     return `https://${domain}/i/api/graphql/${route}`;
 }
 
-export function isGql(endpoint: Endpoint) {
-    return !endpoint.url.startsWith('https://');
+export function endpointType(endpoint: Endpoint): 'gql' | 'v1.1' | 'v2' {
+    if (endpoint.url.startsWith('1.1')) {
+        return 'v1.1';
+    } else if (endpoint.url.startsWith('/i/api/')) {
+        return 'v2';
+    }
+
+    return 'gql';
 }
 
 
