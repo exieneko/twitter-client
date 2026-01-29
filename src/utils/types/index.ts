@@ -73,7 +73,9 @@ export interface Options {
      * + `NoteTweet` - Fetches the current user, and creates a note tweet instead, which allows for longer character limits if you're verified
      * + `NoteTweetUnchecked` - Same as `NoteTweet` but no request is made to check if you're verified
      */
-    longTweetBehavior: 'Force' | 'Fail' | 'NoteTweet' | 'NoteTweetUnchecked'
+    longTweetBehavior: 'Force' | 'Fail' | 'NoteTweet' | 'NoteTweetUnchecked',
+    /** Show logs in console? */
+    verbose: boolean
 }
 
 export interface Endpoint<P extends object = {}, V extends object = {}, R extends object = any, T extends object = any> {

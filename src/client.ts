@@ -1,5 +1,8 @@
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
-import { ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
+import logger from 'node-color-log';
+import { hrtime } from 'process';
+
+import { MAX_ACCEPTABLE_REQUEST_TIME, ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
 import { mediaUpload } from './formatter/tweet.js';
 import type { Media, MediaUploadInit, TweetKind, Tweet, TweetTombstone, Slice } from './types/index.js';
 import { gql, isGql, toSearchParams } from './utils/index.js';
@@ -15,38 +18,75 @@ export class TwitterClient {
         this.#transaction = transaction;
         this.#tokens = tokens;
         this.#options = options;
+
+        if (this.#options.language === 'en-US') {
+            this.#options.language = 'en';
+        }
     }
 
     /**
+     * Creates a new `TwitterClient`
      * 
      * @param tokens Your Twitter account's login tokens
      * @param options 
-     * @constructor
+     * @constructor 
      */
     static async new(tokens: Tokens, options?: Partial<Options>): Promise<TwitterClient> {
         const document = await handleXMigration();
         const transaction = await ClientTransaction.create(document);
 
-        return new TwitterClient(
+        const client = new TwitterClient(
             transaction,
             tokens,
             {
-                domain: 'x.com',
+                domain: 'twitter.com',
                 language: 'en',
                 longTweetBehavior: 'Force',
+                verbose: false,
                 ...options
             }
         );
+
+        client.log('TwitterClient initialized');
+
+        if (client.#options.language !== 'en') {
+            client.warn('Setting `language` to values other than "en" may cause problems during parsing - if you find one, please open an issue here: https://github.com/exieneko/twitter-client/issues <3');
+        }
+
+        return client;
+    }
+
+
+
+    private log(message: string) {
+        if (this.#options.verbose) {
+            logger.info(message);
+        }
+    }
+
+    private warn(message: string) {
+        if (this.#options.verbose) {
+            logger.warn(message);
+        }
+    }
+
+    private error(message: string) {
+        if (this.#options.verbose) {
+            logger.error(message);
+        }
     }
 
 
 
     private async getTransactionId(endpoint: Endpoint): Promise<string> {
         const path = isGql(endpoint)
-            ? `/i/api/graphql/${endpoint.url}`
-            : endpoint.url.split(`%DOMAIN%`, 2).at(-1)!;
+            ? `/i/api/graphql/${endpoint.url}`.split('?', 1)[0]
+            : endpoint.url.split(`%DOMAIN%`, 2).at(-1)!.split('?', 1)[0];
 
-        return await this.#transaction.generateTransactionId(endpoint.method, path.split('?', 1)[0]);
+        const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
+
+        this.log(`Generated x-client-transaction-id for ${endpoint.method} ${path}`);
+        return transactionId;
     }
 
     private getHeaders(token?: string, type: 'gql' | 'v1.1' | 'fd' = 'gql', transactionId?: string): Record<string, string> {
@@ -98,15 +138,22 @@ export class TwitterClient {
                 : undefined
         );
 
+        const url = isGql(endpoint)
+            ? gql(this.#options.domain, endpoint.url)
+            : endpoint.url.replace('%DOMAIN%', this.#options.domain);
+
         try {
+            const start = hrtime.bigint();
+            this.log(`${endpoint.method} ${url}`);
+
             const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
             const response = await (isGql(endpoint)
                 ? (endpoint.method === 'GET'
-                    ? fetch(gql(this.#options.domain, endpoint.url) + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
+                    ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
                         method: endpoint.method,
                         headers
                     })
-                    : fetch(gql(this.#options.domain, endpoint.url), {
+                    : fetch(url, {
                         method: endpoint.method,
                         headers,
                         body: JSON.stringify({
@@ -116,7 +163,7 @@ export class TwitterClient {
                         })
                     })
                 )
-                : fetch(endpoint.method === 'GET' && body ? `${endpoint.url.replace('%DOMAIN%', this.#options.domain)}?${body}` : endpoint.url.replace('%DOMAIN%', this.#options.domain), {
+                : fetch(endpoint.method === 'GET' && body ? `${url}?${body}` : url, {
                     method: endpoint.method,
                     headers,
                     body: endpoint.method === 'POST' && body ? body : undefined
@@ -124,6 +171,17 @@ export class TwitterClient {
             );
 
             const data: Parameters<Endpoint['parser']>[0] = await response.json();
+
+            const elapsed = Number(hrtime.bigint() - start) / 1e6;
+            const text = `${response.status} ${response.statusText} in ${Math.floor(elapsed)}ms`;
+            
+            if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
+                this.warn(`${text} (exceeded ${MAX_ACCEPTABLE_REQUEST_TIME}ms!)`);
+            } else if (response.ok) {
+                this.log(text);
+            } else {
+                this.error(text);
+            }
 
             if (data?.errors && !data.data) {
                 return {

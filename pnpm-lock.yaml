@@ -8,15 +8,24 @@ importers:
 
   .:
     dependencies:
+      node-color-log:
+        specifier: ^13.0.3
+        version: 13.0.3
       x-client-transaction-id:
         specifier: ^0.1.9
         version: 0.1.9
     devDependencies:
+      '@types/node':
+        specifier: ^25.1.0
+        version: 25.1.0
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
 
 packages:
+
+  '@types/node@25.1.0':
+    resolution: {integrity: sha512-t7frlewr6+cbx+9Ohpl0NOTKXZNV9xHRmNOvql47BFJKcEG1CxtxlPEEe+gR9uhVWM4DwhnvTF110mIL4yP9RA==}
 
   boolbase@1.0.0:
     resolution: {integrity: sha512-JZOSA7Mo9sNGB8+UjSgzdLtokWAky1zbztM3WRLCbZ70/3cTANmQmOdR7y2g+J0e2WXywy1yS468tY+IruqEww==}
@@ -67,6 +76,9 @@ packages:
       canvas:
         optional: true
 
+  node-color-log@13.0.3:
+    resolution: {integrity: sha512-jo63r0BDDFWicjnK9WDLkXCjpmG+0MsNOntfM7WGKEDUzyLRHKnGsxL8Tu0Z0c8XGe5RP2zieI2uC7Rsn9YAjw==}
+
   nth-check@2.1.1:
     resolution: {integrity: sha512-lqjrjmaOoAnWfMmBPL+XNnynZh2+swxiX3WUE0s4yEHI6m+AwrK2UZOimIRl3X/4QctVqS8AiZjFqyOGrMXb/w==}
 
@@ -78,10 +90,17 @@ packages:
   uhyphen@0.2.0:
     resolution: {integrity: sha512-qz3o9CHXmJJPGBdqzab7qAYuW8kQGKNEuoHFYrBwV6hWIMcpAmxDLXojcHfFr9US1Pe6zUswEIJIbLI610fuqA==}
 
+  undici-types@7.16.0:
+    resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+
   x-client-transaction-id@0.1.9:
     resolution: {integrity: sha512-CES4zgkJ0wbfFWm0qgdKphthyb+L7lVHymgOY15v6ivcWSx5p9lp5kzAed+BuqJSP7bS0GbQyJ16ONkRthgsUw==}
 
 snapshots:
+
+  '@types/node@25.1.0':
+    dependencies:
+      undici-types: 7.16.0
 
   boolbase@1.0.0: {}
 
@@ -136,6 +155,8 @@ snapshots:
       htmlparser2: 10.1.0
       uhyphen: 0.2.0
 
+  node-color-log@13.0.3: {}
+
   nth-check@2.1.1:
     dependencies:
       boolbase: 1.0.0
@@ -143,6 +164,8 @@ snapshots:
   typescript@5.8.3: {}
 
   uhyphen@0.2.0: {}
+
+  undici-types@7.16.0: {}
 
   x-client-transaction-id@0.1.9:
     dependencies:
