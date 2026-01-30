@@ -939,7 +939,7 @@ export const ENDPOINTS = {
         url: '1.1/blocks/create.json',
         method: 'POST',
         params: {} as { user_id: string } | { screen_name: string },
-        token: ALT_TOKEN,
+        requiresTransactionId: true,
         parser: data => !!data.id_str
     },
     blocks_destroy: {

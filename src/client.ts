@@ -79,13 +79,10 @@ export class TwitterClient {
 
 
     private async getTransactionId(endpoint: Endpoint): Promise<string> {
-        const path = endpointType(endpoint) === 'gql'
-            ? `/i/api/graphql/${endpoint.url}`
-            : endpoint.url.split('?', 1)[0];
-
+        const path = endpointType(endpoint) === 'gql' ? `/i/api/graphql/${endpoint.url}` : '/' + endpoint.url;
         const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
 
-        this.log(`Generated x-client-transaction-id for ${endpoint.method} ${path}`);
+        this.log(`Generated x-client-transaction-id for ${endpoint.method} ${path} (${transactionId})`);
         return transactionId;
     }
 
