@@ -89,6 +89,8 @@ export interface Endpoint<P extends object = {}, V extends object = {}, R extend
     parser: (data: R) => T
 }
 
+export type EndpointKind = 'GraphQL' | 'v1.1' | 'v2' | 'Media';
+
 type OptionalUndefined<T extends object | undefined> = {
     [K in keyof T as undefined extends T[K] ? K : never]?: T[K];
 } & {

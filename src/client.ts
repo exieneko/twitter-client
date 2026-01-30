@@ -3,10 +3,9 @@ import logger from 'node-color-log';
 import { hrtime } from 'process';
 
 import { MAX_ACCEPTABLE_REQUEST_TIME, ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
-import { mediaUpload } from './formatter/tweet.js';
-import type { Media, MediaUploadInit, TweetKind, Tweet, TweetTombstone, Slice } from './types/index.js';
-import { gql, endpointType, toSearchParams, v11 } from './utils/index.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options } from './utils/types/index.js';
+import type { Media, TweetKind, Tweet, TweetTombstone, Slice } from './types/index.js';
+import { gql, endpointKind, toSearchParams } from './utils/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options, EndpointKind } from './utils/types/index.js';
 import { QueryBuilder } from './utils/types/querybuilder.js';
 
 export class TwitterClient {
@@ -79,14 +78,14 @@ export class TwitterClient {
 
 
     private async getTransactionId(endpoint: Endpoint): Promise<string> {
-        const path = endpointType(endpoint) === 'gql' ? `/i/api/graphql/${endpoint.url}` : '/' + endpoint.url;
+        const path = endpoint.url.replace(/.*twitter\.com\//, '/');
         const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
 
         this.log(`Generated x-client-transaction-id for ${endpoint.method} ${path} (${transactionId})`);
         return transactionId;
     }
 
-    private getHeaders(token?: string, type: 'gql' | 'v1.1' | 'fd' = 'gql', transactionId?: string): Record<string, string> {
+    private getHeaders(token?: string, endpointKind: EndpointKind = 'GraphQL', url?: string, transactionId?: string): Record<string, string> {
         function tokenHeaders(tokens: Tokens, options: Options) {
             return {
                 'x-csrf-token': tokens.csrf,
@@ -96,26 +95,22 @@ export class TwitterClient {
 
         let result: Record<string, string> = transactionId ? { 'x-client-transaction-id': transactionId } : {};
 
-        if (type === 'gql') {
-            Object.defineProperty(result, 'Content-Type', {
-                configurable: true,
-                enumerable: true,
-                writable: true,
-                value: 'application/json'
-            });
-        } else if (type === 'v1.1') {
-            Object.defineProperty(result, 'Content-Type', {
-                configurable: true,
-                enumerable: true,
-                writable: true,
-                value: 'application/x-www-form-urlencoded'
-            });
+        const contentType = endpointKind === 'GraphQL'
+            ? 'application/json'
+        : endpointKind === 'Media'
+            ? undefined
+            : 'application/x-www-form-urlencoded'
+
+        if (contentType) {
+            Object.defineProperty(result, 'Content-Type', { configurable: true, enumerable: true, writable: true, value: contentType });
         }
 
         return {
             ...HEADERS,
-            'Accept-Language': `${this.#options.language};q=0.5`,
-            Host: type === 'gql' ? this.#options.domain : `api.${this.#options.domain}`,
+            'Accept-Language': `${this.#options.language === 'en' ? 'en-US,en' : this.#options.language};q=0.5`,
+            Host: url
+                ? (url?.replace('https://', '').replace('.com/', '') + '.com').replace('twitter.com', this.#options.domain)
+                : this.#options.domain,
             Origin: `https://${this.#options.domain}`,
             Referer: `https://${this.#options.domain}/`,
             authorization: token || PUBLIC_TOKEN,
@@ -127,22 +122,21 @@ export class TwitterClient {
     private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<TwitterResponse<ReturnType<T['parser']>>> {
         const headers = this.getHeaders(
             endpoint.token,
-            endpointType(endpoint) === 'gql' ? 'gql' : 'v1.1',
-            endpoint.requiresTransactionId ? await this.getTransactionId(endpoint) : undefined
+            endpointKind(endpoint),
+            endpoint.url,
+            endpoint.requiresTransactionId
+                ? await this.getTransactionId(endpoint)
+                : undefined
         );
 
-        const url = endpointType(endpoint) === 'gql'
-            ? gql(this.#options.domain, endpoint.url)
-        : endpointType(endpoint) === 'v1.1'
-            ? v11(this.#options.domain, endpoint.url)
-            : 'https://' + this.#options.domain + endpoint.url;
+        const url = endpoint.url.replace('twitter.com', this.#options.domain);
 
         try {
             const start = hrtime.bigint();
             this.log(`${endpoint.method} ${url}`);
 
             const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
-            const response = await (endpointType(endpoint) === 'gql'
+            const response = await (endpointKind(endpoint) === 'GraphQL'
                 ? (endpoint.method === 'GET'
                     ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
                         method: endpoint.method,
@@ -1367,7 +1361,7 @@ export class TwitterClient {
     }
 
     /**
-     * Blocks a user
+     * Blocks a user - for some reason this method randomly returns a 404 whenever it wants and i have no idea why
      * @param id 
      * @param args By username?
      * @returns `true` on success
@@ -1406,83 +1400,6 @@ export class TwitterClient {
         return await this.fetch(ENDPOINTS.mutes_users_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
-
-
-
-    private async uploadInit(args: { bytes: number, contentType: string }): Promise<TwitterResponse<MediaUploadInit>> {
-        const body = new URLSearchParams({
-            command: 'INIT',
-            total_bytes: args.bytes.toString(),
-            media_type: args.contentType,
-            media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
-        });
-
-        const response = await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json`, {
-            method: 'POST',
-            headers: this.getHeaders(PUBLIC_TOKEN, 'v1.1'),
-            body
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            return {
-                errors: [],
-                data: data as MediaUploadInit
-            };
-        }
-
-        return {
-            errors: [{
-                code: -1,
-                message: await response.text()
-            }]
-        };
-    }
-
-    private async uploadAppend(id: string, args: { data: ArrayBuffer, index: number, contentType: string }) {
-        const body = new URLSearchParams({
-            command: 'APPEND',
-            media_id: id,
-            segment_index: args.index.toString()
-        }).toString();
-
-        let formData = new FormData();
-        formData.append('media', new Blob([args.data], { type: args.contentType }));
-
-        return await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json?${body}`, {
-            method: 'POST',
-            headers: this.getHeaders(PUBLIC_TOKEN, 'fd'),
-            body: formData
-        });
-    }
-
-    private async uploadFinalize(id: string): Promise<TwitterResponse<Media>> {
-        const response = await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json?command=FINALIZE&media_id=${id}`, {
-            method: 'POST',
-            headers: this.getHeaders(PUBLIC_TOKEN, 'v1.1')
-        });
-
-        try {
-            if (!response.ok) {
-                const { errors } = await response.json();
-                return { errors: errors ?? [] };
-            }
-
-            const data = await response.json();
-            return {
-                errors: [],
-                data: mediaUpload(data)
-            };
-        } catch (error) {
-            return {
-                errors: [{
-                    code: -1,
-                    message: await response.text()
-                }]
-            };
-        }
-    }
-
     /**
      * Sends several requests to upload a media file
      * 
@@ -1498,14 +1415,32 @@ export class TwitterClient {
      * @returns Information about the uploaded file
      */
     async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<TwitterResponse<Media>> {
+        async function append(id: string, data: ArrayBuffer, index: number, contentType: string, domain: string, headers: Record<string, string>) {
+            const body = new URLSearchParams({
+                command: 'APPEND',
+                media_id: id,
+                segment_index: index.toString()
+            }).toString();
+
+            let formData = new FormData();
+            formData.append('media', new Blob([data], { type: contentType }));
+
+            return await fetch(`https://upload.${domain}/1.1/media/upload.json?${body}`, {
+                method: 'POST',
+                headers,
+                body: formData
+            });
+        }
+
         try {
-            const { errors, data: init } = await this.uploadInit({
-                bytes: media.byteLength,
-                contentType: args.contentType
+            const { errors: errorsInit, data: init } = await this.fetch(ENDPOINTS.media_upload_INIT, {
+                total_bytes: media.byteLength.toString(),
+                media_type: args.contentType,
+                media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
             });
 
-            if (errors.length) {
-                return { errors };
+            if (errorsInit.length) {
+                return { errors: errorsInit };
             }
 
             const chunkSize = args.segmentSizeOverride || 1_084_576;
@@ -1514,7 +1449,7 @@ export class TwitterClient {
             const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
 
             for (const [index, chunk] of chunks.entries()) {
-                const response = await this.uploadAppend(init!.media_id_string, { data: chunk, index, contentType: args.contentType });
+                const response = await append(init!.media_id_string, chunk, index, args.contentType, this.#options.domain, this.getHeaders(PUBLIC_TOKEN, 'Media'));
 
                 if (!response.ok) {
                     const { errors } = await response.json();
@@ -1529,7 +1464,7 @@ export class TwitterClient {
                 callback?.(chunk, index, chunksNeeded);
             }
 
-            const final = await this.uploadFinalize(init!.media_id_string);
+            const final = await this.fetch(ENDPOINTS.media_upload_FINALIZE, { media_id: init!.media_id_string });
 
             if (!!final.data && !!args.altText) {
                 this.addAltText(init!.media_id_string, args.altText);
@@ -1548,33 +1483,11 @@ export class TwitterClient {
 
     /**
      * Check the current status of an uploaded media file
-     * @param {string} id Media id
-     * @returns {Promise<TwitterResponse<Media>>} Information about the uploaded file
+     * @param id Media id
+     * @returns Information about the uploaded file
      */
-    async mediaStatus(id: string): Promise<TwitterResponse<Media>> {
-        const response = await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json?command=STATUS&media_id=${id}`, {
-            headers: this.getHeaders(PUBLIC_TOKEN, 'v1.1')
-        });
-
-        try {
-            if (!response.ok) {
-                const { errors } = await response.json();
-                return { errors: errors ?? [] };
-            }
-
-            const data = await response.json();
-            return {
-                errors: [],
-                data: mediaUpload(data)
-            };
-        } catch (error) {
-            return {
-                errors: [{
-                    code: -1,
-                    message: await response.text()
-                }]
-            };
-        }
+    async mediaStatus(id: string) {
+        return await this.fetch(ENDPOINTS.media_upload_STATUS);
     }
 
     /**

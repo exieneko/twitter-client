@@ -1,21 +1,27 @@
-import type { Endpoint } from './types/index.js';
+import type { Endpoint, EndpointKind } from './types/index.js';
 
-export function v11(domain: string, route: string) {
-    return `https://api.${domain}/${route}`;
+export function v11(route: string, useSubdomain: boolean = true) {
+    if (useSubdomain) {
+        return `https://api.twitter.com/1.1/${route}`;
+    }
+
+    return `https://twitter.com/i/api/1.1/${route}`;
 }
 
-export function gql(domain: string, route: string) {
-    return `https://${domain}/i/api/graphql/${route}`;
+export function gql(route: string) {
+    return `https://twitter.com/i/api/graphql/${route}`;
 }
 
-export function endpointType(endpoint: Endpoint): 'gql' | 'v1.1' | 'v2' {
-    if (endpoint.url.startsWith('1.1')) {
-        return 'v1.1';
-    } else if (endpoint.url.startsWith('/i/api/')) {
+
+
+export function endpointKind(endpoint: Endpoint): EndpointKind {
+    if (endpoint.url.includes('/i/api/graphql')) {
+        return 'GraphQL';
+    } else if (endpoint.url.includes('/i/api/2')) {
         return 'v2';
     }
 
-    return 'gql';
+    return 'v1.1';
 }
 
 
