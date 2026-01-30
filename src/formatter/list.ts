@@ -1,5 +1,5 @@
 import { cursor, getEntries, user } from './index.js';
-import type { List, Slice, ListKind, UnavailableList, User } from '../types/index.js';
+import type { List, ListKind, Slice, UnavailableList, User } from '../types/index.js';
 
 export function list(value: any): List | UnavailableList {
     if (!value || !value.created_at) {

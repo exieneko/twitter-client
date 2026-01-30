@@ -71,7 +71,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         editing: {
             allowed: !!t.edit_control?.is_edit_eligible,
             allowed_until: new Date(Number(t.edit_control?.editable_until_msecs) || 0).toISOString(),
-            remaining_count: t.edit_control?.edits_remaining,
+            remaining_count: Number(t.edit_control?.edits_remaining || '0'),
             tweet_ids: t.edit_control?.edit_tweet_ids
         },
         expandable: !!t.note_tweet?.is_expandable,
@@ -98,7 +98,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         text: !!t.legacy.entities.media?.length
             ? getText(t).replace(/https:\/\/t\.co\/.+$/, '').trimEnd()
             : getText(t),
-        translatable: !!t.translatable,
+        translatable: !!t.is_translatable,
         views_count: t.views.count ? Number(t.views.count) : undefined
     };
 }
@@ -217,9 +217,19 @@ export function entry(value: any): Entry<TweetKind | Cursor> | undefined {
     }
 }
 
+export function sortEntries<T extends { __typename: string }>(entries: Entry<T>[]): Entry<T>[] {
+    return [
+        ...entries.filter(entry => entry.content.__typename !== 'Cursor'),
+        // @ts-ignore
+        ...entries.filter(entry => entry.content.__typename === 'Cursor' && entry.content.direction === 'Top'),
+        // @ts-ignore
+        ...entries.filter(entry => entry.content.__typename === 'Cursor' && entry.content.direction !== 'Top')
+    ];
+}
+
 export function entries(instructions: any): Slice<TweetKind> {
     return {
-        entries: getEntries<TweetKind>(instructions).map(entry).filter(x => !!x)
+        entries: sortEntries(getEntries<TweetKind>(instructions).map(entry).filter(x => !!x))
     };
 }
 
@@ -229,7 +239,7 @@ export function mediaEntries(instructions: any, gridModule?: { content: object, 
     const grid = gridModule?.content ?? value.find(entry => entry.content.__typename === 'TimelineTimelineModule')?.content;
 
     return {
-        entries: [
+        entries: sortEntries([
             ...value.filter(entry => entry.content.__typename === 'TimelineTimelineCursor').map(entry => ({
                 id: entry.entryId,
                 content: cursor(entry.content)
@@ -246,7 +256,7 @@ export function mediaEntries(instructions: any, gridModule?: { content: object, 
                     }))
                     : []
             )
-        ]
+        ])
     };
 }
 

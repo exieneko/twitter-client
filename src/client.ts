@@ -46,10 +46,10 @@ export class TwitterClient {
             }
         );
 
-        client.log('TwitterClient initialized');
+        client.log('Initialized TwitterClient');
 
         if (client.#options.language !== 'en') {
-            client.warn('Setting `language` to values other than "en" may cause problems during parsing - if you find one, please open an issue here: https://github.com/exieneko/twitter-client/issues <3');
+            client.warn('Setting `language` to values other than "en" may have unexpected effects - if you find any bugs, please open an issue here: https://github.com/exieneko/twitter-client/issues <3');
         }
 
         return client;
@@ -99,7 +99,7 @@ export class TwitterClient {
             ? 'application/json'
         : endpointKind === 'Media'
             ? undefined
-            : 'application/x-www-form-urlencoded'
+            : 'application/x-www-form-urlencoded';
 
         if (contentType) {
             Object.defineProperty(result, 'Content-Type', { configurable: true, enumerable: true, writable: true, value: contentType });
@@ -1361,7 +1361,7 @@ export class TwitterClient {
     }
 
     /**
-     * Blocks a user - for some reason this method randomly returns a 404 whenever it wants and i have no idea why
+     * Blocks a user
      * @param id 
      * @param args By username?
      * @returns `true` on success
@@ -1371,7 +1371,7 @@ export class TwitterClient {
     }
 
     /**
-     * Unblocks a user
+     * Unblocks a user - for some reason this method randomly returns a 404 whenever it wants and i have no idea why
      * @param id 
      * @param args By username?
      * @returns `true` on success

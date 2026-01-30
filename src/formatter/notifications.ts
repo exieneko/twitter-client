@@ -1,4 +1,4 @@
-import { cursor, getEntries, tweet as formatTweet, tweetLegacy, user } from './index.js';
+import { cursor, getEntries, tweet as formatTweet, tweetLegacy, user, sortEntries } from './index.js';
 import type { Notification, Slice, TweetKind, UnreadCount, User } from '../types/index.js';
 
 export function unreadCount(value: any): UnreadCount {
@@ -95,12 +95,12 @@ export function notificationEntries(instructions: any): Slice<Notification> {
     const value: any[] = getEntries(instructions);
 
     return {
-        entries: value.map(entry => ({
+        entries: sortEntries(value.map(entry => ({
             id: entry.entryId,
             content: entry.content?.__typename === 'TimelineTimelineCursor'
                 ? cursor(entry.content)
                 : notification(entry.content.itemContent, entry.content.clientEventInfo.element)
-        }))
+        })))
     };
 }
 

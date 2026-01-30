@@ -1,4 +1,4 @@
-import { cursor, entries, getEntries, list, mediaEntries, userEntries } from './index.js';
+import { cursor, entries, getEntries, list, mediaEntries, sortEntries, userEntries } from './index.js';
 import type { Slice, ListKind, TweetKind, UserKind, Typeahead } from '../types/index.js';
 
 export function typeahead(value: any): Typeahead {
@@ -29,7 +29,7 @@ export function searchEntries(instructions: any): Slice<TweetKind | UserKind | L
         const entries = value.find(entry => entry.entryId === 'list-search-0')?.content?.items;
 
         return {
-            entries: [
+            entries: sortEntries([
                 ...value.filter(entry => entry?.content?.__typename === 'TimelineTimelineCursor').map(entry => ({
                     id: entry.entryId,
                     content: cursor(entry.content)
@@ -42,7 +42,7 @@ export function searchEntries(instructions: any): Slice<TweetKind | UserKind | L
                             : list(entry.content.itemContent.list)
                     }))
                 )
-            ]
+            ])
         };
     }
 

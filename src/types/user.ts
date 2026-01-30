@@ -1,5 +1,3 @@
-import type { Cursor } from './index.js';
-
 /**
  * Represents a single user
  */
@@ -43,6 +41,8 @@ export interface User {
     /** The user's registration datetime as an ISO string */
     created_at: string,
     description: string,
+    /** Whether the user is a fan or parody account, `undefined` if neither */
+    fan_account_kind?: FanAccountKind,
     /** Amount of followers the user has */
     followers_count: number,
     /** Amount of users the user is following */
@@ -87,6 +87,8 @@ export interface User {
     likes_count: number,
     /** Amount of lists the user is on */
     listed_count: number,
+    /** Amount of their tweets the user has highlighted */
+    highlighted_tweets_count: number,
     /** The user's unique \@username */
     username: string,
     /** The full url on the user's profile, `undefined` if empty */
@@ -106,6 +108,8 @@ export interface User {
      */
     want_notifications: boolean
 }
+
+export type FanAccountKind = 'Fan' | 'Parody';
 
 /** 
  * + `Unverified` - No verification

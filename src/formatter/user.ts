@@ -1,5 +1,5 @@
-import { cursor, getEntries } from './index.js';
-import type { Slice, UserKind, User } from '../types/index.js';
+import { cursor, getEntries, sortEntries } from './index.js';
+import type { Slice, UserKind, User, FanAccountKind } from '../types/index.js';
 
 export function user(value: any): UserKind {
     if (!value) {
@@ -16,7 +16,7 @@ export function user(value: any): UserKind {
             affiliates_count: value.business_account?.affiliates_count || 0,
             affiliate_label: !!value.affiliates_highlighted_label?.label?.badge?.url ? {
                 title: value.affiliates_highlighted_label.label.description,
-                owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 1)[1],
+                owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 2)[1],
                 image_url: value.affiliates_highlighted_label.label.badge.url
             } : undefined,
             avatar_url: value.avatar.image_url.replace('normal', '400x400'),
@@ -32,10 +32,11 @@ export function user(value: any): UserKind {
             can_media_tag: !!value.media_permissions.can_media_tag,
             can_super_follow: !!value.super_follow_eligible,
             created_at: new Date(value.core.created_at).toISOString(),
-            description: (value.legacy.description as string).replace(
+            description: ((value.profile_bio?.description ?? value.legacy.description ?? '') as string).replace(
                 /\bhttps:\/\/t\.co\/[a-zA-Z0-9]+/,
                 sub => value.legacy.entities.description?.urls?.find((x: any) => x.url === sub)?.expanded_url.replace(/\/$/, '') || sub
             ),
+            fan_account_kind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None' ? undefined : value.parody_commentary_fan_label as FanAccountKind,
             followers_count: value.legacy.followers_count,
             following_count: value.legacy.friends_count,
             followed: !!value.relationship_perspectives.following,
@@ -54,6 +55,7 @@ export function user(value: any): UserKind {
             media_count: value.legacy.media_count,
             likes_count: value.legacy.favourites_count,
             listed_count: value.legacy.listed_count,
+            highlighted_tweets_count: Number(value.highlights_info?.highlighted_tweets || '0'),
             username: value.core.screen_name,
             url: value.legacy.entities.url?.urls?.at(0)?.expanded_url?.replace(/\/$/, ''),
             verified,
@@ -108,6 +110,7 @@ export function userLegacy(value: any): User {
         media_count: value.media_count || 0,
         likes_count: value.favorite_count || 0,
         listed_count: value.listed_count || 0,
+        highlighted_tweets_count: 0,
         username: value.screen_name,
         url: undefined,
         verified: !!value.ext_is_blue_verified,
@@ -123,11 +126,11 @@ export function userEntries(instructions: any): Slice<UserKind> {
     const value: any[] = getEntries(instructions);
 
     return {
-        entries: value.map(entry => ({
+        entries: sortEntries(value.map(entry => ({
             id: entry.entryId,
             content: entry.content.__typename === 'TimelineTimelineCursor'
                 ? cursor(entry.content)
                 : user(entry.content.itemContent.user_results?.result)
-        }))
+        })))
     };
 }
