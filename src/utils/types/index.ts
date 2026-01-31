@@ -74,6 +74,10 @@ export interface Options {
      * + `NoteTweetUnchecked` - Same as `NoteTweet` but no request is made to check if you're verified
      */
     longTweetBehavior: 'Force' | 'Fail' | 'NoteTweet' | 'NoteTweetUnchecked',
+    /** Optional http proxy url */
+    proxyUrl?: string,
+    /** User-Agent header to send with requests */
+    userAgent: string,
     /** Show logs in console? */
     verbose: boolean
 }

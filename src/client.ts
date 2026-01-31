@@ -1,10 +1,11 @@
-import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 import logger from 'node-color-log';
+import { fetch, FormData, ProxyAgent } from 'undici';
 import { hrtime } from 'process';
+import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { MAX_ACCEPTABLE_REQUEST_TIME, ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
-import type { Media, TweetKind, Tweet, TweetTombstone, Slice } from './types/index.js';
-import { gql, endpointKind, toSearchParams } from './utils/index.js';
+import type { Media, TweetKind, Tweet, Slice } from './types/index.js';
+import { endpointKind, toSearchParams } from './utils/index.js';
 import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options, EndpointKind } from './utils/types/index.js';
 import { QueryBuilder } from './utils/types/querybuilder.js';
 
@@ -41,6 +42,7 @@ export class TwitterClient {
                 domain: 'twitter.com',
                 language: 'en',
                 longTweetBehavior: 'Force',
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
                 verbose: false,
                 ...options
             }
@@ -114,9 +116,16 @@ export class TwitterClient {
             Origin: `https://${this.#options.domain}`,
             Referer: `https://${this.#options.domain}/`,
             authorization: token || PUBLIC_TOKEN,
+            'User-Agent': this.#options.userAgent,
             ...tokenHeaders(this.#tokens, this.#options),
             ...result
         };
+    }
+
+    private getAgent() {
+        if (!!this.#options.proxyUrl) {
+            return new ProxyAgent(this.#options.proxyUrl);
+        }
     }
 
     private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<TwitterResponse<ReturnType<T['parser']>>> {
@@ -140,7 +149,8 @@ export class TwitterClient {
                 ? (endpoint.method === 'GET'
                     ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
                         method: endpoint.method,
-                        headers
+                        headers,
+                        dispatcher: this.getAgent()
                     })
                     : fetch(url, {
                         method: endpoint.method,
@@ -149,29 +159,29 @@ export class TwitterClient {
                             variables: { ...endpoint.variables, ...params },
                             features: endpoint.features,
                             queryId: endpoint.url.split('/', 1)[0]
-                        })
+                        }),
+                        dispatcher: this.getAgent()
                     })
                 )
                 : fetch(endpoint.method === 'GET' && body ? `${url}?${body}` : url, {
                     method: endpoint.method,
                     headers,
-                    body: endpoint.method === 'POST' && body ? body : undefined
+                    body: endpoint.method === 'POST' && body ? body : undefined,
+                    dispatcher: this.getAgent()
                 })
             );
 
             const elapsed = Number(hrtime.bigint() - start) / 1e6;
-            const output = `${response.status} ${response.statusText} in ${Math.floor(elapsed)}ms`;
+            const text = `${response.status} ${response.statusText} in ${Math.floor(elapsed)}ms`;
             if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
-                this.warn(`${output} (exceeded ${MAX_ACCEPTABLE_REQUEST_TIME}ms!)`);
+                this.warn(`${text} (exceeded ${MAX_ACCEPTABLE_REQUEST_TIME}ms!)`);
             } else if (response.ok) {
-                this.log(output);
+                this.log(text);
             } else {
-                this.error(output);
+                this.error(text);
             }
 
-            const text = await response.text();
-            console.log(text);
-            const data: Parameters<Endpoint['parser']>[0] = JSON.parse(text);
+            const data: Parameters<Endpoint['parser']>[0] = await response.json();
 
             if (data?.errors && !data.data) {
                 return {
@@ -1416,7 +1426,7 @@ export class TwitterClient {
      * @returns Information about the uploaded file
      */
     async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<TwitterResponse<Media>> {
-        async function append(id: string, data: ArrayBuffer, index: number, contentType: string, domain: string, headers: Record<string, string>) {
+        async function append(id: string, data: ArrayBuffer, index: number, contentType: string, domain: string, headers: Record<string, string>, agent?: ReturnType<Awaited<ReturnType<typeof TwitterClient['new']>>['getAgent']>) {
             const body = new URLSearchParams({
                 command: 'APPEND',
                 media_id: id,
@@ -1429,7 +1439,8 @@ export class TwitterClient {
             return await fetch(`https://upload.${domain}/1.1/media/upload.json?${body}`, {
                 method: 'POST',
                 headers,
-                body: formData
+                body: formData,
+                dispatcher: agent
             });
         }
 
@@ -1450,10 +1461,10 @@ export class TwitterClient {
             const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
 
             for (const [index, chunk] of chunks.entries()) {
-                const response = await append(init!.media_id_string, chunk, index, args.contentType, this.#options.domain, this.getHeaders(PUBLIC_TOKEN, 'Media'));
+                const response = await append(init!.media_id_string, chunk, index, args.contentType, this.#options.domain, this.getHeaders(PUBLIC_TOKEN, 'Media'), this.getAgent());
 
                 if (!response.ok) {
-                    const { errors } = await response.json();
+                    const { errors }: any = await response.json();
 
                     if (!!errors) {
                         return { errors };

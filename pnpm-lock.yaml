@@ -11,6 +11,9 @@ importers:
       node-color-log:
         specifier: ^13.0.3
         version: 13.0.3
+      undici:
+        specifier: ^7.19.2
+        version: 7.19.2
       x-client-transaction-id:
         specifier: ^0.1.9
         version: 0.1.9
@@ -93,6 +96,10 @@ packages:
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
+  undici@7.19.2:
+    resolution: {integrity: sha512-4VQSpGEGsWzk0VYxyB/wVX/Q7qf9t5znLRgs0dzszr9w9Fej/8RVNQ+S20vdXSAyra/bJ7ZQfGv6ZMj7UEbzSg==}
+    engines: {node: '>=20.18.1'}
+
   x-client-transaction-id@0.1.9:
     resolution: {integrity: sha512-CES4zgkJ0wbfFWm0qgdKphthyb+L7lVHymgOY15v6ivcWSx5p9lp5kzAed+BuqJSP7bS0GbQyJ16ONkRthgsUw==}
 
@@ -166,6 +173,8 @@ snapshots:
   uhyphen@0.2.0: {}
 
   undici-types@7.16.0: {}
+
+  undici@7.19.2: {}
 
   x-client-transaction-id@0.1.9:
     dependencies:
