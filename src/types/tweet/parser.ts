@@ -99,7 +99,12 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
             ? getText(t).replace(/https:\/\/t\.co\/.+$/, '').trimEnd()
             : getText(t),
         translatable: !!t.is_translatable,
-        views_count: t.views.count ? Number(t.views.count) : undefined
+        views_count: t.views.count ? Number(t.views.count) : undefined,
+        visibility_limited: value.tweetInterstitial?.__typename === 'ContextualTweetInterstitial'
+            ? 'Violent'
+        : value.limitedActionResults?.limited_actions?.at(0)?.action === 'Reply' && value.limitedActionResults?.limited_actions?.at(0)?.prompt.__typename === 'CtaLimitedActionPrompt'
+            ? 'LimitedReplies'
+            : 'Blocked'
     };
 }
 

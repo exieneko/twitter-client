@@ -534,8 +534,8 @@ export const ENDPOINTS = {
         },
         variables: {"dark_request":false,"disallowed_reply_options":null},
         features: flags.timeline,
-        token: OAUTH_KEY,
-        parser: data => parsers.tweet(data.data.create_tweet?.tweet_results?.result) as Tweet | TweetTombstone
+        requiresTransactionId: true,
+        parser: data => parsers.tweet(data.data.create_tweet?.tweet_results?.result) as Tweet
     },
     CreateNoteTweet: {
         url: gql('lPTBLb_FPA5r8z_cH-s8lw/CreateNoteTweet'),
@@ -561,7 +561,7 @@ export const ENDPOINTS = {
             tweet_text: string
         },
         features: flags.timeline,
-        parser: data => parsers.tweet(data.data.notetweet_create?.tweet_results?.result) as Tweet | TweetTombstone
+        parser: data => parsers.tweet(data.data.notetweet_create?.tweet_results?.result) as Tweet
     },
     DeleteTweet: {
         url: gql('VaenaVgh5q5ih7kvyVjgtg/DeleteTweet'),

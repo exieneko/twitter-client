@@ -85,7 +85,8 @@ export interface Tweet {
     text: string,
     translatable: boolean,
     /** Amount of views the tweet has. May be `undefined` if the tweet predates view tracking */
-    views_count?: number
+    views_count?: number,
+    visibility_limited?: TweetLimitedReason
 }
 
 
@@ -174,6 +175,8 @@ export interface TweetTombstone {
  * + `Unavailable` - Fallback
  */
 export type TweetUnavailableReason = 'AgeVerificationRequired' | 'AuthorProtected' | 'AuthorSuspended' | 'AuthorUnavailable' | 'Deleted' | 'ViolatedRules' | 'Withheld' | 'Unavailable';
+
+export type TweetLimitedReason = 'Violent' | 'LimitedReplies' | 'Blocked';
 
 export type TweetKind = Tweet | Retweet | Conversation | TweetTombstone;
 

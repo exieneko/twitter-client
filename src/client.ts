@@ -159,18 +159,19 @@ export class TwitterClient {
                 })
             );
 
-            const data: Parameters<Endpoint['parser']>[0] = await response.json();
-
             const elapsed = Number(hrtime.bigint() - start) / 1e6;
-            const text = `${response.status} ${response.statusText} in ${Math.floor(elapsed)}ms`;
-            
+            const output = `${response.status} ${response.statusText} in ${Math.floor(elapsed)}ms`;
             if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
-                this.warn(`${text} (exceeded ${MAX_ACCEPTABLE_REQUEST_TIME}ms!)`);
+                this.warn(`${output} (exceeded ${MAX_ACCEPTABLE_REQUEST_TIME}ms!)`);
             } else if (response.ok) {
-                this.log(text);
+                this.log(output);
             } else {
-                this.error(text);
+                this.error(output);
             }
+
+            const text = await response.text();
+            console.log(text);
+            const data: Parameters<Endpoint['parser']>[0] = JSON.parse(text);
 
             if (data?.errors && !data.data) {
                 return {
@@ -743,7 +744,7 @@ export class TwitterClient {
      * @param thread Additional tweets to reply to the root tweet with (may be slow, as Twitter doesn't offer a built-in solution for this, so each request is made individually)
      * @returns Created tweet
      */
-    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet | TweetTombstone>> {
+    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>> {
         const text = args.text || '';
 
         if (text.length > 280 && this.#options.longTweetBehavior === 'Fail') {
@@ -790,8 +791,8 @@ export class TwitterClient {
             tweet_text: text
         });
 
-        if (tweet?.__typename === 'TweetTombstone') {
-            return { errors, data: tweet };
+        if (!tweet) {
+            return { errors };
         }
 
         if (!thread?.length || !tweet?.id) {
@@ -818,7 +819,7 @@ export class TwitterClient {
                 tweet_text: t.text || ''
             });
 
-            if (!data || data.__typename === 'TweetTombstone') {
+            if (!data) {
                 return { errors, data: tweet };
             }
 
