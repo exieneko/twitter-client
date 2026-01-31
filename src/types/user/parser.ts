@@ -1,5 +1,5 @@
-import { cursor, getEntries, sortEntries } from './index.js';
-import type { Slice, UserKind, User, FanAccountKind, AboutUser } from '../types/index.js';
+import type { Slice, UserKind, User, FanAccountKind, AboutUser } from '../index.js';
+import * as p from '../parsers.js';
 
 export function user(value: any): UserKind {
     if (!value) {
@@ -171,13 +171,13 @@ export function aboutUser(value: any): AboutUser {
 
 
 export function userEntries(instructions: any): Slice<UserKind> {
-    const value: any[] = getEntries(instructions);
+    const value: any[] = p.getEntries(instructions);
 
     return {
-        entries: sortEntries(value.map(entry => ({
+        entries: p.sortEntries(value.map(entry => ({
             id: entry.entryId,
             content: entry.content.__typename === 'TimelineTimelineCursor'
-                ? cursor(entry.content)
+                ? p.cursor(entry.content)
                 : user(entry.content.itemContent.user_results?.result)
         })))
     };

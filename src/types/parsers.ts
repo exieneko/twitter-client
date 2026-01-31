@@ -1,14 +1,14 @@
-import type { Cursor } from '../types/index.js';
+import type { Cursor } from './index.js';
 
-export * from './account.js';
-export * from './birdwatch.js';
-export * from './community.js';
-export * from './discover.js';
-export * from './list.js';
-export * from './notifications.js';
-export * from './search.js';
-export * from './tweet.js';
-export * from './user.js';
+export * from './account/parser.js';
+export * from './birdwatch/parser.js';
+export * from './community/parser.js';
+export * from './discover/parser.js';
+export * from './list/parser.js';
+export * from './notifications/parser.js';
+export * from './search/parser.js';
+export * from './tweet/parser.js';
+export * from './user/parser.js';
 
 export function cursor(value: any): Cursor {
     return {

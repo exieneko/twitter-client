@@ -1,5 +1,5 @@
-import { cursor, getEntries, user, userLegacy } from './index.js';
-import type { DraftTweet, Entry, Media, Retweet, ScheduledTweet, Slice, TweetKind, Tweet, TweetMedia, TweetTombstone, TweetVideo, User, Cursor } from '../types/index.js';
+import type { DraftTweet, Entry, Media, Retweet, ScheduledTweet, Slice, TweetKind, Tweet, TweetMedia, TweetTombstone, TweetVideo, User, Cursor } from '../index.js';
+import * as p from '../parsers.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
     if (!value) {
@@ -39,7 +39,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
             __typename: 'Retweet',
             id: t.rest_id,
             tweet: tweet(t.legacy.retweeted_status_result.result) as Tweet,
-            user: user(t.core.user_results.result) as User
+            user: p.user(t.core.user_results.result) as User
         };
     }
 
@@ -55,7 +55,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
     return {
         __typename: 'Tweet',
         id: t.rest_id,
-        author: user(t.core.user_results.result) as User,
+        author: p.user(t.core.user_results.result) as User,
         birdwatch_note: t.birdwatch_pivot?.note?.rest_id ? {
             id: t.birdwatch_pivot.note.rest_id,
             text: (t.birdwatch_pivot.subtitle.entities as { fromIndex: number, toIndex: number, ref: { url: string } }[])
@@ -144,7 +144,7 @@ export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTw
     return {
         __typename: 'Tweet',
         id: tweet.id_str,
-        author: userLegacy(author),
+        author: p.userLegacy(author),
         bookmarked: !!tweet.bookmarked,
         bookmarks_count: tweet.bookmark_count || 0,
         created_at: new Date(tweet.created_at).toISOString(),
@@ -184,7 +184,7 @@ export function entry(value: any): Entry<TweetKind | Cursor> | undefined {
     if (value.content.__typename === 'TimelineTimelineCursor') {
         return {
             id: value.entryId,
-            content: cursor(value.content)
+            content: p.cursor(value.content)
         };
     }
 
@@ -207,7 +207,7 @@ export function entry(value: any): Entry<TweetKind | Cursor> | undefined {
             content: {
                 __typename: 'Conversation',
                 items: value.content.items.map((item: any) => item.item.itemContent.__typename === 'TimelineTimelineCursor'
-                    ? cursor(item.item.itemContent)
+                    ? p.cursor(item.item.itemContent)
                     : (tweet(item.item.itemContent.tweet_results?.result, {
                         hasHiddenReplies: item.item.itemContent.hasModeratedReplies
                     }) as Tweet | TweetTombstone)
@@ -229,12 +229,12 @@ export function sortEntries<T extends { __typename: string }>(entries: Entry<T>[
 
 export function entries(instructions: any): Slice<TweetKind> {
     return {
-        entries: sortEntries(getEntries(instructions).map(entry).filter(x => !!x))
+        entries: sortEntries(p.getEntries(instructions).map(entry).filter(x => !!x))
     };
 }
 
 export function mediaEntries(instructions: any, gridModule?: { content: object, key: string }): Slice<TweetKind> {
-    const value: any[] = getEntries(instructions);
+    const value: any[] = p.getEntries(instructions);
 
     const grid = gridModule?.content ?? value.find(entry => entry.content.__typename === 'TimelineTimelineModule')?.content;
 
@@ -242,14 +242,14 @@ export function mediaEntries(instructions: any, gridModule?: { content: object, 
         entries: sortEntries([
             ...value.filter(entry => entry.content.__typename === 'TimelineTimelineCursor').map(entry => ({
                 id: entry.entryId,
-                content: cursor(entry.content)
+                content: p.cursor(entry.content)
             })),
             ...(
                 grid
                     ? grid[gridModule?.key ?? 'items'].map((item: any) => ({
                         id: item.entryId,
                         content: item.item.itemContent.__typename === 'TimelineTimelineCursor'
-                            ? cursor(item.item.itemContent)
+                            ? p.cursor(item.item.itemContent)
                             : tweet(item.item.itemContent.tweet_results?.result, {
                                 hasHiddenReplies: item.item.itemContent.hasModeratedReplies
                             })

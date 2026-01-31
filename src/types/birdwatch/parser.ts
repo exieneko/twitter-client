@@ -1,11 +1,10 @@
-import type { BirdwatchNote, BirdwatchNotesOnTweet, BirdwatchUser } from '../types/birdwatch.js';
-import { Slice, TweetKind } from '../types/index.js';
-import { entry, getEntries } from './index.js';
+import type { BirdwatchNote, BirdwatchNotesOnTweet, BirdwatchUser, Slice, TweetKind } from '../index.js';
+import * as p from '../parsers.js';
 
-export function birdwatchUser(value: any, is_ai?: boolean): BirdwatchUser {
+export function birdwatchUser(value: any, isAi?: boolean): BirdwatchUser {
     return {
         alias: value.alias,
-        is_ai: !!is_ai || !!value.is_api_contributor,
+        is_ai: !!isAi || !!value.is_api_contributor,
         ratings: {
             successful: {
                 helpful_count: value.ratings_count?.successful?.helpful_count || 0,
@@ -79,6 +78,6 @@ export function birdwatch(body: any): Slice<TweetKind> {
             id: timeline.timeline.id,
             name: timeline.id
         })) || [],
-        entries: getEntries(body.initialTimeline.timeline.timeline.instructions).map(entry).filter(x => !!x)
+        entries: p.getEntries(body.initialTimeline.timeline.timeline.instructions).map(p.entry).filter(x => !!x)
     };
 }

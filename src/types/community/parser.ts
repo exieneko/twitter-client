@@ -1,5 +1,5 @@
-import { user } from './user.js';
-import type { CommunityKind, User } from '../types/index.js';
+import type { CommunityKind, User } from '../index.js';
+import * as p from '../parsers.js';
 
 export function community(value: any): CommunityKind {
     if (!value || value.__typename === 'CommunityUnavailable') {
@@ -13,7 +13,7 @@ export function community(value: any): CommunityKind {
         can_join: value.join_policy === 'Open',
         can_invite: value.invites_policy === 'MemberInvitesAllowed' && !value.invites_result?.__typename.includes('Unavailable'),
         created_at: new Date(value.created_at).toISOString(),
-        creator: user(value.creator_results?.result) as User,
+        creator: p.user(value.creator_results?.result) as User,
         description: value.description || '',
         member: !!value.is_member,
         members_count: value.member_count || 0,

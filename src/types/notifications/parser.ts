@@ -1,5 +1,5 @@
-import { cursor, getEntries, tweet as formatTweet, tweetLegacy, user, sortEntries } from './index.js';
-import type { Notification, Slice, TweetKind, UnreadCount, User } from '../types/index.js';
+import type { Notification, Slice, TweetKind, UnreadCount, User } from '../index.js';
+import * as p from '../parsers.js';
 
 export function unreadCount(value: any): UnreadCount {
     return {
@@ -57,7 +57,7 @@ export function notification(value: any, notificationKind: string): Notification
         }
     })();
 
-    const _t = type === 'Mentioned' ? formatTweet(value.tweet_results.result) : undefined
+    const _t = type === 'Mentioned' ? p.tweet(value.tweet_results.result) : undefined
     const tweet = _t?.__typename === 'Tweet' ? _t : undefined;
 
     return {
@@ -85,20 +85,20 @@ export function notification(value: any, notificationKind: string): Notification
         type,
         tweets: tweet ?? (value.template?.target_objects || [])
             .filter((x: any) => x.__typename === 'TimelineNotificationTweetRef')
-            .map((x: any) => formatTweet(x.result)),
+            .map((x: any) => p.tweet(x.result)),
         users: (value.template?.from_users || [])
-            .map((x: any) => user(x.user_results.result) as User)
+            .map((x: any) => p.user(x.user_results.result) as User)
     };
 }
 
 export function notificationEntries(instructions: any): Slice<Notification> {
-    const value: any[] = getEntries(instructions);
+    const value: any[] = p.getEntries(instructions);
 
     return {
-        entries: sortEntries(value.map(entry => ({
+        entries: p.sortEntries(value.map(entry => ({
             id: entry.entryId,
             content: entry.content?.__typename === 'TimelineTimelineCursor'
-                ? cursor(entry.content)
+                ? p.cursor(entry.content)
                 : notification(entry.content.itemContent, entry.content.clientEventInfo.element)
         })))
     };
@@ -129,7 +129,7 @@ export function deviceFollowEntries(value: any[], globalObjects: any): Slice<Twe
 
             return {
                 id: entry.entryId,
-                content: tweetLegacy(tweet, author, quotedTweet, quotedTweetAuthor)
+                content: p.tweetLegacy(tweet, author, quotedTweet, quotedTweetAuthor)
             };
         })
     };

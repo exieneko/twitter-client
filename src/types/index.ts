@@ -1,12 +1,12 @@
-export * from './account.js';
-export * from './birdwatch.js';
-export * from './community.js';
-export * from './discover.js';
-export * from './list.js';
-export * from './notifications.js';
-export * from './search.js';
-export * from './tweet.js';
-export * from './user.js';
+export * from './account/index.js';
+export * from './birdwatch/index.js';
+export * from './community/index.js';
+export * from './discover/index.js';
+export * from './list/index.js';
+export * from './notifications/index.js';
+export * from './search/index.js';
+export * from './tweet/index.js';
+export * from './user/index.js';
 
 /**
  * Represents any timeline entry with a unique id

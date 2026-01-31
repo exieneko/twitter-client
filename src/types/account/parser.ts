@@ -1,4 +1,4 @@
-import type { Settings } from '../types/account.js';
+import type { Settings } from './index.js';
 
 export function settings(value: any): Settings {
     return {

@@ -1,4 +1,4 @@
-import type { Cursor, User } from './index.js';
+import type { Cursor, User } from '../index.js';
 
 /**
  * Represents a single tweet

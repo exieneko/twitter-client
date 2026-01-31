@@ -1,4 +1,4 @@
-import type { Tweet, User } from './index.js';
+import type { Tweet, User } from '../index.js';
 
 /**
  * Represents a Twitter notification

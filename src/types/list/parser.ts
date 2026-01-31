@@ -1,5 +1,5 @@
-import { cursor, getEntries, user } from './index.js';
-import type { List, ListKind, Slice, UnavailableList, User } from '../types/index.js';
+import type { List, ListKind, Slice, UnavailableList, User } from '../index.js';
+import * as p from '../parsers.js';
 
 export function list(value: any): List | UnavailableList {
     if (!value || !value.created_at) {
@@ -11,7 +11,7 @@ export function list(value: any): List | UnavailableList {
         id: value.id_str,
         banner_url: value.custom_banner_media.media_info.original_img_id,
         created_at: new Date(value.created_at).toISOString(),
-        creator: user(value.user_results?.result) as User,
+        creator: p.user(value.user_results?.result) as User,
         description: value.description || '',
         listed: !!value.is_member,
         listed_count: value.member_count || 0,
@@ -27,13 +27,13 @@ export function list(value: any): List | UnavailableList {
 
 
 export function listEntries(instructions: any): Slice<ListKind> {
-    const value: any[] = getEntries(instructions);
+    const value: any[] = p.getEntries(instructions);
 
     return {
         entries: value.map(entry => ({
             id: entry.entryId,
             content: entry.entryId.includes('cursor')
-                ? cursor(entry.content)
+                ? p.cursor(entry.content)
                 : list(entry.content.itemContent.list)
         }))
     };
@@ -41,7 +41,7 @@ export function listEntries(instructions: any): Slice<ListKind> {
 
 export function listDiscoveryEntries(instructions: any): Slice<List> {
     // @ts-ignore
-    const value: any[] = getEntries(instructions).find((entry: any) => entry.entryId.includes('discovery'))?.content?.items || [];
+    const value: any[] = p.getEntries(instructions).find((entry: any) => entry.entryId.includes('discovery'))?.content?.items || [];
 
     return {
         entries: value.map(entry => ({

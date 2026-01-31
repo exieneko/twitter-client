@@ -1,5 +1,5 @@
 import * as flags from './flags.js';
-import * as format from './formatter/index.js';
+import * as parsers from './types/parsers.js';
 import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
 import { gql, v11 } from './utils/index.js';
 import type { Endpoint } from './utils/types/index.js';
@@ -27,7 +27,7 @@ export const ENDPOINTS = {
         params: {} as { cursor?: string },
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.viewer.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.viewer.timeline.timeline.instructions)
     },
     BlockedAccountsImported: {
         url: gql('CJ8VCYGYHBNu2Dq2AdgO2w/BlockedAccountsImported'),
@@ -35,7 +35,7 @@ export const ENDPOINTS = {
         params: {} as { cursor?: string },
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.viewer.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.viewer.timeline.timeline.instructions)
     },
     MutedAccounts: {
         url: gql('mJA1YbOoJTyoB64W9hd6ZQ/MutedAccounts'),
@@ -43,14 +43,14 @@ export const ENDPOINTS = {
         params: {} as { cursor?: string },
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.viewer.muting_timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.viewer.muting_timeline.timeline.instructions)
     },
     account_settings: {
         url: v11('account/settings.json'),
         method: 'GET',
         variables: {"include_ext_sharing_audiospaces_listening_data_with_followers":true,"include_mention_filter":true,"include_nsfw_user_flag":true,"include_nsfw_admin_flag":true,"include_ranked_timeline":true,"include_alt_text_compose":true,"include_ext_dm_av_call_settings":true,"ext":"ssoConnections","include_country_code":true,"include_ext_dm_nsfw_media_filter":true},
         requiresTransactionId: true,
-        parser: format.settings
+        parser: parsers.settings
     },
     account_update_profile: {
         url: v11('account/update_profile.json'),
@@ -82,7 +82,7 @@ export const ENDPOINTS = {
         url: v11('account/verify_credentials.json'),
         method: 'GET',
         requiresTransactionId: true,
-        parser: format.userLegacy
+        parser: parsers.userLegacy
     },
 
 
@@ -92,21 +92,21 @@ export const ENDPOINTS = {
         url: gql('rG-k-eTUj0YhAqXkSNJbiQ/BirdwatchFetchGlobalTimeline'),
         method: 'GET',
         features: flags.timeline,
-        parser: data => format.birdwatch(data.data.viewer.birdwatch_home_page)
+        parser: data => parsers.birdwatch(data.data.viewer.birdwatch_home_page)
     },
     BirdwatchFetchNotes: {
         url: gql('dG85JgBxwnAt_PYNZTyvTg/BirdwatchFetchNotes'),
         method: 'GET',
         params: {} as { tweet_id: string },
         features: flags.birdwatch,
-        parser: data => format.birdwatchTweet(data.tweet_result_by_rest_id.result)
+        parser: data => parsers.birdwatchTweet(data.tweet_result_by_rest_id.result)
     },
     BirdwatchFetchBirdwatchProfile: {
         url: gql('id9iGfEQF47W1kvRBHUmRQ/BirdwatchFetchBirdwatchProfile'),
         method: 'GET',
         params: {} as { alias: string },
         features: { responsive_web_birdwatch_top_contributor_enabled: true },
-        parser: data => format.birdwatchUser(data.birdwatch_profile_by_alias)
+        parser: data => parsers.birdwatchUser(data.birdwatch_profile_by_alias)
     },
     BirdwatchCreateRating: {
         url: gql('gbshFt1Vmddrlio4vHWhhQ/BirdwatchCreateRating'),
@@ -140,7 +140,7 @@ export const ENDPOINTS = {
         params: {} as { cursor?: string },
         variables: {"count":50,"includePromotedContent":false},
         features: flags.timeline,
-        parser: data => format.entries(data.data.bookmark_timeline_v2.timeline.instructions)
+        parser: data => parsers.entries(data.data.bookmark_timeline_v2.timeline.instructions)
     },
     BookmarkSearchTimeline: {
         url: gql('9467z_eRSDs6mi8CHRLxnA/BookmarkSearchTimeline'),
@@ -148,7 +148,7 @@ export const ENDPOINTS = {
         params: {} as { rawQuery: string, cursor?: string },
         variables: {"count":50},
         features: flags.timeline,
-        parser: data => format.entries(data.data.search_by_raw_query.bookmarks_search_timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.search_by_raw_query.bookmarks_search_timeline.timeline.instructions)
     },
     CreateBookmark: {
         url: gql('aoDbu3RHznuiSkQ9aNM67Q/CreateBookmark'),
@@ -179,7 +179,7 @@ export const ENDPOINTS = {
         method: 'GET',
         params: {} as { communityId: string },
         features: flags.short,
-        parser: data => format.community(data.data.communityResults.result)
+        parser: data => parsers.community(data.data.communityResults.result)
     },
     CommunityTweetsTimeline: {
         url: gql('ZoPkicnDp0_M60vVsWxf7w/CommunityTweetsTimeline'),
@@ -187,7 +187,7 @@ export const ENDPOINTS = {
         params: {} as { communityId: string, rankingMode: 'Relevance' | 'Recency', cursor?: string },
         variables: {"count":20,"displayLocation":"Community","withCommunity":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.communityResults.result.ranked_community_timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.communityResults.result.ranked_community_timeline.timeline.instructions)
     },
     CommunityMediaTimeline: {
         url: gql('_DJU-HFPmQZX0_nclxm0Qg/CommunityMediaTimeline'),
@@ -195,7 +195,7 @@ export const ENDPOINTS = {
         params: {} as { communityId: string, cursor?: string },
         variables: {"count":20,"displayLocation":"Community","withCommunity":true},
         features: flags.timeline,
-        parser: data => format.mediaEntries(data.data.communityResults.result.ranked_community_timeline.timeline.instructions, {
+        parser: data => parsers.mediaEntries(data.data.communityResults.result.ranked_community_timeline.timeline.instructions, {
             content: data.data.communityResults.result.ranked_community_timeline.timeline.instructions.find((i: any) => i.type === 'TimelineAddToModule'),
             key: 'moduleItems'
         })
@@ -223,13 +223,13 @@ export const ENDPOINTS = {
         method: 'GET',
         params: {} as { cursor: string },
         features: flags.timeline,
-        parser: data => format.discoverEntries(data.data.explore_page.body)
+        parser: data => parsers.discoverEntries(data.data.explore_page.body)
     },
     ExploreSidebar: {
         url: 'FrpzJjnhtQSrL4txK29E7A/ExploreSidebar',
         method: 'GET',
         features: flags.timeline,
-        parser: data => format.trendEntries(data.data.explore_sidebar.timeline.instructions)
+        parser: data => parsers.trendEntries(data.data.explore_sidebar.timeline.instructions)
     },
 
 
@@ -240,14 +240,14 @@ export const ENDPOINTS = {
         method: 'GET',
         params: {} as { listId: string },
         features: flags.short,
-        parser: data => format.list(data.data.list)
+        parser: data => parsers.list(data.data.list)
     },
     ListBySlug: {
         url: gql('kPoa5ip1Zl3rYF0T-e2HcA/ListBySlug'),
         method: 'GET',
         params: {} as { listId: string },
         features: flags.short,
-        parser: data => format.list(data.data.list)
+        parser: data => parsers.list(data.data.list)
     },
     ListLatestTweetsTimeline: {
         url: gql('fqNUs_6rqLf89u_2waWuqg/ListLatestTweetsTimeline'),
@@ -255,7 +255,7 @@ export const ENDPOINTS = {
         params: {} as { listId: string, cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
-        parser: data => format.entries(data.data.list.tweets_timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.list.tweets_timeline.timeline.instructions)
     },
     /** @todo */
     ListsManagementPageTimeline: {
@@ -270,7 +270,7 @@ export const ENDPOINTS = {
         method: 'GET',
         variables: {"count":40},
         features: flags.timeline,
-        parser: data => format.listEntries(data.data.list_discovery_list_mixer_timeline.timeline.instructions)
+        parser: data => parsers.listEntries(data.data.list_discovery_list_mixer_timeline.timeline.instructions)
     },
     ListMemberships: {
         url: gql('X6U9LAaMZ5C8MvPM12aK2A/ListMemberships'),
@@ -278,7 +278,7 @@ export const ENDPOINTS = {
         params: {} as { cursor?: string },
         variables: {"count":20},
         features: flags.timeline,
-        parser: data => format.listEntries(data.data.user.result.timeline.instructions)
+        parser: data => parsers.listEntries(data.data.user.result.timeline.instructions)
     },
     ListOwnerships: {
         url: gql('k0_MqdZDcbfRtDVuuk2Dig/ListOwnerships'),
@@ -286,7 +286,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, isListMemberTargetUserId: string, cursor?: string },
         variables: {"count":20},
         features: flags.timeline,
-        parser: data => format.listEntries(data.data.user.result.timeline.instructions)
+        parser: data => parsers.listEntries(data.data.user.result.timeline.instructions)
     },
     ListMembers: {
         url: gql('Bnhcen0kdsMAU1tW7U79qQ/ListMembers'),
@@ -294,7 +294,7 @@ export const ENDPOINTS = {
         params: {} as { listId: string, cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.list.members_timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.list.members_timeline.timeline.instructions)
     },
     ListSubscribers: {
         url: gql('5EDvteYto4oDpMVpPG1cPw/ListSubscribers'),
@@ -302,7 +302,7 @@ export const ENDPOINTS = {
         params: {} as { listId: string, cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.list.subscribers_timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.list.subscribers_timeline.timeline.instructions)
     },
     ListCreationRecommendedUsers: {
         url: gql('nD2vOulHcOJhgSQH5ICIIg/ListCreationRecommendedUsers'),
@@ -310,7 +310,7 @@ export const ENDPOINTS = {
         params: {} as { listId: string, cursor?: string },
         variables: {"count":20},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.list.recommended_users.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.list.recommended_users.timeline.instructions)
     },
     ListEditRecommendedUsers: {
         url: gql('lEEGoONAojgrJ1oXe3yoUA/ListEditRecommendedUsers'),
@@ -318,7 +318,7 @@ export const ENDPOINTS = {
         params: {} as { listId: string, cursor?: string },
         variables: {"count":20},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.list.recommended_users.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.list.recommended_users.timeline.instructions)
     },
     CombinedLists: {
         url: gql('NFidCm38TCj56xu-yOqOXA/CombinedLists'),
@@ -326,14 +326,14 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":100},
         features: flags.timeline,
-        parser: data => format.listEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.listEntries(data.data.user.result.timeline.timeline.instructions)
     },
     CreateList: {
         url: gql('CzrvV0ePRFW1dPgLY6an7g/CreateList'),
         method: 'POST',
         params: {} as { name: string, description: string, isPrivate: boolean },
         features: flags.short,
-        parser: data => format.list(data.list) as List
+        parser: data => parsers.list(data.list) as List
     },
     DeleteList: {
         url: gql('UnN9Th1BDbeLjpgjGSpL3Q/DeleteList'),
@@ -425,13 +425,13 @@ export const ENDPOINTS = {
         params: {} as { timeline_type: 'All' | 'Verified' | 'Mentions', cursor?: string },
         variables: {"count":40},
         features: flags.timeline,
-        parser: data => format.notificationEntries(data.data.viewer_v2.user_results.result.notification_timeline.timeline.instructions)
+        parser: data => parsers.notificationEntries(data.data.viewer_v2.user_results.result.notification_timeline.timeline.instructions)
     },
     badge_count: {
         url: 'https://twitter.com/i/api/2/badge_count/badge_count.json',
         method: 'GET',
         variables: {"supports_ntab_urt":1,"include_xchat_count":1},
-        parser: format.unreadCount
+        parser: parsers.unreadCount
     },
     last_seen_cursor: {
         url: 'https://twitter.com/i/api/2/notifications/all/last_seen_cursor.json',
@@ -444,7 +444,7 @@ export const ENDPOINTS = {
         method: 'GET',
         params: {} as { cursor?: string },
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_has_nft_avatar":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"cards_platform":"Web-12","include_cards":1,"include_ext_alt_text":true,"include_ext_limited_action_results":true,"include_quote_count":true,"include_reply_count":1,"tweet_mode":"extended","include_ext_views":true,"include_entities":true,"include_user_entities":true,"include_ext_media_color":true,"include_ext_media_availability":true,"include_ext_sensitive_media_warning":true,"include_ext_trusted_friends_metadata":true,"send_error_codes":true,"simple_quoted_tweet":true,"count":20,"requestContext":"launch","ext":"mediaStats%2ChighlightedLabel%2ChasNftAvatar%2CvoiceInfo%2CbirdwatchPivot%2CsuperFollowMetadata%2CunmentionInfo%2CeditControl"},
-        parser: data => format.deviceFollowEntries(
+        parser: data => parsers.deviceFollowEntries(
             (Object.entries(data.timeline.instructions).find(([, v]: [any, any]) => Object.entries(v).at(0)?.at(0) === 'addEntries')?.at(1) as any)?.addEntries?.entries || [],
             data.globalObjects
         )
@@ -460,14 +460,14 @@ export const ENDPOINTS = {
         variables: {"count":40},
         features: flags.timeline,
         token: ALT_TOKEN,
-        parser: data => format.searchEntries(data.data.search_by_raw_query.search_timeline.timeline.instructions)
+        parser: data => parsers.searchEntries(data.data.search_by_raw_query.search_timeline.timeline.instructions)
     },
     search_typeahead: {
         url: v11('search/typeahead.json'),
         method: 'GET',
         params: {} as { q: string },
         variables: {"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"src":"search_box","result_type":"events,users,topics,lists"},
-        parser: format.typeahead
+        parser: parsers.typeahead
     },
 
 
@@ -479,7 +479,7 @@ export const ENDPOINTS = {
         params: {} as { seenTweetIds: string[], requestContext?: 'launch', cursor?: string },
         variables: {"count":20,"includePromotedContent":false,"latestControlAvailable":true,"withCommunity":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.home.home_timeline_urt.instructions)
+        parser: data => parsers.entries(data.data.home.home_timeline_urt.instructions)
     },
     HomeTimeline: {
         url: gql('V7xdnRnvW6a8vIsMr9xK7A/HomeTimeline'),
@@ -487,7 +487,7 @@ export const ENDPOINTS = {
         params: {} as { seenTweetIds: string[], requestContext?: 'launch', cursor?: string },
         variables: {"count":20,"includePromotedContent":false,"latestControlAvailable":true,"withCommunity":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.home.home_timeline_urt.instructions)
+        parser: data => parsers.entries(data.data.home.home_timeline_urt.instructions)
     },
     GenericTimelineById: {
         url: gql('8Ncv6o18kamVfavnfvrSTA/GenericTimelineById'),
@@ -495,7 +495,7 @@ export const ENDPOINTS = {
         params: {} as { timelineId: string, cursor?: string },
         variables: {"count":20,"withQuickPromoteEligibilityTweetFields":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.timeline.timeline.instructions)
     },
     GenericTimelineById_TRENDS: {
         url: gql('8Ncv6o18kamVfavnfvrSTA/GenericTimelineById'),
@@ -503,7 +503,7 @@ export const ENDPOINTS = {
         params: {} as { timelineId: string, cursor?: string },
         variables: {"count":20,"withQuickPromoteEligibilityTweetFields":true},
         features: flags.timeline,
-        parser: data => format.trendEntries(data.data.timeline.timeline.instructions)
+        parser: data => parsers.trendEntries(data.data.timeline.timeline.instructions)
     },
 
 
@@ -535,7 +535,7 @@ export const ENDPOINTS = {
         variables: {"dark_request":false,"disallowed_reply_options":null},
         features: flags.timeline,
         token: OAUTH_KEY,
-        parser: data => format.tweet(data.data.create_tweet?.tweet_results?.result) as Tweet | TweetTombstone
+        parser: data => parsers.tweet(data.data.create_tweet?.tweet_results?.result) as Tweet | TweetTombstone
     },
     CreateNoteTweet: {
         url: gql('lPTBLb_FPA5r8z_cH-s8lw/CreateNoteTweet'),
@@ -561,7 +561,7 @@ export const ENDPOINTS = {
             tweet_text: string
         },
         features: flags.timeline,
-        parser: data => format.tweet(data.data.notetweet_create?.tweet_results?.result) as Tweet | TweetTombstone
+        parser: data => parsers.tweet(data.data.notetweet_create?.tweet_results?.result) as Tweet | TweetTombstone
     },
     DeleteTweet: {
         url: gql('VaenaVgh5q5ih7kvyVjgtg/DeleteTweet'),
@@ -650,13 +650,13 @@ export const ENDPOINTS = {
         url: gql('ff5ciLFuifghdOtDoJj6Ww/FetchDraftTweets'),
         method: 'GET',
         params: {} as { ascending: boolean },
-        parser: data => (data.viewer.draft_list.response_data || []).map(format.draftTweet)
+        parser: data => (data.viewer.draft_list.response_data || []).map(parsers.draftTweet)
     },
     FetchScheduledTweets: {
         url: gql('cmwoO7AWw5zCpd8TaPFQHg/FetchScheduledTweets'),
         method: 'GET',
         params: {} as { ascending: boolean },
-        parser: data => (data.viewer.scheduled_tweet_list || []).map(format.scheduledTweet)
+        parser: data => (data.viewer.scheduled_tweet_list || []).map(parsers.scheduledTweet)
     },
     TweetDetail: {
         url: gql('97JF30KziU00483E_8elBA/TweetDetail'),
@@ -664,7 +664,7 @@ export const ENDPOINTS = {
         params: {} as { focalTweetId: string, rankingMode: 'Relevance' | 'Recency' | 'Likes', cursor?: string },
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.threaded_conversation_with_injections_v2.instructions)
+        parser: data => parsers.entries(data.data.threaded_conversation_with_injections_v2.instructions)
     },
     TweetResultByRestId: {
         url: gql('aFvUsJm2c-oDkJV75blV6g/TweetResultByRestId'),
@@ -672,7 +672,7 @@ export const ENDPOINTS = {
         params: {} as { tweetId: string },
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline,
-        parser: data => format.tweet(data.data.tweetResult.result) as Tweet | TweetTombstone
+        parser: data => parsers.tweet(data.data.tweetResult.result) as Tweet | TweetTombstone
     },
     TweetResultsByRestIds: {
         url: gql('-R17e8UqwApFGdMxa3jASA/TweetResultsByRestIds'),
@@ -680,7 +680,7 @@ export const ENDPOINTS = {
         params: {} as { tweetIds: string[] },
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline,
-        parser: data => data.data.tweetResult.map((tweet: any) => format.tweet(tweet?.result)) as Tweet | TweetTombstone[]
+        parser: data => data.data.tweetResult.map((tweet: any) => parsers.tweet(tweet?.result)) as Tweet | TweetTombstone[]
     },
     ModeratedTimeline: {
         url: gql('ftAt_EqbCL3YVp0VURo8iQ/ModeratedTimeline'),
@@ -688,7 +688,7 @@ export const ENDPOINTS = {
         params: {} as { rootTweetId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":false},
         features: flags.timeline,
-        parser: data => format.entries(data.data.tweet.result.timeline_response.timeline.instructions)
+        parser: data => parsers.entries(data.data.tweet.result.timeline_response.timeline.instructions)
     },
     Favoriters: {
         url: gql('b3OrdeHDQfb9zRMC0fV3bw/Favoriters'),
@@ -696,7 +696,7 @@ export const ENDPOINTS = {
         params: {} as { tweetId: string, cursor?: string },
         variables: {"count":40,"enableRanking":false,"includePromotedContent":false},
         features: flags.timeline,
-        parser: data => format.userEntries(data.favoriters_timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.favoriters_timeline.timeline.instructions)
     },
     Retweeters: {
         url: gql('wfglZEC0MRgBdxMa_1a5YQ/Retweeters'),
@@ -704,7 +704,7 @@ export const ENDPOINTS = {
         params: {} as { tweetId: string, cursor?: string },
         variables: {"count":40,"enableRanking":false,"includePromotedContent":false},
         features: flags.timeline,
-        parser: data => format.userEntries(data.retweeters_timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.retweeters_timeline.timeline.instructions)
     },
     FavoriteTweet: {
         url: gql('ZYKSe-w7KEslx3JhSIk5LA/FavoriteTweet'),
@@ -800,14 +800,14 @@ export const ENDPOINTS = {
         method: 'GET',
         variables: {"command":"FINALIZE"},
         params: {} as { media_id: string },
-        parser: format.mediaUpload
+        parser: parsers.mediaUpload
     },
     media_upload_STATUS: {
         url: 'https://upload.twitter.com/1.1/media/upload.json',
         method: 'GET',
         variables: {"command":"STATUS"},
         params: {} as { media_id: string },
-        parser: format.mediaUpload
+        parser: parsers.mediaUpload
     },
     media_metadata_create: {
         url: v11('media/metadata/create.json'),
@@ -824,34 +824,34 @@ export const ENDPOINTS = {
         method: 'GET',
         params: {} as { screen_name: string },
         features: flags.user,
-        parser: data => format.user(data.data.user.result)
+        parser: data => parsers.user(data.data.user.result)
     },
     UsersByScreenNames: {
         url: gql('ujL_oXbgVlDHQzWSTgzvnA/UsersByScreenNames'),
         method: 'GET',
         params: {} as { screen_names: string[] },
         features: flags.user,
-        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as (User | UnavailableUser)[]
+        parser: data => data.data.users.map((user: any) => parsers.user(user?.result)) as (User | UnavailableUser)[]
     },
     UserByRestId: {
         url: gql('Bbaot8ySMtJD7K2t01gW7A/UserByRestId'),
         method: 'GET',
         params: {} as { userId: string },
         features: flags.user,
-        parser: data => format.user(data.data.user.result)
+        parser: data => parsers.user(data.data.user.result)
     },
     UsersByRestIds: {
         url: gql('xavgLWWbFH8wm_8MQN8plQ/UsersByRestIds'),
         method: 'GET',
         params: {} as { userIds: string[] },
         features: flags.user,
-        parser: data => data.data.users.map((user: any) => format.user(user?.result)) as (User | UnavailableUser)[]
+        parser: data => data.data.users.map((user: any) => parsers.user(user?.result)) as (User | UnavailableUser)[]
     },
     AboutAccountQuery: {
         url: gql('zs_jFPFT78rBpXv9Z3U2YQ/AboutAccountQuery'),
         method: 'GET',
         params: {} as { screenName: string },
-        parser: data => format.aboutUser(data.data.user_result_by_screen_name.result)
+        parser: data => parsers.aboutUser(data.data.user_result_by_screen_name.result)
     },
     UserTweets: {
         url: gql('-V26I6Pb5xDZ3C7BWwCQ_Q/UserTweets'),
@@ -859,7 +859,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.user.result.timeline.timeline.instructions)
     },
     UserTweetsAndReplies: {
         url: gql('61HQnvcGP870hiE-hCbG4A/UserTweetsAndReplies'),
@@ -867,7 +867,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.user.result.timeline.timeline.instructions)
     },
     UserMedia: {
         url: gql('MMnr49cP_nldzCTfeVDRtA/UserMedia'),
@@ -875,7 +875,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.mediaEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.mediaEntries(data.data.user.result.timeline.timeline.instructions)
     },
     Likes: {
         url: gql('JR2gceKucIKcVNB_9JkhsA/Likes'),
@@ -883,7 +883,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.user.result.timeline.timeline.instructions)
     },
     UserHighlightsTweets: {
         url: gql('QzHVmkiRhEfSMY_BRkxFRQ/UserHighlightsTweets'),
@@ -891,7 +891,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.user.result.timeline.timeline.instructions)
     },
     UserSuperFollowTweets: {
         url: gql('toCUR18_0OFliE5VXqwHfg/UserSuperFollowTweets'),
@@ -899,7 +899,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.entries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.entries(data.data.user.result.timeline.timeline.instructions)
     },
     Following: {
         url: gql('BEkNpEt5pNETESoqMsTEGA/Following'),
@@ -908,7 +908,7 @@ export const ENDPOINTS = {
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
         token: ALT_TOKEN,
-        parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     Followers: {
         url: gql('kuFUYP9eV1FPoEy4N-pi7w/Followers'),
@@ -917,7 +917,7 @@ export const ENDPOINTS = {
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
         token: ALT_TOKEN,
-        parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     FollowersYouKnow: {
         url: gql('G3jEqceFeMKS559RiF4UDw/FollowersYouKnow'),
@@ -926,7 +926,7 @@ export const ENDPOINTS = {
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
         token: ALT_TOKEN,
-        parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     BlueVerifiedFollowers: {
         url: gql('8a7QJe2CCHf4AWcs-1P6KQ/BlueVerifiedFollowers'),
@@ -935,7 +935,7 @@ export const ENDPOINTS = {
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
         token: OAUTH_KEY,
-        parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     UserCreatorSubscriptions: {
         url: gql('fl06vhYypYRcRxgLKO011Q/UserCreatorSubscriptions'),
@@ -943,7 +943,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     UserCreatorSubscribers: {
         url: gql('0X21EWewnvqLxCWZwWrnpg/UserCreatorSubscribers'),
@@ -951,7 +951,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     UserBusinessProfileTeamTimeline: {
         url: gql('KFaAofDlKP7bnzskNWmjwA/UserBusinessProfileTeamTimeline'),
@@ -959,7 +959,7 @@ export const ENDPOINTS = {
         params: {} as { userId: string, teamName: string, cursor?: string },
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
-        parser: data => format.userEntries(data.data.user.result.timeline.timeline.instructions)
+        parser: data => parsers.userEntries(data.data.user.result.timeline.timeline.instructions)
     },
     RemoveFollower: {
         url: gql('QpNfg0kpPRfjROQ_9eOLXA/RemoveFollower'),
