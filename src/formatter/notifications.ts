@@ -4,7 +4,7 @@ import type { Notification, Slice, TweetKind, UnreadCount, User } from '../types
 export function unreadCount(value: any): UnreadCount {
     return {
         notifications: value.ntab_unread_count || 0,
-        inbox: value.dm_unread_count || 0
+        inbox: value.dm_unread_count || value.xchat_unread_count || 0
     };
 }
 

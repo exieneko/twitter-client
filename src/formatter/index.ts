@@ -3,6 +3,7 @@ import type { Cursor } from '../types/index.js';
 export * from './account.js';
 export * from './birdwatch.js';
 export * from './community.js';
+export * from './discover.js';
 export * from './list.js';
 export * from './notifications.js';
 export * from './search.js';

@@ -1,6 +1,7 @@
 export * from './account.js';
 export * from './birdwatch.js';
 export * from './community.js';
+export * from './discover.js';
 export * from './list.js';
 export * from './notifications.js';
 export * from './search.js';
@@ -24,7 +25,7 @@ export interface Segment {
  * Represents a timeline slice
  */
 export interface Slice<T extends { __typename: string }> {
-    id?: string,
+    name?: string,
     segments?: Segment[],
     entries: Entry<T | Cursor>[]
 }

@@ -1,4 +1,6 @@
 import type { BirdwatchNote, BirdwatchNotesOnTweet, BirdwatchUser } from '../types/birdwatch.js';
+import { Slice, TweetKind } from '../types/index.js';
+import { entry, getEntries } from './index.js';
 
 export function birdwatchUser(value: any, is_ai?: boolean): BirdwatchUser {
     return {
@@ -66,4 +68,17 @@ export function birdwatchTweet(value: any): BirdwatchNotesOnTweet {
         pending_notes: (value.misleading_birdwatch_notes?.notes || []).map(birdwatchNote),
         not_needed_notes: (value.not_misleading_birdwatch_notes?.notes || []).map(birdwatchNote)
     }
+}
+
+
+
+export function birdwatch(body: any): Slice<TweetKind> {
+    return {
+        name: body.initialTimeline.id,
+        segments: body.timelines.map((timeline: any) => ({
+            id: timeline.timeline.id,
+            name: timeline.id
+        })) || [],
+        entries: getEntries(body.initialTimeline.timeline.timeline.instructions).map(entry).filter(x => !!x)
+    };
 }

@@ -229,7 +229,7 @@ export function sortEntries<T extends { __typename: string }>(entries: Entry<T>[
 
 export function entries(instructions: any): Slice<TweetKind> {
     return {
-        entries: sortEntries(getEntries<TweetKind>(instructions).map(entry).filter(x => !!x))
+        entries: sortEntries(getEntries(instructions).map(entry).filter(x => !!x))
     };
 }
 

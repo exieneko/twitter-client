@@ -5,7 +5,7 @@ export interface User {
     __typename: 'User',
     id: string,
     /**
-     * Amount of affiliates the user has\
+     * Amount of affiliates the user has  
      * Will always be `0` if `this.verification_kind` isn't `VerificationKind.Business`, since only business accounts can have affiliates
      */
     affiliates_count: number,
@@ -50,7 +50,7 @@ export interface User {
     /** Whether or not you're following the user */
     followed: boolean,
     /**
-     * Whether or not you've requested to follow the user\
+     * Whether or not you've requested to follow the user  
      * Will always be `false` if `this.protected` is `false`
      */
     follow_requested: boolean,
@@ -67,12 +67,12 @@ export interface User {
     /** `id` of the user's pinned tweet, `undefined` if it doesn't exist */
     pinned_tweet_id?: string,
     /**
-     * Whether or not the user's tweets can only be viewed by users that follow them\
+     * Whether or not the user's tweets can only be viewed by users that follow them  
      * Fetching tweets of this user will return an empty array if `this.followed` is false
      */
     protected: boolean,
     /**
-     * Amount of other users the user is super-following\
+     * Amount of other users the user is super-following  
      * Super-follows (aka creator subscriptions) are monthly subscriptions that the user pays to other users for super-follower-only tweets
      */
     super_following_count: number,
@@ -93,17 +93,27 @@ export interface User {
     username: string,
     /** The full url on the user's profile, `undefined` if empty */
     url?: string,
-    /** Whether or not the user has a verification chechmark */
+    /** @deprecated moved to `verification.verified` */
     verified: boolean,
-    /** Shows the kind of verification the user has */
+    /** @deprecated moved to `verification.kind` */
     verification_kind: VerificationKind,
+    verification: {
+        /** Shows the kind of verification the user has */
+        kind: VerificationKind,
+        /** Whether or not the user has a verification chechmark */
+        verified: boolean,
+        /** When the user was initially verified, `undefined` if never */
+        verified_since?: string,
+        /** Whether or not the user successfully verified their identity with a legal id */
+        verified_with_id: boolean
+    },
     /**
-     * Whether or not retweets of the user should be included in your timelines\
+     * Whether or not retweets of the user should be included in your timelines  
      * Will always be `false` if `this.followed` is `false`
      */
     want_retweets: boolean,
     /**
-     * Whether or not tweets of the user should give you notifications\
+     * Whether or not tweets of the user should give you notifications  
      * Will always be `false` if `this.followed` is `false`
      */
     want_notifications: boolean
@@ -127,3 +137,34 @@ export interface UnavailableUser {
 }
 
 export type UserKind = User | UnavailableUser;
+
+
+
+export interface AboutUser {
+    __typename: 'AboutUser',
+    id: string,
+    /** The url for the user's profile picture */
+    avatar_url: string,
+    based_in?: string,
+    /** The user's registration datetime as an ISO string */
+    created_at: string,
+    /** The user's display name */
+    name: string,
+    /** Whether or not the user's tweets can only be viewed by users that follow them */
+    protected: boolean,
+    verification: {
+        verified: boolean,
+        verified_since?: string,
+        verified_with_id: boolean
+    },
+    /** Whether or not the user is using a VPN */
+    vpn: boolean,
+    usernames: {
+        /** Total times the user's \@username was changed */
+        changed_count: number,
+        /** The user's current \@username */
+        current: string,
+        /** The last time the user's \@username was changed */
+        updated_at?: string
+    }
+}

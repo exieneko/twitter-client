@@ -88,13 +88,11 @@ export const ENDPOINTS = {
 
 
     // BIRDWATCH
-    /** @todo segmented timelines need to be implemented for this to work */
     BirdwatchFetchGlobalTimeline: {
         url: gql('rG-k-eTUj0YhAqXkSNJbiQ/BirdwatchFetchGlobalTimeline'),
         method: 'GET',
-        params: {} as { cursor?: string },
         features: flags.timeline,
-        parser: _ => _
+        parser: data => format.birdwatch(data.data.viewer.birdwatch_home_page)
     },
     BirdwatchFetchNotes: {
         url: gql('dG85JgBxwnAt_PYNZTyvTg/BirdwatchFetchNotes'),
@@ -215,6 +213,23 @@ export const ENDPOINTS = {
         params: {} as { communityId: string },
         features: flags.short,
         parser: data => !!data.data.community_leave.id_str
+    },
+
+
+
+    // DISCOVER
+    ExplorePage: {
+        url: 'r-XJpn_t210wJmpV9qnAHg/ExplorePage',
+        method: 'GET',
+        params: {} as { cursor: string },
+        features: flags.timeline,
+        parser: data => format.discoverEntries(data.data.explore_page.body)
+    },
+    ExploreSidebar: {
+        url: 'FrpzJjnhtQSrL4txK29E7A/ExploreSidebar',
+        method: 'GET',
+        features: flags.timeline,
+        parser: data => format.trendEntries(data.data.explore_sidebar.timeline.instructions)
     },
 
 
@@ -415,7 +430,7 @@ export const ENDPOINTS = {
     badge_count: {
         url: 'https://twitter.com/i/api/2/badge_count/badge_count.json',
         method: 'GET',
-        variables: {"supports_ntab_urt":1},
+        variables: {"supports_ntab_urt":1,"include_xchat_count":1},
         parser: format.unreadCount
     },
     last_seen_cursor: {
@@ -474,6 +489,22 @@ export const ENDPOINTS = {
         features: flags.timeline,
         parser: data => format.entries(data.data.home.home_timeline_urt.instructions)
     },
+    GenericTimelineById: {
+        url: gql('8Ncv6o18kamVfavnfvrSTA/GenericTimelineById'),
+        method: 'GET',
+        params: {} as { timelineId: string, cursor?: string },
+        variables: {"count":20,"withQuickPromoteEligibilityTweetFields":true},
+        features: flags.timeline,
+        parser: data => format.entries(data.data.timeline.timeline.instructions)
+    },
+    GenericTimelineById_TRENDS: {
+        url: gql('8Ncv6o18kamVfavnfvrSTA/GenericTimelineById'),
+        method: 'GET',
+        params: {} as { timelineId: string, cursor?: string },
+        variables: {"count":20,"withQuickPromoteEligibilityTweetFields":true},
+        features: flags.timeline,
+        parser: data => format.trendEntries(data.data.timeline.timeline.instructions)
+    },
 
 
 
@@ -483,6 +514,7 @@ export const ENDPOINTS = {
         method: 'POST',
         params: {} as {
             batch_compose?: 'BatchFirst' | 'BatchSubsequent',
+            card_uri?: string,
             conversation_control?: {
                 mode: 'Community' | 'Verified' | 'ByInvitation'
             },
@@ -504,6 +536,32 @@ export const ENDPOINTS = {
         features: flags.timeline,
         token: OAUTH_KEY,
         parser: data => format.tweet(data.data.create_tweet?.tweet_results?.result) as Tweet | TweetTombstone
+    },
+    CreateNoteTweet: {
+        url: gql('lPTBLb_FPA5r8z_cH-s8lw/CreateNoteTweet'),
+        method: 'POST',
+        params: {} as {
+            batch_compose?: 'BatchFirst' | 'BatchSubsequent',
+            card_uri?: string,
+            conversation_control?: {
+                mode: 'Community' | 'Verified' | 'ByInvitation'
+            },
+            media: {
+                media_entities: {
+                    media_id: string,
+                    tagged_users: string[]
+                }[],
+                possibly_sensitive: boolean
+            },
+            reply?: {
+                exclude_reply_user_ids: string[],
+                in_reply_to_tweet_id: string
+            },
+            semantic_annotation_ids: string[],
+            tweet_text: string
+        },
+        features: flags.timeline,
+        parser: data => format.tweet(data.data.notetweet_create?.tweet_results?.result) as Tweet | TweetTombstone
     },
     DeleteTweet: {
         url: gql('VaenaVgh5q5ih7kvyVjgtg/DeleteTweet'),
@@ -788,6 +846,12 @@ export const ENDPOINTS = {
         params: {} as { userIds: string[] },
         features: flags.user,
         parser: data => data.data.users.map((user: any) => format.user(user?.result)) as (User | UnavailableUser)[]
+    },
+    AboutAccountQuery: {
+        url: gql('zs_jFPFT78rBpXv9Z3U2YQ/AboutAccountQuery'),
+        method: 'GET',
+        params: {} as { screenName: string },
+        parser: data => format.aboutUser(data.data.user_result_by_screen_name.result)
     },
     UserTweets: {
         url: gql('-V26I6Pb5xDZ3C7BWwCQ_Q/UserTweets'),

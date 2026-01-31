@@ -36,7 +36,10 @@ export interface Tweet {
     },
     /** Whether or not if the tweet is so long that the full text is not displayed normally. `this.text` will still contain all text */
     expandable: boolean,
-    /** Whether or not any media in the tweet is labelled as ai generated */
+    /**
+     * Whether or not any media in the tweet is labelled as ai generated
+     * @deprecated This property is redundant and will be removed in a later version
+     */
     has_ai_generated_image: boolean,
     /** Whether or not the tweet has an active or pending Birdwatch note */
     has_birdwatch_note: boolean,
@@ -64,7 +67,7 @@ export interface Tweet {
     /**
      * The quoted tweet, if it exists
      * 
-     * May be undefined even if `this.has_quoted_tweet && this.quoted_tweet_id !== undefined`, to avoid infinite recursion\
+     * May be undefined even if `this.has_quoted_tweet && this.quoted_tweet_id !== undefined`, to avoid infinite recursion  
      * Also, on rare occasions where the author of the quoted tweet has blocked the author of this tweet,
      * this property may be `undefined` even though `this.quoted_tweet_id` will still show the id of the quoted tweet, but it must be fetched again
      */

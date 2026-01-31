@@ -1,5 +1,5 @@
 import { cursor, getEntries, sortEntries } from './index.js';
-import type { Slice, UserKind, User, FanAccountKind } from '../types/index.js';
+import type { Slice, UserKind, User, FanAccountKind, AboutUser } from '../types/index.js';
 
 export function user(value: any): UserKind {
     if (!value) {
@@ -68,6 +68,22 @@ export function user(value: any): UserKind {
             : verified
                 ? 'Blue'
                 : 'Unverified',
+            verification: {
+                kind: verified_type === 'Government'
+                    ? 'Government'
+                : verified_type === 'Business'
+                    ? 'Business'
+                : !verified_type && !verified
+                    ? 'Unverified'
+                : verified
+                    ? 'Blue'
+                    : 'Unverified',
+                verified,
+                verified_since: verified
+                    ? new Date(Number(value.verification_info?.reason?.verified_since_msec || '0')).toISOString()
+                    : undefined,
+                verified_with_id: !!value.verification_info?.is_identity_verified
+            },
             want_retweets: !!value.legacy.want_retweets,
             want_notifications: !!value.legacy.notifications
         };
@@ -115,9 +131,41 @@ export function userLegacy(value: any): User {
         url: undefined,
         verified: !!value.ext_is_blue_verified,
         verification_kind: !!value.ext_is_blue_verified ? 'Blue' : 'Unverified',
+        verification: {
+            kind: !!value.ext_is_blue_verified ? 'Blue' : 'Unverified',
+            verified: !!value.ext_is_blue_verified,
+            verified_with_id: false
+        },
         want_retweets: !!value.want_retweets,
         want_notifications: !!value.notification
     }
+}
+
+export function aboutUser(value: any): AboutUser {
+    return {
+        __typename: 'AboutUser',
+        id: value.rest_id,
+        avatar_url: value.avatar.image_url.replace('normal', '400x400'),
+        based_in: value.about_profile?.account_based_in,
+        created_at: new Date(value.core.created_at).toISOString(),
+        name: value.core.name,
+        protected: !!value.privacy?.protected,
+        verification: {
+            verified: !!value.is_blue_verified,
+            verified_since: !!value.verification_info?.reason?.verified_since_msec
+                ? new Date(Number(value.verification_info.reason.verified_since_msec)).toISOString()
+                : undefined,
+            verified_with_id: !!value.verification_info?.is_identity_verified
+        },
+        vpn: !!value.about_profile?.location_accurate,
+        usernames: {
+            changed_count: Number(value.username_changes?.count || '0'),
+            current: value.core.screen_name,
+            updated_at: !!value.username_changes?.last_changed_at
+                ? new Date(Number(value.username_changes.last_changed_at)).toISOString()
+                : undefined
+        }
+    };
 }
 
 
