@@ -1,10 +1,10 @@
 import logger from 'node-color-log';
-import { fetch, FormData, ProxyAgent } from 'undici';
 import { hrtime } from 'process';
+import { fetch, FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { MAX_ACCEPTABLE_REQUEST_TIME, ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
-import type { Media, TweetKind, Tweet, Slice } from './types/index.js';
+import type { Media, TweetKind, Tweet, Slice, User } from './types/index.js';
 import { endpointKind, toSearchParams } from './utils/index.js';
 import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options, EndpointKind } from './utils/types/index.js';
 import { QueryBuilder } from './utils/types/querybuilder.js';
@@ -13,6 +13,8 @@ export class TwitterClient {
     #transaction: ClientTransaction;
     #tokens: Tokens;
     #options: Options;
+    public twid?: string;
+    public self?: User;
 
     private constructor(transaction: ClientTransaction, tokens: Tokens, options: Options) {
         this.#transaction = transaction;
@@ -27,8 +29,23 @@ export class TwitterClient {
     /**
      * Creates a new `TwitterClient`
      * 
+     * Default options:
+     * 
+     * ```ts
+     * {
+     *     autoFetchSelf: true,
+     *     domain: 'twitter.com',
+     *     language: 'en',
+     *     longTweetBehavior: 'Force',
+     *     proxyUrl: undefined,
+     *     twid: undefined,
+     *     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+     *     verbose: false
+     * }
+     * ```
+     * 
      * @param tokens Your Twitter account's login tokens
-     * @param options 
+     * @param options Additional options
      * @constructor 
      */
     static async new(tokens: Tokens, options?: Partial<Options>): Promise<TwitterClient> {
@@ -39,9 +56,12 @@ export class TwitterClient {
             transaction,
             tokens,
             {
+                autoFetchSelf: true,
                 domain: 'twitter.com',
                 language: 'en',
                 longTweetBehavior: 'Force',
+                proxyUrl: undefined,
+                twid: undefined,
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
                 verbose: false,
                 ...options
@@ -52,6 +72,30 @@ export class TwitterClient {
 
         if (client.#options.language !== 'en') {
             client.warn('Setting `language` to values other than "en" may have unexpected effects - if you find any bugs, please open an issue here: https://github.com/exieneko/twitter-client/issues <3');
+        }
+
+        client.twid = client.#options.twid;
+
+        if (client.#options.autoFetchSelf) {
+            const { errors, data: settings } = !!client.twid ? { errors: [] } : await client.getSettings();
+
+            if (errors.length > 0) {
+                client.error(`Failed to set \`self\` because of errors while calling \`getSettings()\`: ${errors}`);
+            }
+
+            const { errors: userErrors, data: user } = await client.getUser(client.twid || settings!.username, { byUsername: !client.twid });
+
+            if (userErrors.length > 0) {
+                client.error(`Failed to set \`self\` because of errors while calling \`getUser(${client.twid || settings?.username}, { byUsername: ${!client.twid} })\`: ${userErrors}`);
+            }
+
+            if (user?.__typename !== 'User') {
+                client.error(`Failed to set \`self\` because response data returned a suspended or unavailable user`);
+                return client;
+            }
+
+            client.self = user;
+            client.twid = user.id;
         }
 
         return client;
@@ -88,10 +132,14 @@ export class TwitterClient {
     }
 
     private getHeaders(token?: string, endpointKind: EndpointKind = 'GraphQL', url?: string, transactionId?: string): Record<string, string> {
-        function tokenHeaders(tokens: Tokens, options: Options) {
+        const tokenHeaders = () => {
+            const twid = this.twid ?? this.self?.id;
+
             return {
-                'x-csrf-token': tokens.csrf,
-                cookie: `auth_token=${tokens.authToken}; ct0=${tokens.csrf}; lang=${options.language}`
+                'x-csrf-token': this.#tokens.csrf,
+                cookie: !!twid
+                    ? `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; twid=u%3D${twid}; lang=${this.#options.language}`
+                    : `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; lang=${this.#options.language}`
             };
         }
 
@@ -117,7 +165,7 @@ export class TwitterClient {
             Referer: `https://${this.#options.domain}/`,
             authorization: token || PUBLIC_TOKEN,
             'User-Agent': this.#options.userAgent,
-            ...tokenHeaders(this.#tokens, this.#options),
+            ...tokenHeaders(),
             ...result
         };
     }
@@ -1129,11 +1177,20 @@ export class TwitterClient {
      * @returns User
      */
     async getUser(id: string, args?: ByUsername) {
-        if (args?.byUsername) {
-            return await this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id });
+        const { errors, data: user } = await (args?.byUsername
+            ? this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id })
+            : this.fetch(ENDPOINTS.UserByRestId, { userId: id })
+        );
+        
+        if (errors.length > 0) {
+            return { errors, data: user };
         }
 
-        return await this.fetch(ENDPOINTS.UserByRestId, { userId: id });
+        if (user?.__typename === 'User' && (this.twid === user.id || this.self?.username === user.username)) {
+            this.self = user;
+        }
+
+        return { errors, data: user };
     }
 
     /**
