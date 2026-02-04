@@ -29,13 +29,16 @@ export function list(value: any): List | UnavailableList {
 export function listEntries(instructions: any): Slice<ListKind> {
     const value: any[] = p.getEntries(instructions);
 
+    const entries = value.map(entry => ({
+        id: entry.entryId,
+        content: entry.entryId.includes('cursor')
+            ? p.cursor(entry.content)
+            : list(entry.content.itemContent.list)
+    }));
+
     return {
-        entries: value.map(entry => ({
-            id: entry.entryId,
-            content: entry.entryId.includes('cursor')
-                ? p.cursor(entry.content)
-                : list(entry.content.itemContent.list)
-        }))
+        entries,
+        cursors: p.cursorsOf(entries)
     };
 }
 
@@ -43,10 +46,13 @@ export function listDiscoveryEntries(instructions: any): Slice<List> {
     // @ts-ignore
     const value: any[] = p.getEntries(instructions).find((entry: any) => entry.entryId.includes('discovery'))?.content?.items || [];
 
+    const entries = value.map(entry => ({
+        id: entry.entryId,
+        content: list(entry.item.itemContent.list) as List
+    }));
+
     return {
-        entries: value.map(entry => ({
-            id: entry.entryId,
-            content: list(entry.item.itemContent.list) as List
-        }))
+        entries,
+        cursors: p.cursorsOf(entries)
     };
 }

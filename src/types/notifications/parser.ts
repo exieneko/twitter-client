@@ -1,4 +1,4 @@
-import type { Notification, Slice, TweetKind, UnreadCount, User } from '../index.js';
+import type { Cursor, Notification, Slice, TweetKind, UnreadCount, User } from '../index.js';
 import * as p from '../parsers.js';
 
 export function unreadCount(value: any): UnreadCount {
@@ -94,43 +94,45 @@ export function notification(value: any, notificationKind: string): Notification
 export function notificationEntries(instructions: any): Slice<Notification> {
     const value: any[] = p.getEntries(instructions);
 
+    const entries = value.map(entry => ({
+        id: entry.entryId,
+        content: entry.content?.__typename === 'TimelineTimelineCursor'
+            ? p.cursor(entry.content)
+            : notification(entry.content.itemContent, entry.content.clientEventInfo.element)
+    }));
+
     return {
-        entries: p.sortEntries(value.map(entry => ({
-            id: entry.entryId,
-            content: entry.content?.__typename === 'TimelineTimelineCursor'
-                ? p.cursor(entry.content)
-                : notification(entry.content.itemContent, entry.content.clientEventInfo.element)
-        })))
+        entries,
+        cursors: p.cursorsOf(entries)
     };
 }
 
 export function deviceFollowEntries(value: any[], globalObjects: any): Slice<TweetKind> {
-    return {
-        entries: value.map(entry => {
-            if (Object.hasOwn(entry.content, 'operation')) {
-                const cursor = entry.content.operation.cursor;
-
-                return {
-                    id: entry.entryId,
-                    content: {
-                        __typename: 'Cursor',
-                        direction: cursor.cursorType === 'Top' ? 'Top' : 'Bottom',
-                        value: cursor.value
-                    }
-                };
-            }
-
-            const tweetId = entry.content.item.content.tweet.id;
-
-            const tweet = globalObjects.tweets[tweetId];
-            const author = globalObjects.users[tweet.user_id_str];
-            const quotedTweet = tweet.quoted_status_id_str ? globalObjects.tweets[tweet.quoted_status_id_str] : undefined;
-            const quotedTweetAuthor = quotedTweet ? globalObjects.users[quotedTweet.user_id_str] : undefined;
+    const entries: { id: string, content: TweetKind | Cursor }[] = value.map(entry => {
+        if (Object.hasOwn(entry.content, 'operation')) {
+            const cursor = entry.content.operation.cursor;
 
             return {
                 id: entry.entryId,
-                content: p.tweetLegacy(tweet, author, quotedTweet, quotedTweetAuthor)
+                content: p.cursor(cursor)
             };
-        })
+        }
+
+        const tweetId = entry.content.item.content.tweet.id;
+
+        const tweet = globalObjects.tweets[tweetId];
+        const author = globalObjects.users[tweet.user_id_str];
+        const quotedTweet = tweet.quoted_status_id_str ? globalObjects.tweets[tweet.quoted_status_id_str] : undefined;
+        const quotedTweetAuthor = quotedTweet ? globalObjects.users[quotedTweet.user_id_str] : undefined;
+
+        return {
+            id: entry.entryId,
+            content: p.tweetLegacy(tweet, author, quotedTweet, quotedTweetAuthor)
+        };
+    });
+
+    return {
+        entries,
+        cursors: p.cursorsOf(entries)
     };
 }

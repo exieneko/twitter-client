@@ -222,19 +222,12 @@ export function entry(value: any): Entry<TweetKind | Cursor> | undefined {
     }
 }
 
-export function sortEntries<T extends { __typename: string }>(entries: Entry<T>[]): Entry<T>[] {
-    return [
-        ...entries.filter(entry => entry.content.__typename !== 'Cursor'),
-        // @ts-ignore
-        ...entries.filter(entry => entry.content.__typename === 'Cursor' && entry.content.direction === 'Top'),
-        // @ts-ignore
-        ...entries.filter(entry => entry.content.__typename === 'Cursor' && entry.content.direction !== 'Top')
-    ];
-}
-
 export function entries(instructions: any): Slice<TweetKind> {
+    const entries = p.getEntries(instructions).map(entry).filter(x => !!x);
+
     return {
-        entries: sortEntries(p.getEntries(instructions).map(entry).filter(x => !!x))
+        entries,
+        cursors: p.cursorsOf(entries)
     };
 }
 
@@ -243,25 +236,28 @@ export function mediaEntries(instructions: any, gridModule?: { content: object, 
 
     const grid = gridModule?.content ?? value.find(entry => entry.content.__typename === 'TimelineTimelineModule')?.content;
 
+    const entries = [
+        ...value.filter(entry => entry.content.__typename === 'TimelineTimelineCursor').map(entry => ({
+            id: entry.entryId,
+            content: p.cursor(entry.content)
+        })),
+        ...(
+            grid
+                ? grid[gridModule?.key ?? 'items'].map((item: any) => ({
+                    id: item.entryId,
+                    content: item.item.itemContent.__typename === 'TimelineTimelineCursor'
+                        ? p.cursor(item.item.itemContent)
+                        : tweet(item.item.itemContent.tweet_results?.result, {
+                            hasHiddenReplies: item.item.itemContent.hasModeratedReplies
+                        })
+                }))
+                : []
+        )
+    ];
+
     return {
-        entries: sortEntries([
-            ...value.filter(entry => entry.content.__typename === 'TimelineTimelineCursor').map(entry => ({
-                id: entry.entryId,
-                content: p.cursor(entry.content)
-            })),
-            ...(
-                grid
-                    ? grid[gridModule?.key ?? 'items'].map((item: any) => ({
-                        id: item.entryId,
-                        content: item.item.itemContent.__typename === 'TimelineTimelineCursor'
-                            ? p.cursor(item.item.itemContent)
-                            : tweet(item.item.itemContent.tweet_results?.result, {
-                                hasHiddenReplies: item.item.itemContent.hasModeratedReplies
-                            })
-                    }))
-                    : []
-            )
-        ])
+        entries,
+        cursors: p.cursorsOf(entries)
     };
 }
 

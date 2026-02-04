@@ -1,4 +1,4 @@
-import type { Cursor } from './index.js';
+import type { Cursor, Entry, SliceCursors } from './index.js';
 
 export * from './account/parser.js';
 export * from './birdwatch/parser.js';
@@ -14,13 +14,24 @@ export function cursor(value: any): Cursor {
     return {
         __typename: 'Cursor',
         direction: value.cursorType === 'Top'
-            ? 'Top'
+            ? 'Previous'
         : value.cursorType === 'ShowMore'
             ? 'ShowMore'
         : value.cursorType === 'ShowMoreThreads'
             ? 'ShowSpam'
-            : 'Bottom',
+            : 'Next',
         value: value.value
+    };
+}
+
+export function cursorsOf<T extends { __typename: string }>(entries: Entry<T>[]): SliceCursors {
+    const cursors = entries
+        .filter(entry => entry.content.__typename === 'Cursor')
+        .map(entry => entry as unknown as Entry<Cursor>);
+
+    return {
+        previous: cursors.find(entry => entry.content.direction === 'Previous')?.content.value,
+        next: cursors.findLast(entry => entry.content.direction === 'Next')?.content.value
     };
 }
 

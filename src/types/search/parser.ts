@@ -26,25 +26,31 @@ export function searchEntries(instructions: any): Slice<TweetKind | UserKind | L
     }
 
     if (value.length <= 3 && !!value.find(entry => entry.entryId === 'list-search-0')) {
-        const entries = value.find(entry => entry.entryId === 'list-search-0')?.content?.items;
+        const listSearchGrid = value.find(entry => entry.entryId === 'list-search-0')?.content?.items;
+
+        const entries = [
+            ...value.filter(entry => entry?.content?.__typename === 'TimelineTimelineCursor').map(entry => ({
+                id: entry.entryId,
+                content: p.cursor(entry.content)
+            })),
+            ...(
+                value.map(entry => ({
+                    id: entry.entryId,
+                    content: entry.entryId.includes('cursor')
+                        ? p.cursor(entry.content)
+                        : p.list(entry.content.itemContent.list)
+                }))
+            )
+        ];
 
         return {
-            entries: p.sortEntries([
-                ...value.filter(entry => entry?.content?.__typename === 'TimelineTimelineCursor').map(entry => ({
-                    id: entry.entryId,
-                    content: p.cursor(entry.content)
-                })),
-                ...(
-                    value.map(entry => ({
-                        id: entry.entryId,
-                        content: entry.entryId.includes('cursor')
-                            ? p.cursor(entry.content)
-                            : p.list(entry.content.itemContent.list)
-                    }))
-                )
-            ])
+            entries,
+            cursors: p.cursorsOf(entries)
         };
     }
 
-    return { entries: [] };
+    return {
+        entries: [],
+        cursors: {}
+    };
 }

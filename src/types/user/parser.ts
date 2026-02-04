@@ -173,12 +173,15 @@ export function aboutUser(value: any): AboutUser {
 export function userEntries(instructions: any): Slice<UserKind> {
     const value: any[] = p.getEntries(instructions);
 
+    const entries = value.map(entry => ({
+        id: entry.entryId,
+        content: entry.content.__typename === 'TimelineTimelineCursor'
+            ? p.cursor(entry.content)
+            : user(entry.content.itemContent.user_results?.result)
+    }));
+
     return {
-        entries: p.sortEntries(value.map(entry => ({
-            id: entry.entryId,
-            content: entry.content.__typename === 'TimelineTimelineCursor'
-                ? p.cursor(entry.content)
-                : user(entry.content.itemContent.user_results?.result)
-        })))
+        entries,
+        cursors: p.cursorsOf(entries)
     };
 }

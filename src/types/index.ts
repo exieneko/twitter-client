@@ -21,13 +21,19 @@ export interface Segment {
     name: string
 }
 
+export interface SliceCursors {
+    previous?: string,
+    next?: string
+}
+
 /**
  * Represents a timeline slice
  */
 export interface Slice<T extends { __typename: string }> {
     name?: string,
     segments?: Segment[],
-    entries: Entry<T | Cursor>[]
+    entries: Entry<T | Cursor>[],
+    cursors: SliceCursors
 }
 
 /**
@@ -40,4 +46,4 @@ export interface Cursor {
     value: string
 }
 
-export type CursorDirection = 'Top' | 'Bottom' | 'ShowMore' | 'ShowSpam';
+export type CursorDirection = 'Previous' | 'Next' | 'ShowMore' | 'ShowSpam';

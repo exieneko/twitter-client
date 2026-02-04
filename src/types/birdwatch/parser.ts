@@ -72,12 +72,15 @@ export function birdwatchTweet(value: any): BirdwatchNotesOnTweet {
 
 
 export function birdwatch(body: any): Slice<TweetKind> {
+    const entries = p.getEntries(body.initialTimeline.timeline.timeline.instructions).map(p.entry).filter(x => !!x);
+
     return {
         name: body.initialTimeline.id,
         segments: body.timelines.map((timeline: any) => ({
             id: timeline.timeline.id,
             name: timeline.id
         })) || [],
-        entries: p.getEntries(body.initialTimeline.timeline.timeline.instructions).map(p.entry).filter(x => !!x)
+        entries,
+        cursors: p.cursorsOf(entries)
     };
 }
