@@ -556,7 +556,7 @@ export class TwitterClient {
      */
     public async getCommunityTweetsSlice(id: string, args?: CommunityTimelineGetArgs) {
         const rankingMode = args?.sort === 'Recent' ? 'Recency' : 'Relevance';
-        return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, ...args });
+        return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, cursor: args?.cursor });
     }
 
     /**
@@ -715,7 +715,7 @@ export class TwitterClient {
      * @returns The created list
      */
     public async createList(args: ListCreateArgs) {
-        return await this.fetch(ENDPOINTS.CreateList, { description: args.description || '', isPrivate: !!args.private, ...args });
+        return await this.fetch(ENDPOINTS.CreateList, { name: args.name, description: args.description || '', isPrivate: !!args.private });
     }
 
     /**
@@ -725,7 +725,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     public async editList(id: string, args: Required<ListCreateArgs>) {
-        return await this.fetch(ENDPOINTS.UpdateList, { listId: id, isPrivate: args.private, ...args });
+        return await this.fetch(ENDPOINTS.UpdateList, { listId: id, name: args.name, description: args.description, isPrivate: args.private });
     }
 
     /**
@@ -847,7 +847,7 @@ export class TwitterClient {
      * @returns Slice of notifications
      */
     public async getNotificationsSlice(args?: NotificationGetArgs) {
-        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: args?.type || 'All', ...args });
+        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: args?.type || 'All', cursor: args?.cursor });
     }
 
     /**
@@ -1175,7 +1175,7 @@ export class TwitterClient {
             ? 'Likes'
             : 'Relevance';
 
-        return await this.fetch(ENDPOINTS.TweetDetail, { focalTweetId: id, rankingMode, ...args });
+        return await this.fetch(ENDPOINTS.TweetDetail, { focalTweetId: id, rankingMode, cursor: args?.cursor });
     }
 
     /**
@@ -1503,10 +1503,10 @@ export class TwitterClient {
      */
     public async getUserTweetsSlice(id: string, args?: UserTweetsGetArgs) {
         if (args?.replies) {
-            return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, ...args });
+            return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, cursor: args.cursor });
         }
 
-        return await this.fetch(ENDPOINTS.UserTweets, { userId: id, ...args });
+        return await this.fetch(ENDPOINTS.UserTweets, { userId: id, cursor: args?.cursor });
     }
 
     /**
