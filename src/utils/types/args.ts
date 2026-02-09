@@ -58,10 +58,13 @@ export interface SearchArgs extends CursorOnly {
 }
 
 export type TimelineType = 'Algorithmical' | 'Chronological';
-export interface TimelineGetArgs extends CursorOnly {
+export type TimelineGetArgs = ({
     type?: TimelineType,
     seenTweetIds?: string[]
-}
+} | {
+    type: 'Generic',
+    id: string
+}) & CursorOnly;
 
 export type TweetReplyPermission = 'Following' | 'Verified' | 'Mentioned' | 'None';
 export interface TweetCreateArgs {
@@ -97,4 +100,8 @@ export interface MediaUploadArgs {
     contentType: string,
     altText?: string,
     segmentSizeOverride?: number
+}
+
+export interface UserTweetsGetArgs extends CursorOnly {
+    replies?: boolean
 }

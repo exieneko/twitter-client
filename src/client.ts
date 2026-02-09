@@ -3,10 +3,10 @@ import { hrtime } from 'process';
 import { fetch, FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
-import { MAX_ACCEPTABLE_REQUEST_TIME, ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
-import type { Media, TweetKind, Tweet, Slice, User } from './types/index.js';
+import { MAX_ACCEPTABLE_REQUEST_TIME, ENDPOINTS, HEADERS, PUBLIC_TOKEN, EMPTY_SLICE, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT } from './consts.js';
+import type { Media, TweetKind, Tweet, Slice, User, UserKind, Notification, ListKind } from './types/index.js';
 import { endpointKind, toSearchParams } from './utils/index.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options, EndpointKind } from './utils/types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options, EndpointKind, Timeline, UserTweetsGetArgs } from './utils/types/index.js';
 import { QueryBuilder } from './utils/types/querybuilder.js';
 
 export class TwitterClient {
@@ -222,7 +222,7 @@ export class TwitterClient {
             const elapsed = Number(hrtime.bigint() - start) / 1e6;
             const text = `${response.status} ${response.statusText} in ${Math.floor(elapsed)}ms`;
             if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
-                this.warn(`${text} (exceeded ${MAX_ACCEPTABLE_REQUEST_TIME}ms!)`);
+                this.warn(text);
             } else if (response.ok) {
                 this.log(text);
             } else {
@@ -260,7 +260,43 @@ export class TwitterClient {
         }
     }
 
+    private async* getSlice<T extends { __typename: string }, U extends CursorOnly>(args: U | undefined, callback: (args: U) => Promise<TwitterResponse<Slice<T>>>): Timeline<T> {
+        const a = (args ?? {}) as U;
 
+        let iterations = 0;
+        let cursors: string[] = [];
+
+        while (cursors.length < 2 ? iterations < MAX_TIMELINE_ITERATIONS : cursors.at(-1) !== cursors.at(-2)) {
+            const currentArgs: U = { ...a, cursor: cursors.at(-1) ?? args?.cursor };
+            const next = await callback(currentArgs);
+
+            iterations++;
+            if (next.data?.cursors.next) {
+                cursors.push(next.data.cursors.next);
+            }
+
+            yield next;
+        }
+
+        return EMPTY_SLICE;
+    }
+
+
+    /**
+     * Gets blocked accounts
+     * 
+     * Arguments:
+     * 
+     * + `imported?: boolean = false` - Get imported bookmarks only?
+     * + `cursor?: string`
+     * 
+     * @param args Arguments
+     * @yields Slice of blocked accounts
+     */
+    public async* getBlockedAccounts(args?: BlockedAccountsGetArgs): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, this.getBlockedAccountsSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
 
     /**
      * Gets blocked accounts
@@ -273,7 +309,7 @@ export class TwitterClient {
      * @param args Arguments
      * @returns Slice of blocked accounts
      */
-    public async getBlockedAccounts(args?: BlockedAccountsGetArgs) {
+    public async getBlockedAccountsSlice(args?: BlockedAccountsGetArgs) {
         if (args?.imported) {
             return await this.fetch(ENDPOINTS.BlockedAccountsImported, { cursor: args?.cursor });
         }
@@ -284,9 +320,19 @@ export class TwitterClient {
     /**
      * Get muted accounts* 
      * @param args Cursor only
+     * @yields Slice of muted accounts
+     */
+    public async* getMutedAccounts(args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, this.getMutedAccountsSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Get muted accounts* 
+     * @param args Cursor only
      * @returns Slice of muted accounts
      */
-    public async getMutedAccounts(args?: CursorOnly) {
+    public async getMutedAccountsSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.MutedAccounts, args);
     }
 
@@ -423,10 +469,31 @@ export class TwitterClient {
     /**
      * Gets bookmarks
      * @param args Cursor only
+     * @yields Slice of bookmarked tweets
+     */
+    public async* getBookmarks(args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getBookmarksSlice(args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets bookmarks
+     * @param args Cursor only
      * @returns Slice of bookmarked tweets
      */
-    public async getBookmarks(args?: CursorOnly) {
+    public async getBookmarksSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Bookmarks, args);
+    }
+
+    /**
+     * Searches through bookmarked tweets
+     * @param query 
+     * @param args Cursor only
+     * @yields Slice of bookmarked tweets
+     */
+    public async* searchBookmarks(query: string | QueryBuilder, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.searchBookmarksSlice(query, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -435,8 +502,8 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of bookmarked tweets
      */
-    public async searchBookmarks(query: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: query, ...args });
+    public async searchBookmarksSlice(query: string | QueryBuilder, args?: CursorOnly) {
+        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), ...args });
     }
 
     /**
@@ -468,9 +535,26 @@ export class TwitterClient {
      * 
      * @param id Community id
      * @param args Arguments
+     * @yields Slice of tweets
+     */
+    public async* getCommunityTweets(id: string, args?: CommunityTimelineGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getCommunityTweetsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets tweets in a given community
+     * 
+     * Arguments:
+     * 
+     * + `sort?: 'Relevant' | 'Recent' = 'Relevant'` - Sort tweets by
+     * + `cursor?: string`
+     * 
+     * @param id Community id
+     * @param args Arguments
      * @returns Slice of tweets
      */
-    public async getCommunityTweets(id: string, args?: CommunityTimelineGetArgs) {
+    public async getCommunityTweetsSlice(id: string, args?: CommunityTimelineGetArgs) {
         const rankingMode = args?.sort === 'Recent' ? 'Recency' : 'Relevance';
         return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, ...args });
     }
@@ -479,9 +563,20 @@ export class TwitterClient {
      * Gets tweets containing media in a given community
      * @param id Community id
      * @param args Cursor only
+     * @yields Slice of media tweets
+     */
+    public async* getCommunityMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getCommunityMediaSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets tweets containing media in a given community
+     * @param id Community id
+     * @param args Cursor only
      * @returns Slice of media tweets
      */
-    public async getCommunityMedia(id: string, args?: CursorOnly) {
+    public async getCommunityMediaSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.CommunityMediaTimeline, { communityId: id, ...args });
     }
 
@@ -527,9 +622,20 @@ export class TwitterClient {
      * Gets tweets by users on a given list
      * @param id 
      * @param args Cursor only
+     * @yields Slice of tweets
+     */
+    public async* getListTweets(id: string, args?: CursorOnly) {
+        for await (const slice of this.getSlice(args, args => this.getListTweetsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets tweets by users on a given list
+     * @param id 
+     * @param args Cursor only
      * @returns Slice of tweets
      */
-    public async getListTweets(id: string, args?: CursorOnly) {
+    public async getListTweetsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListLatestTweetsTimeline, { listId: id, ...args });
     }
 
@@ -558,10 +664,32 @@ export class TwitterClient {
      * Gets members of a list
      * @param id 
      * @param args Cursor only
+     * @yields Slice of users on list
+     */
+    public async* getListMembers(id: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getListMembersSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets members of a list
+     * @param id 
+     * @param args Cursor only
      * @returns Slice of users on list
      */
-    public async getListMembers(id: string, args?: CursorOnly) {
+    public async getListMembersSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListMembers, { listId: id, ...args });
+    }
+
+    /**
+     * Gets subscribers of a list
+     * @param id 
+     * @param args Cursor only
+     * @yields Slice of users subscribed to the list
+     */
+    public async* getListSubscribers(id: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getListSubscribersSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -570,7 +698,7 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users subscribed to the list
      */
-    public async getListSubscribers(id: string, args?: CursorOnly) {
+    public async getListSubscribersSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListSubscribers, { listId: id, ...args });
     }
 
@@ -702,7 +830,23 @@ export class TwitterClient {
      * @param args Arguments
      * @returns Slice of notifications
      */
-    public async getNotifications(args?: NotificationGetArgs) {
+    public async* getNotifications(args?: NotificationGetArgs): Timeline<Notification> {
+        for await (const slice of this.getSlice(args, this.getNotificationsSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets notifications
+     * 
+     * Arguments:
+     * 
+     * + `type?: 'All' | 'Verified' | 'Mentions' = 'All'` - Filter notifications?
+     * + `cursor?: string`
+     * 
+     * @param args Arguments
+     * @returns Slice of notifications
+     */
+    public async getNotificationsSlice(args?: NotificationGetArgs) {
         return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: args?.type || 'All', ...args });
     }
 
@@ -711,7 +855,17 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of tweets
      */
-    public async getNotifiedTweets(args?: CursorOnly) {
+    public async* getNotifiedTweets(args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, this.getNotifiedTweetsSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets recent tweets from users you allowed notifications from, chronologically
+     * @param args Cursor only
+     * @returns Slice of tweets
+     */
+    public async getNotifiedTweetsSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.device_follow, args);
     }
 
@@ -740,14 +894,39 @@ export class TwitterClient {
      * 
      * Arguments:
      * 
-     * + `type?: 'Algorithmical' | 'Chronological' = 'Algorithmical'` - Type of timeline to fetch
+     * + `type?: 'Algorithmical' | 'Chronological' | 'Generic' = 'Algorithmical'` - Type of timeline to fetch
+     * + `id: string` - The id of the generic timeline (only if `type === 'Generic'`)
+     * + `seenTweetIds?: string[] = []` - ids of already seen tweets
+     * + `cursor?: string`
+     * 
+     * @param args Arguments
+     * @yields Slice of timeline tweets
+     */
+    public async* getTimeline(args?: TimelineGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, this.getTimelineSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets the tweets on your timeline.
+     * Algorithmical timeline gets from the "For you" page;
+     * chronological gets from following, starting from the most recent
+     * 
+     * Arguments:
+     * 
+     * + `type?: 'Algorithmical' | 'Chronological' | 'Generic' = 'Algorithmical'` - Type of timeline to fetch
+     * + `id: string` - The id of the generic timeline (only if `type === 'Generic'`)
      * + `seenTweetIds?: string[] = []` - ids of already seen tweets
      * + `cursor?: string`
      * 
      * @param args Arguments
      * @returns Slice of timeline tweets
      */
-    public async getTimeline(args?: TimelineGetArgs) {
+    public async getTimelineSlice(args?: TimelineGetArgs) {
+        if (args?.type === 'Generic') {
+            return await this.fetch(ENDPOINTS.GenericTimelineById, { timelineId: args.id, cursor: args.cursor });
+        }
+
         const seenTweetIds = args?.seenTweetIds ?? [];
         const requestContext = args?.cursor ? undefined : 'launch';
 
@@ -769,10 +948,29 @@ export class TwitterClient {
      * 
      * @param query Query as string or using QueryBuilder
      * @param args Arguments
-     * @returns Slice of tweets, users, or lists depending on 
+     * @yields Slice of tweets, users, or lists depending on `type`
      * @see `utils/types/querybuilder.ts/QueryBuilder`
      */
-    public async search(query: string | QueryBuilder, args?: SearchArgs) {
+    public async* search(query: string | QueryBuilder, args?: SearchArgs): Timeline<TweetKind | UserKind | ListKind> {
+        for await (const slice of this.getSlice(args, args => this.searchSlice(query, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Performs a standard Twitter search.
+     * All advanced search features can be used like normal, and `QueryBuilder` can be used for complex searches
+     * 
+     * Arguments:
+     * 
+     * + `type?: 'Algorithmical' | 'Chronological' | 'Media' | 'Users' | 'Lists' = 'Algorithmical` - Type of data to search through. `'media'` will have the same effect as putting `filter:media` in the query
+     * + `cursor?: string`
+     * 
+     * @param query Query as string or using QueryBuilder
+     * @param args Arguments
+     * @returns Slice of tweets, users, or lists depending on `type`
+     * @see `utils/types/querybuilder.ts/QueryBuilder`
+     */
+    public async searchSlice(query: string | QueryBuilder, args?: SearchArgs) {
         return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
     }
 
@@ -805,7 +1003,7 @@ export class TwitterClient {
     public async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>> {
         const text = args.text || '';
 
-        if (text.length > 280 && this.#options.longTweetBehavior === 'Fail') {
+        if (text.length > TWEET_CHARACTER_LIMIT && this.#options.longTweetBehavior === 'Fail') {
             return {
                 errors: [{
                     code: -1,
@@ -822,7 +1020,7 @@ export class TwitterClient {
             ? 'ByInvitation'
             : undefined;
 
-        if (text.length > 280 && (this.#options.longTweetBehavior === 'NoteTweet' || this.#options.longTweetBehavior === 'NoteTweetUnchecked')) {
+        if (text.length > TWEET_CHARACTER_LIMIT && (this.#options.longTweetBehavior === 'NoteTweet' || this.#options.longTweetBehavior === 'NoteTweetUnchecked')) {
             return {
                 errors: [{
                     code: -1,
@@ -951,9 +1149,26 @@ export class TwitterClient {
      * 
      * @param id 
      * @param args Arguments
+     * @yields Slice of tweets
+     */
+    public async* getTweet(id: string, args?: TweetGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getTweetSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets a tweet and its replies
+     * 
+     * Arguments:
+     * 
+     * + `sort?: 'Relevant' | 'Recent' | 'Likes' = 'Relevant'` - Sort replies by?
+     * + `cursor?: string`
+     * 
+     * @param id 
+     * @param args Arguments
      * @returns Slice of tweets
      */
-    public async getTweet(id: string, args?: TweetGetArgs) {
+    public async getTweetSlice(id: string, args?: TweetGetArgs) {
         const rankingMode = args?.sort === 'Recent'
             ? 'Recency'
         : args?.sort === 'Likes'
@@ -985,10 +1200,35 @@ export class TwitterClient {
      * Gets hidden replies on a tweet
      * @param tweetId 
      * @param args Cursor only
+     * @yields Slice of tweets
+     */
+    public async* getHiddenReplies(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getHiddenRepliesSlice(tweetId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets hidden replies on a tweet
+     * @param tweetId 
+     * @param args Cursor only
      * @returns Slice of tweets
      */
-    public async getHiddenReplies(tweetId: string, args?: CursorOnly) {
+    public async getHiddenRepliesSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ModeratedTimeline, { rootTweetId: tweetId, ...args });
+    }
+
+    /**
+     * Gets users who liked a tweet
+     * 
+     * In ~June 2024, liked tweet were made private, so this method will return an empty array if the tweet wasn't made by you
+     * 
+     * @param tweetId 
+     * @param args Cursor only
+     * @yields Slice of users
+     */
+    public async* getLikes(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getLikesSlice(tweetId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1000,8 +1240,19 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users
      */
-    public async getLikes(tweetId: string, args?: CursorOnly) {
+    public async getLikesSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Favoriters, { tweetId: tweetId, ...args });
+    }
+
+    /**
+     * Gets users who retweeted a tweet
+     * @param tweetId 
+     * @param args Cursor only
+     * @yields Slice of users
+     */
+    public async* getRetweets(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getRetweetsSlice(tweetId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1010,8 +1261,22 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users
      */
-    public async getRetweets(tweetId: string, args?: CursorOnly) {
+    public async getRetweetsSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Retweeters, { tweetId: tweetId, ...args });
+    }
+
+    /**
+     * Gets quote tweets to a tweet
+     * 
+     * Equivalent to searching for query 
+     * 
+     * @param tweetId 
+     * @param args Cursor only
+     * @yields Slice of tweets
+     */
+    public async* getQuoteTweets(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getQuoteTweetsSlice(tweetId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1023,7 +1288,7 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of tweets
      */
-    public async getQuoteTweets(tweetId: string, args?: CursorOnly) {
+    public async getQuoteTweetsSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as TwitterResponse<Slice<TweetKind>>;
     }
 
@@ -1209,11 +1474,38 @@ export class TwitterClient {
 
     /**
      * Gets tweets from a user chronologically
+     * 
+     * Arguments:
+     * 
+     * + `replies?: boolean = false` - Include replies?
+     * + `cursor?: string`
+     * 
      * @param id User id
-     * @param args Cursor only
+     * @param args Arguments
+     * @yields Slice of user tweets
+     */
+    public async* getUserTweets(id: string, args?: UserTweetsGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserTweetsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    /**
+     * Gets tweets from a user chronologically
+     * 
+     * Arguments:
+     * 
+     * + `replies?: boolean = false` - Include replies?
+     * + `cursor?: string`
+     * 
+     * @param id User id
+     * @param args Arguments
      * @returns Slice of user tweets
      */
-    public async getUserTweets(id: string, args?: CursorOnly) {
+    public async getUserTweetsSlice(id: string, args?: UserTweetsGetArgs) {
+        if (args?.replies) {
+            return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, ...args });
+        }
+
         return await this.fetch(ENDPOINTS.UserTweets, { userId: id, ...args });
     }
 
@@ -1222,9 +1514,21 @@ export class TwitterClient {
      * @param id User id
      * @param args Cursor only
      * @returns Slice of user tweets
+     * @deprecated Combined with `getUserTweets`, with the `replies` argument
      */
-    public async getUserReplies(id: string, args?: CursorOnly) {
+    public async getUserRepliesSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, ...args });
+    }
+
+    /**
+     * Gets media tweets from a user chronologically
+     * @param id User id
+     * @param args Cursor only
+     * @yields Slice of user media tweets
+     */
+    public async* getUserMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserMediaSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1233,8 +1537,22 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of user media tweets
      */
-    public async getUserMedia(id: string, args?: CursorOnly) {
+    public async getUserMediaSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserMedia, { userId: id, ...args });
+    }
+
+    /**
+     * Gets liked tweets of a user chronologically (ordered by the time when each tweet was liked)
+     * 
+     * In ~June 2024, liked tweet were made private, so this method will return an empty array if used on any user other than the current one
+     * 
+     * @param id User id
+     * @param args Cursor only
+     * @yields Slice of tweets
+     */
+    public async* getUserLikes(id: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserLikesSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1246,8 +1564,19 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of tweets
      */
-    public async getUserLikes(id: string, args?: CursorOnly) {
+    public async getUserLikesSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Likes, { userId: id, ...args });
+    }
+
+    /**
+     * Gets highlighted tweets from a user. This feature is only available to verified users
+     * @param id User id
+     * @param args Cursor only
+     * @yields Slice of tweets
+     */
+    public async* getUserHighlightedTweets(id: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserHighlightedTweetsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1256,8 +1585,19 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of tweets
      */
-    public async getUserHighlightedTweets(id: string, args?: CursorOnly) {
+    public async getUserHighlightedTweetsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserHighlightsTweets, { userId: id, ...args });
+    }
+
+    /**
+     * Gets followed users of a user
+     * @param userId 
+     * @param args Cursor only
+     * @yields Slice of users
+     */
+    public async* getFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowingSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1266,8 +1606,19 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users
      */
-    public async getFollowing(userId: string, args?: CursorOnly) {
+    public async getFollowingSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Following, { userId: userId, ...args });
+    }
+
+    /**
+     * Gets followers of a user
+     * @param userId 
+     * @param args Cursor only
+     * @yields Slice of users
+     */
+    public async* getFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowingSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1276,8 +1627,19 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users
      */
-    public async getFollowers(userId: string, args?: CursorOnly) {
+    public async getFollowersSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Followers, { userId: userId, ...args });
+    }
+
+    /**
+     * Gets followers of a user that you also follow
+     * @param userId 
+     * @param args Cursor only
+     * @yields Slice of users
+     */
+    public async* getFollowersYouKnow(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowingSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1286,8 +1648,19 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users
      */
-    public async getFollowersYouKnow(userId: string, args?: CursorOnly) {
+    public async getFollowersYouKnowSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.FollowersYouKnow, { userId: userId, ...args });
+    }
+
+    /**
+     * Gets verified followers of a user
+     * @param userId 
+     * @param args Cursor only
+     * @yields Slice of users
+     */
+    public async* getVerifiedFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getVerifiedFollowersSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1296,8 +1669,22 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users
      */
-    public async getVerifiedFollowers(userId: string, args?: CursorOnly) {
+    public async getVerifiedFollowersSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.BlueVerifiedFollowers, { userId: userId, ...args });
+    }
+
+    /**
+     * Gets super followed users of a user
+     * 
+     * Super follows can be private, so this method may not work consistently
+     * 
+     * @param userId 
+     * @param args Cursor only
+     * @yields Slice of users
+     */
+    public async* getSuperFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getSuperFollowingSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1309,8 +1696,19 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users
      */
-    public async getSuperFollowing(userId: string, args?: CursorOnly) {
+    public async getSuperFollowingSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserCreatorSubscriptions, { userId: userId, ...args });
+    }
+
+    /**
+     * Gets affiliates of a business account
+     * @param userId Business account user id
+     * @param args Cursor only
+     * @yields Slice of users
+     */
+    public async* getAffiliates(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getAffiliatesSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1319,8 +1717,19 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of users
      */
-    public async getAffiliates(userId: string, args?: CursorOnly) {
+    public async getAffiliatesSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserBusinessProfileTeamTimeline, { userId: userId, teamName: 'NotAssigned', ...args });
+    }
+
+    /**
+     * Gets lists created by a user
+     * @param id User id
+     * @param args Cursor only
+     * @yields Slice of lists
+     */
+    public async* getUserLists(id: string, args?: CursorOnly): Timeline<ListKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserListsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
     /**
@@ -1329,7 +1738,7 @@ export class TwitterClient {
      * @param args Cursor only
      * @returns Slice of lists
      */
-    public async getUserLists(id: string, args?: CursorOnly) {
+    public async getUserListsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.CombinedLists, { userId: id, ...args });
     }
 

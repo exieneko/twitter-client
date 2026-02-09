@@ -1,14 +1,24 @@
 import * as flags from './flags.js';
 import * as parsers from './types/parsers.js';
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, Slice, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
 import { gql, v11 } from './utils/index.js';
-import type { Endpoint } from './utils/types/index.js';
+import type { Endpoint, TwitterResponse } from './utils/types/index.js';
 
 export const PUBLIC_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
 export const ALT_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAAFXzAwAAAAAAMHCxpeSDG1gLNLghVe8d74hl6k4%3DRUMF4xAQLsbeBhTSRrCiQpJtxoGWeyHrDb5te2jpGskWDFW82F';
 export const OAUTH_KEY = 'Bearer AAAAAAAAAAAAAAAAAAAAAG5LOQEAAAAAbEKsIYYIhrfOQqm4H8u7xcahRkU%3Dz98HKmzbeXdKqBfUDmElcqYl0cmmKY9KdS2UoNIz3Phapgsowi';
 
-export const MAX_ACCEPTABLE_REQUEST_TIME = 999;
+export const MAX_ACCEPTABLE_REQUEST_TIME = 1000;
+export const MAX_TIMELINE_ITERATIONS = 5;
+export const TWEET_CHARACTER_LIMIT = 280;
+
+export const EMPTY_SLICE: TwitterResponse<Slice<any>> = {
+    errors: [],
+    data: {
+        entries: [],
+        cursors: {}
+    }
+};
 
 export const HEADERS = {
     Accept: '*/*',

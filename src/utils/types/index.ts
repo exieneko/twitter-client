@@ -1,4 +1,5 @@
 import type { Flags } from '../../flags.js';
+import type { Slice } from '../../types/index.js';
 
 export * from './args.js';
 export * from './querybuilder.js';
@@ -52,6 +53,8 @@ export interface TwitterError {
         trace_id: string
     }
 }
+
+export type Timeline<T extends { __typename: string }> = AsyncGenerator<TwitterResponse<Slice<T>>, TwitterResponse<Slice<T>>, unknown>;
 
 
 
