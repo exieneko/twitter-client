@@ -104,7 +104,9 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
             ? 'Violent'
         : value.limitedActionResults?.limited_actions?.at(0)?.action === 'Reply' && value.limitedActionResults?.limited_actions?.at(0)?.prompt.__typename === 'CtaLimitedActionPrompt'
             ? 'LimitedReplies'
-            : 'Blocked'
+        : !!value.limitedActionResults?.limited_actions
+            ? 'Blocked'
+            : undefined
     };
 }
 
