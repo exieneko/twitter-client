@@ -17,7 +17,7 @@ import { QueryBuilder } from './utils/types/querybuilder.js';
  * @example 
  * import { slice, TwitterClient } from '@exieneko/twitter-client';
  * 
- * const twitter = await TwitterClient.new({ ... });
+ * const twitter = await TwitterClient.new(...);
  * const { errors, data } = await slice(twitter.getTweet('123456789', { sort: 'Likes' }));
  * 
  * @param timeline The timeline returned by the generator function
@@ -35,7 +35,17 @@ export class TwitterClient {
     #transaction: ClientTransaction;
     #tokens: Tokens;
     #options: Options;
-    public twid?: string;
+
+    /**
+     * The currently logged-in user. `undefined` by default
+     * 
+     * This value should be set by calling {@link TwitterClient.setSelf}. Once set, it will be automatically updated whenever {@link TwitterClient.getUser} returns the same user
+     * 
+     * @example
+     * const twitter = await TwitterClient.new(...);
+     * await twitter.setSelf();
+     * console.log(twitter.self);
+     */
     public self?: User;
 
     private constructor(transaction: ClientTransaction, tokens: Tokens, options: Options) {
@@ -43,7 +53,7 @@ export class TwitterClient {
         this.#tokens = tokens;
         this.#options = options;
 
-        if (this.#options.language === 'en-US' || this.#options.language === 'en-GB') {
+        if (this.#options.language.toLowerCase().startsWith('en-')) {
             this.#options.language = 'en';
         }
     }
@@ -78,12 +88,10 @@ export class TwitterClient {
             transaction,
             tokens,
             {
-                autoFetchSelf: true,
                 domain: 'twitter.com',
                 language: 'en',
                 longTweetBehavior: 'Force',
                 proxyUrl: undefined,
-                twid: undefined,
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
                 verbose: false,
                 ...options
@@ -94,30 +102,6 @@ export class TwitterClient {
 
         if (client.#options.language !== 'en') {
             client.warn('Setting `language` to values other than "en" may have unexpected effects - if you find any bugs, please open an issue here: https://github.com/exieneko/twitter-client/issues <3');
-        }
-
-        client.twid = client.#options.twid;
-
-        if (client.#options.autoFetchSelf) {
-            const { errors, data: settings } = !!client.twid ? { errors: [] } : await client.getSettings();
-
-            if (errors.length > 0) {
-                client.error(`Failed to set \`self\` because of errors while calling \`getSettings()\`: ${errors}`);
-            }
-
-            const { errors: userErrors, data: user } = await client.getUser(client.twid || settings!.username, { byUsername: !client.twid });
-
-            if (userErrors.length > 0) {
-                client.error(`Failed to set \`self\` because of errors while calling \`getUser(${client.twid || settings?.username}, { byUsername: ${!client.twid} })\`: ${userErrors}`);
-            }
-
-            if (user?.__typename !== 'User') {
-                client.error(`Failed to set \`self\` because response data returned a suspended or unavailable user`);
-                return client;
-            }
-
-            client.self = user;
-            client.twid = user.id;
         }
 
         return client;
@@ -155,12 +139,10 @@ export class TwitterClient {
 
     private getHeaders(token?: string, endpointKind: EndpointKind = 'GraphQL', url?: string, transactionId?: string): Record<string, string> {
         const tokenHeaders = () => {
-            const twid = this.twid ?? this.self?.id;
-
             return {
                 'x-csrf-token': this.#tokens.csrf,
-                cookie: !!twid
-                    ? `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; twid=u%3D${twid}; lang=${this.#options.language}`
+                cookie: !!this.self?.id
+                    ? `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; twid=u%3D${this.self.id}; lang=${this.#options.language}`
                     : `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; lang=${this.#options.language}`
             };
         }
@@ -302,6 +284,35 @@ export class TwitterClient {
 
         return EMPTY_SLICE;
     }
+
+
+
+    /**
+     * Sets the {@link TwitterClient.self} property and returns its value
+     * 
+     * @returns User
+     */
+    public async setSelf(): Promise<TwitterResponse<User>> {
+        const { errors, data: settings } = await this.getSettings();
+
+        if (!settings) {
+            return { errors };
+        }
+
+        const { errors: errors2, data: user } = await this.getUser(settings.username, { byUsername: true });
+
+        if (!user || user.__typename !== 'User') {
+            return { errors: errors2 };
+        }
+
+        this.self = user as User;
+
+        return {
+            errors: [...errors, ...errors2],
+            data: this.self
+        };
+    }
+
 
 
     /**
@@ -1473,7 +1484,7 @@ export class TwitterClient {
             return { errors, data: user };
         }
 
-        if (user?.__typename === 'User' && (this.twid === user.id || this.self?.username === user.username)) {
+        if (user?.__typename === 'User' && this.self?.id === user.id) {
             this.self = user;
         }
 

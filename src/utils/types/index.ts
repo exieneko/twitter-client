@@ -65,15 +65,6 @@ export interface Tokens {
 
 export interface Options {
     /**
-     * Automatically performs `TwitterClient.getSettings()` and `TwitterClient.getUser()` to set `TwitterClient.self` to the currently logged-in user  
-     * If set to `false`, `TwitterClient.self` will be `undefined` and needs to be set manually, but will improve initialization time
-     * 
-     * Provides `twid` cookie if `self` is set
-     * 
-     * Default: `true`
-     */
-    autoFetchSelf: boolean,
-    /**
      * Controls which domain gets fetched by all requests. This also affects some response data that includes URLs. "x.com" by default
      * 
      * Default: `'twitter.com'`
@@ -102,15 +93,6 @@ export interface Options {
      * Default: `undefined`
      */
     proxyUrl?: string,
-    /**
-     * Your user id  
-     * If set, any `TwitterClient.getUser` calls will overwrite `TwitterClient.self` if the ids match
-     * 
-     * Provides `twid` cookie, unless overriden by `TwitterClient.self.id`
-     * 
-     * Default: `undefined`
-     */
-    twid?: string,
     /**
      * User-Agent header to send with requests
      * 
