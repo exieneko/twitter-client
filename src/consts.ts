@@ -797,6 +797,21 @@ export const ENDPOINTS = {
         token: OAUTH_KEY,
         parser: data => !!data.id_str
     },
+    cards_create: {
+        url: 'https://caps.twitter.com/v2/cards/create.json',
+        method: 'POST',
+        params: {} as { card_data: string },
+        requiresTransactionId: true,
+        parser: data => data.card_uri as string
+    },
+    capi_passthrough_1: {
+        url: 'https://caps.twitter.com/v2/capi/passthrough/1',
+        method: 'POST',
+        params: {} as { 'twitter:string:card_uri': string, 'twitter:long:original_tweet_id': string, 'twitter:string:response_card_name'?: string, 'twitter:string:selected_choice': number },
+        variables: { 'twitter:string:cards_platform': 'Web-12' },
+        requiresTransactionId: true,
+        parser: data => !!data.card.url
+    },
     media_upload_INIT: {
         url: 'https://upload.twitter.com/1.1/media/upload.json',
         method: 'GET',

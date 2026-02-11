@@ -1,4 +1,4 @@
-import type { DraftTweet, Entry, Media, Retweet, ScheduledTweet, Slice, TweetKind, Tweet, TweetMedia, TweetTombstone, TweetVideo, User, Cursor } from '../index.js';
+import type { DraftTweet, Entry, Media, Retweet, ScheduledTweet, Slice, TweetKind, Tweet, TweetMedia, TweetTombstone, TweetVideo, User, Cursor, CardKind, CardImage } from '../index.js';
 import * as p from '../parsers.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
@@ -67,6 +67,7 @@ export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Twe
         } : undefined,
         bookmarked: !!t.legacy.bookmarked,
         bookmarks_count: t.legacy.bookmark_count || 0,
+        card: card(t.card?.legacy),
         created_at: new Date(t.legacy.created_at).toISOString(),
         editing: {
             allowed: !!t.edit_control?.is_edit_eligible,
@@ -288,6 +289,83 @@ export function scheduledTweet(value: any): ScheduledTweet {
             media_ids: x.media_ids
         }))
     };
+}
+
+
+
+export function card(value: any): CardKind | undefined {
+    function get(bindingValues: { key: string, value: { boolean_value?: boolean, string_value?: string, image_value?: CardImage } }[], key: string) {
+        return bindingValues.find(v => v.key === key)?.value;
+    }
+
+    if (!value) {
+        return;
+    }
+
+    const bv = value.binding_values;
+    const choiceCount = Number(get(bv, 'choice_count')?.string_value || '0');
+
+    const common = {
+        card_name: value.name,
+        card_url: value.url
+    };
+
+    if (value.name.includes(':audiospace')) {
+        return {
+            __typename: 'Audiospace',
+            author: p.user(value.user_refs_results?.at(0)?.result) as User,
+            ...common
+        };
+    }
+
+    if (value.name.includes(':broadcast')) {
+        return {
+            __typename: 'Broadcast',
+            author: p.user(value.user_refs_results?.at(0)?.result) as User,
+            ended: get(bv, 'broadcast_state')?.string_value?.toUpperCase() === 'ENDED',
+            id: get(bv, 'broadcast_id')?.string_value!,
+            media_id: get(bv, 'broadcast_media_id')?.string_value!,
+            media_key: get(bv, 'broadcast_media_key')?.string_value!,
+            thumbnail: get(bv, 'broadcast_thumbnail_original')?.image_value,
+            title: get(bv, 'title')?.string_value!,
+            width: Number(get(bv, 'broadcast_width')?.string_value || '0'),
+            height: Number(get(bv, 'broadcast_height')?.string_value || '0'),
+            ...common
+        };
+    }
+
+    if (value.name.includes(':poll')) {
+        let totalVotes = 0;
+
+        return {
+            __typename: 'Poll',
+            choices: [...Array(choiceCount).keys()].map(i => {
+                const votes = Number(get(bv, `choice${i + 1}_count`)?.string_value || '0');
+                totalVotes += votes;
+
+                return {
+                    text: get(bv, `choice${i + 1}_label`)?.string_value || '',
+                    image: get(bv, `choice${i + 1}_image`)?.image_value,
+                    votes_count: votes
+                };
+            }),
+            duration: Number(get(bv, 'duration_minutes')?.string_value || '0') * 60,
+            ends_at: new Date(get(bv, 'end_datetime_utc')?.string_value || 0).toISOString(),
+            total_votes_count: totalVotes,
+            ...common
+        };
+    }
+
+    if (value.name.includes('summary')) {
+        return {
+            __typename: 'Embed',
+            description: get(bv, 'description')?.string_value || '',
+            domain: get(bv, 'domain')?.string_value!,
+            thumbnail: get(bv, 'thumbnail_image_original')?.image_value,
+            title: get(bv, 'title')?.string_value!,
+            ...common
+        };
+    }
 }
 
 

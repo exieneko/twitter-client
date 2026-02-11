@@ -1,6 +1,5 @@
 import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag } from '../../types/index.js';
 
-
 export interface CursorOnly {
     cursor?: string
 }
@@ -66,9 +65,24 @@ export type TimelineGetArgs = ({
     id: string
 }) & CursorOnly;
 
+export interface TweetVoteArgs {
+    tweetId: string,
+    cardUri: string,
+    cardName: string,
+    choice: number
+}
+
 export type TweetReplyPermission = 'Following' | 'Verified' | 'Mentioned' | 'None';
 export interface TweetCreateArgs {
     text?: string,
+    card?: {
+        type: 'Poll',
+        duration: number,
+        choices: {
+            text: string,
+            media_id?: string
+        }[]
+    },
     replyTo: string,
     mediaIds?: string[],
     sensitive?: boolean,

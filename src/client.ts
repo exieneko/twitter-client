@@ -6,7 +6,7 @@ import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 import { EMPTY_SLICE, ENDPOINTS, HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, MAX_TIMELINE_ITERATIONS, PUBLIC_TOKEN, TWEET_CHARACTER_LIMIT } from './consts.js';
 import type { Media, TweetKind, Tweet, Slice, User, UserKind, Notification, ListKind } from './types/index.js';
 import { endpointKind, toSearchParams } from './utils/index.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options, EndpointKind, Timeline, UserTweetsGetArgs } from './utils/types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options, EndpointKind, Timeline, UserTweetsGetArgs, TweetVoteArgs } from './utils/types/index.js';
 import { QueryBuilder } from './utils/types/querybuilder.js';
 
 /**
@@ -1062,8 +1062,46 @@ export class TwitterClient {
             };
         }
 
+        let cardUri: string | undefined = undefined;
+
+        if (args.card?.type === 'Poll') {
+            if (args.card.choices.length < 2 || args.card.choices.length > 4) {
+                return {
+                    errors: [{
+                        code: -1,
+                        message: `Polls must have between 2-4 choices (got ${args.card.choices.length})`
+                    }]
+                };
+            }
+
+            const hasImage = args.card.choices.some(choice => !!choice.media_id);
+
+            const { errors, data: uri } = await this.fetch(ENDPOINTS.cards_create, {
+                card_data: JSON.stringify({
+                    'twitter:api:api:endpoint': '1',
+                    'twitter:card': hasImage ? `1906814671912599552:poll_choice_images` : `poll${args.card.choices.length}choice_text_only`,
+                    'twitter:long:duration_minutes': Math.floor(args.card.duration / 60),
+                    'twitter:string:choice1_label': args.card!.choices.at(0)!.text,
+                    'twitter:image:choice1_image:src:id': hasImage ? `mis://${args.card!.choices.at(0)!.media_id}` : undefined,
+                    'twitter:string:choice2_label': args.card!.choices.at(1)!.text,
+                    'twitter:image:choice2_image:src:id': hasImage ? `mis://${args.card!.choices.at(1)!.media_id}` : undefined,
+                    'twitter:string:choice3_label': args.card!.choices.at(2)?.text,
+                    'twitter:image:choice3_image:src:id': hasImage ? `mis://${args.card!.choices.at(2)?.media_id}` : undefined,
+                    'twitter:string:choice4_label': args.card!.choices.at(3)?.text,
+                    'twitter:image:choice4_image:src:id': hasImage ? `mis://${args.card!.choices.at(3)?.media_id}` : undefined
+                })
+            });
+
+            if (!uri) {
+                return { errors };
+            }
+
+            cardUri = uri;
+        }
+
         const { errors, data: tweet } = await this.fetch(ENDPOINTS.CreateTweet, {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
+            card_uri: cardUri,
             conversation_control: mode ? { mode } : undefined,
             media: {
                 media_entities: args.mediaIds?.map(id => ({
@@ -1416,6 +1454,37 @@ export class TwitterClient {
      */
     public async unpinTweet(id: string) {
         return await this.fetch(ENDPOINTS.UnpinTweet, { tweet_id: id });
+    }
+
+    /**
+     * Vote on a poll
+     * 
+     * Arguments:
+     * 
+     * + `tweetId: string` - Tweet id
+     * + `cardUri: string` - Card uri
+     * + `cardName?: string` - Card name is either "1906814671912599552:poll_choice_images" (if it has images) or "pollNchoice_text_only" (where N is the choices count)
+     * + `choice: number` - 1-based index of the choice
+     * 
+     * @param args Arguments
+     * @returns `true` on success
+     */
+    public async vote(args: TweetVoteArgs): Promise<TwitterResponse<boolean>> {
+        if (args.choice < 1 || args.choice > 4) {
+            return {
+                errors: [{
+                    code: -1,
+                    message: `Poll choice must be between 1-4 (got ${args.choice})`
+                }]
+            };
+        }
+
+        return await this.fetch(ENDPOINTS.capi_passthrough_1, {
+            'twitter:long:original_tweet_id': args.tweetId,
+            'twitter:string:card_uri': args.cardUri,
+            'twitter:string:response_card_name': args.cardName,
+            'twitter:string:selected_choice': args.choice
+        });
     }
 
     /**

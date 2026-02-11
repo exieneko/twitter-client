@@ -24,7 +24,7 @@ export interface Tweet {
     bookmarked: boolean,
     /** Amount of users that bookmarked the tweet */
     bookmarks_count: number,
-    // card: {},
+    card?: CardKind,
     // community: {},
     /** The tweet's creation datetime as an ISO string */
     created_at: string,
@@ -232,3 +232,60 @@ export interface Media {
         progress?: number
     }
 }
+
+interface Card {
+    card_name: string,
+    card_url: string
+}
+
+export interface CardImage {
+    width: number,
+    height: number,
+    url: string
+}
+
+
+
+export interface Embed extends Card {
+    __typename: 'Embed',
+    description: string,
+    domain: string,
+    thumbnail?: CardImage,
+    title: string
+}
+
+export interface Poll extends Card {
+    __typename: 'Poll',
+    choices: PollChoice[],
+    /** Duration of the poll in seconds */
+    duration: number,
+    ends_at: string,
+    total_votes_count: number
+}
+
+export interface PollChoice {
+    text: string,
+    image?: CardImage,
+    votes_count: number,
+}
+
+export interface BroadcastCard extends Card {
+    __typename: 'Broadcast',
+    author: User,
+    ended: boolean,
+    id: string,
+    media_id: string,
+    media_key: string,
+    thumbnail?: CardImage,
+    title: string,
+    width: number,
+    height: number
+}
+
+// TODO
+export interface Audiospace extends Card {
+    __typename: 'Audiospace',
+    author: User
+}
+
+export type CardKind = Audiospace | BroadcastCard | Embed | Poll;
