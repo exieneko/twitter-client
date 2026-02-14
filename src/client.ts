@@ -1960,6 +1960,14 @@ export class TwitterClient {
     }
 
     /**
+     * Removes a user from following you
+     * @param id 
+     */
+    public async softblockUser(id: string) {
+        return await this.fetch(ENDPOINTS.RemoveFollower, { target_user_id: id });
+    }
+
+    /**
      * Mutes a user
      * @param id 
      * @param args By username?
