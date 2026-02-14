@@ -98,8 +98,12 @@ export interface TweetImage {
     ai_generated: boolean,
     /** Alt text set on the media by the author of the tweet */
     alt_text?: string,
-    /** Whether or not the media is available to view. May be `false` if the media has been deleted or copyright claimed */
+    /** 
+     * Whether or not the media is available to view. May be `false` if the media has been deleted or copyright claimed
+     * @deprecated Replaced by TweetImage.availability
+     */
     available: boolean,
+    availability: TweetMediaAvailability,
     /** Original width and height of the media */
     size: {
         width: number,
@@ -127,6 +131,8 @@ export interface TweetVideo extends Omit<TweetImage, '__typename'> {
 export interface TweetGif extends Omit<TweetVideo, '__typename'> {
     __typename: 'Gif'
 }
+
+export type TweetMediaAvailability = 'OK' | 'Copyright' | 'GeoBlocked' | 'Other';
 
 /** Union type of tweet media kinds */
 export type TweetMedia = TweetImage | TweetGif | TweetVideo;

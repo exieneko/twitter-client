@@ -117,11 +117,18 @@ export function media(value: any): TweetMedia {
         ai_generated: !!value.media_results?.result?.grok_image_annotation,
         alt_text: value.ext_alt_text || undefined,
         available: value.ext_media_availability?.status === 'Available',
+        availability: value.ext_media_availability?.reason === undefined
+            ? 'OK'
+        : value.ext_media_availability.reason === 'DMCAed'
+            ? 'Copyright'
+        : value.ext_media_availability.reason === 'Geoblocked'
+            ? 'GeoBlocked'
+            : 'Other',
         size: {
             width: value.original_info.width,
             height: value.original_info.height
         }
-    };
+    } satisfies Partial<TweetMedia>;
 
     if (value.type !== 'photo') {
         const variants: TweetVideo['variants'] = value.video_info?.variants || [];
