@@ -1,4 +1,4 @@
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag } from '../../types/index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag } from './birdwatch/index.js';
 
 export interface CursorOnly {
     cursor?: string

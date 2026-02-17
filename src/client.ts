@@ -4,10 +4,9 @@ import { fetch, FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, MAX_TIMELINE_ITERATIONS, PUBLIC_TOKEN, TWEET_CHARACTER_LIMIT } from './consts.js';
-import type { Media, TweetKind, Tweet, Slice, User, UserKind, Notification, ListKind } from './types/index.js';
+import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, BySlug, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, EndpointKind, ListCreateArgs, ListKind, Media, MediaUploadArgs, Notification, NotificationGetArgs, Options, Params, ScheduledTweetCreateArgs, SearchArgs, Slice, ThreadTweetArgs, Timeline, TimelineGetArgs, Tokens, Tweet, TweetCreateArgs, TweetGetArgs, TweetKind, TweetReplyPermission, TweetVoteArgs, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, User, UserKind, UserTweetsGetArgs } from './types/index.js';
 import { endpointKind, toSearchParams } from './utils/index.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, BySlug, ListCreateArgs, MediaUploadArgs, NotificationGetArgs, Params, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, Tokens, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, Options, EndpointKind, Timeline, UserTweetsGetArgs, TweetVoteArgs } from './utils/types/index.js';
-import { QueryBuilder } from './utils/types/querybuilder.js';
+import type { QueryBuilder } from './utils/querybuilder.js';
 
 /**
  * Shorthand for quickly getting only the current slice of a timeline, then discarding the generator. If you want to reuse the generator, call `timeline.next()`

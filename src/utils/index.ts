@@ -1,4 +1,4 @@
-import type { Endpoint, EndpointKind } from './types/index.js';
+import type { Endpoint, EndpointKind } from '../types/internal.js';
 
 export function v11(route: string, useSubdomain: boolean = true) {
     if (useSubdomain) {

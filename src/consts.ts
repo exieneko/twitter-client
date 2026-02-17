@@ -2,7 +2,7 @@ import * as flags from './flags.js';
 import * as parsers from './types/parsers.js';
 import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, Slice, Tweet, TweetTombstone, UnavailableUser, User } from './types/index.js';
 import { gql, v11 } from './utils/index.js';
-import type { Endpoint, TwitterResponse } from './utils/types/index.js';
+import type { Endpoint, TwitterResponse } from './types/internal.js';
 
 export const PUBLIC_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
 export const ALT_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAAFXzAwAAAAAAMHCxpeSDG1gLNLghVe8d74hl6k4%3DRUMF4xAQLsbeBhTSRrCiQpJtxoGWeyHrDb5te2jpGskWDFW82F';
