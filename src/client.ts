@@ -4,8 +4,8 @@ import { fetch, FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, MAX_TIMELINE_ITERATIONS, PUBLIC_TOKEN, TWEET_CHARACTER_LIMIT } from './consts.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, BySlug, ByUsername, CommunityTimelineGetArgs, CursorOnly, Endpoint, EndpointKind, ListCreateArgs, ListKind, Media, MediaUploadArgs, Notification, NotificationGetArgs, Options, Params, ScheduledTweetCreateArgs, SearchArgs, Slice, ThreadTweetArgs, Timeline, TimelineGetArgs, Tokens, Tweet, TweetCreateArgs, TweetGetArgs, TweetKind, TweetReplyPermission, TweetVoteArgs, TwitterResponse, UnsentTweetsGetArgs, UpdateProfileArgs, User, UserKind, UserTweetsGetArgs } from './types/index.js';
-import { endpointKind, toSearchParams } from './utils/index.js';
+import { BirthDateVisibility, CommunityTweetsOrder, NotificationTimelineFilter, ReplyPermission, TweetOrder, type BirdwatchRateNoteArgs, type BlockedAccountsGetArgs, type BySlug, type ByUsername, type CommunityTimelineGetArgs, type CursorOnly, type Endpoint, type EndpointKind, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type Options, type Params, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { endpointKind, match, toSearchParams } from './utils/index.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 
 /**
@@ -401,24 +401,18 @@ export class TwitterClient {
             birthdate_year: args.birthday.getFullYear(),
             birthdate_month: args.birthday.getMonth() + 1,
             birthdate_day: args.birthday.getDate(),
-            birthdate_year_visibility: args.birthYearVisibility === 'Private'
-                ? 'self'
-            : args.birthYearVisibility === 'Mutuals'
-                ? 'mutualfollow'
-            : args.birthYearVisibility === 'Followers'
-                ? 'followers'
-            : args.birthYearVisibility === 'Following'
-                ? 'following'
-                : 'public',
-            birthdate_visibility: args.birthDayVisibility === 'Private'
-                ? 'self'
-            : args.birthDayVisibility === 'Mutuals'
-                ? 'mutualfollow'
-            : args.birthDayVisibility === 'Followers'
-                ? 'followers'
-            : args.birthDayVisibility === 'Following'
-                ? 'following'
-                : 'public'
+            birthdate_year_visibility: match(args.birthYearVisibility, [
+                [BirthDateVisibility.Private, 'self'],
+                [BirthDateVisibility.Mutuals, 'mutualfollow'],
+                [BirthDateVisibility.Followers, 'followers'],
+                [BirthDateVisibility.Following, 'following'],
+            ], 'public'),
+            birthdate_visibility: match(args.birthDayVisibility, [
+                [BirthDateVisibility.Private, 'self'],
+                [BirthDateVisibility.Mutuals, 'mutualfollow'],
+                [BirthDateVisibility.Followers, 'followers'],
+                [BirthDateVisibility.Following, 'following'],
+            ], 'public'),
         });
     }
 
@@ -587,7 +581,7 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     private async getCommunityTweetsSlice(id: string, args?: CommunityTimelineGetArgs) {
-        const rankingMode = args?.sort === 'Recent' ? 'Recency' : 'Relevance';
+        const rankingMode = args?.orderBy === CommunityTweetsOrder.New ? 'Recency' : 'Relevance';
         return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, cursor: args?.cursor });
     }
 
@@ -836,9 +830,7 @@ export class TwitterClient {
      * @returns `true` on success
      */
     public async unpinList(id: string) {
-        return await this.fetch(ENDPOINTS.UnpinTimeline, {
-            pinnedTimelineItem: { id, pinned_timeline_type: 'List' }
-        });
+        return await this.fetch(ENDPOINTS.UnpinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
     }
 
     public async muteList(id: string) {
@@ -879,7 +871,8 @@ export class TwitterClient {
      * @returns Slice of notifications
      */
     private async getNotificationsSlice(args?: NotificationGetArgs) {
-        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: args?.type || 'All', cursor: args?.cursor });
+        const timelineType = !args?.filter || args.filter === 'None' ? 'All' : args.filter;
+        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: timelineType, cursor: args?.cursor });
     }
 
     /**
@@ -954,19 +947,19 @@ export class TwitterClient {
      * @param args Arguments
      * @returns Slice of timeline tweets
      */
-    private async getTimelineSlice(args?: TimelineGetArgs) {
-        if (args?.type === 'Generic') {
+    private async getTimelineSlice(args: TimelineGetArgs = {}) {
+        if ('id' in args) {
             return await this.fetch(ENDPOINTS.GenericTimelineById, { timelineId: args.id, cursor: args.cursor });
         }
 
-        const seenTweetIds = args?.seenTweetIds ?? [];
-        const requestContext = args?.cursor ? undefined : 'launch';
+        const seenTweetIds = args.seenTweetIds ?? [];
+        const requestContext = args.cursor ? undefined : 'launch';
 
-        if (args?.type === 'Chronological') {
+        if (args?.kind === 'Chronological') {
             return await this.fetch(ENDPOINTS.HomeLatestTimeline, { seenTweetIds, requestContext, cursor: args.cursor });
         }
 
-        return await this.fetch(ENDPOINTS.HomeTimeline, { seenTweetIds, requestContext, cursor: args?.cursor });
+        return await this.fetch(ENDPOINTS.HomeTimeline, { seenTweetIds, requestContext, cursor: args.cursor });
     }
 
     /**
@@ -1044,13 +1037,11 @@ export class TwitterClient {
             };
         }
 
-        const mode = args.replyPermission === 'Following'
-            ? 'Community'
-        : args.replyPermission === 'Verified'
-            ? 'Verified'
-        : args.replyPermission === 'Mentioned'
-            ? 'ByInvitation'
-            : undefined;
+        const mode = match(args.replyPermission, [
+            [ReplyPermission.Following, 'Community'],
+            [ReplyPermission.Verified, 'Verified'],
+            [ReplyPermission.Following, 'ByInvitation']
+        ] as const);
 
         if (text.length > TWEET_CHARACTER_LIMIT && (this.#options.longTweetBehavior === 'NoteTweet' || this.#options.longTweetBehavior === 'NoteTweetUnchecked')) {
             return {
@@ -1239,11 +1230,10 @@ export class TwitterClient {
      * @returns Slice of tweets
      */
     private async getTweetSlice(id: string, args?: TweetGetArgs) {
-        const rankingMode = args?.sort === 'Recent'
-            ? 'Recency'
-        : args?.sort === 'Likes'
-            ? 'Likes'
-            : 'Relevance';
+        const rankingMode = match(args?.orderBy, [
+            [TweetOrder.New, 'Recency'],
+            [TweetOrder.Likes, 'Likes']
+        ] as const, 'Relevance');
 
         return await this.fetch(ENDPOINTS.TweetDetail, { focalTweetId: id, rankingMode, cursor: args?.cursor });
     }
@@ -1492,16 +1482,15 @@ export class TwitterClient {
      * @param permission Reply permission, or `undefined` to allow everyone to reply
      * @returns `true` on success
      */
-    public async changeReplyPermission(tweetId: string, permission?: TweetReplyPermission) {
-        if (!permission || permission === 'None') {
+    public async changeReplyPermission(tweetId: string, permission?: ReplyPermission) {
+        if (!permission || permission === ReplyPermission.Everyone) {
             return await this.fetch(ENDPOINTS.ConversationControlDelete, { tweet_id: tweetId });
         }
 
-        const mode = permission === 'Following'
-            ? 'Community'
-        : permission === 'Verified'
-            ? 'Verified'
-            : 'ByInvitation';
+        const mode = match(permission, [
+            [ReplyPermission.Following, 'Community'],
+            [ReplyPermission.Verified, 'Verified']
+        ] as const, 'ByInvitation');
 
         return await this.fetch(ENDPOINTS.ConversationControlChange, { tweet_id: tweetId, mode });
     }

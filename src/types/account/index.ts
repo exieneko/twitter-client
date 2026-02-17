@@ -1,9 +1,11 @@
+import type { Enum } from '../index.js';
+
 export interface Settings {
     autoplay: boolean,
     country: string,
     display_sensitive_media: boolean,
-    dm_allowed_from: 'All' | 'Verified' | 'Following',
-    dm_groups_allowed_from: 'All' | 'Following',
+    dm_allowed_from: InboxPrivacy,
+    dm_groups_allowed_from: InboxPrivacy,
     dm_receipts: boolean,
     dm_quality_filter: boolean,
     is_eu: boolean,
@@ -22,3 +24,10 @@ export interface Settings {
     },
     username: string
 }
+
+export const InboxPrivacy = {
+    Everyone: 'Everyone',
+    Following: 'Following',
+    Verified: 'Verified'
+} as const;
+export type InboxPrivacy = Enum<typeof InboxPrivacy>;

@@ -1,4 +1,5 @@
-import type { BirdwatchNote, BirdwatchNotesOnTweet, BirdwatchUser, Slice, TweetKind } from '../index.js';
+import { match } from '../../utils/index.js';
+import { BirdwatchNoteStatus, type BirdwatchNote, type BirdwatchNotesOnTweet, type BirdwatchUser, type Slice, type TweetKind } from '../index.js';
 import * as p from '../parsers.js';
 
 export function birdwatchUser(value: any, isAi?: boolean): BirdwatchUser {
@@ -40,11 +41,10 @@ export function birdwatchNote(value: any): BirdwatchNote {
         has_trustworthy_sources: !!value.data_v1.trustworthy_sources,
         lang: value.language || 'en',
         media_matches_count: value.media_note_matches_v2?.match_count || Number(value.media_note_matches) || 0,
-        status: value.rating_status === 'CurrentlyRatedHelpful'
-            ? 'RatedHelpful'
-        : value.rating_status === 'CurrentlyRatedNotHelpful'
-            ? 'RatedUnhelpful'
-            : 'Unrated',
+        status: match(value.rating_status, [
+            ['CurrentlyRatedHelpful', BirdwatchNoteStatus.RatedHelpful],
+            ['CurrentlyRatedNotHelpful', BirdwatchNoteStatus.RatedUnhelpful],
+        ], BirdwatchNoteStatus.Unrated),
         tags: {
             ...(value.classification !== 'NotMisleading' ? {
                 __typename: 'MisleadingTweet',

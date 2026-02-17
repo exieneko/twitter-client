@@ -1,3 +1,5 @@
+import { Enum } from '../index.js';
+
 /**
  * Represents a single user
  */
@@ -119,7 +121,11 @@ export interface User {
     want_notifications: boolean
 }
 
-export type FanAccountKind = 'Fan' | 'Parody';
+export const FanAccountKind = {
+    Fan: 'Fan',
+    Parody: 'Parody'
+} as const;
+export type FanAccountKind = Enum<typeof FanAccountKind>;
 
 /** 
  * + `Unverified` - No verification
@@ -127,7 +133,13 @@ export type FanAccountKind = 'Fan' | 'Parody';
  * + `Business` - Verification for being a business or organization, aka gold checkmark
  * + `Government` - Verification for being a government official, aka gray checkmark
 */
-export type VerificationKind = 'Unverified' | 'Blue' | 'Business' | 'Government';
+export const VerificationKind = {
+    Unverified: 'Unverified',
+    Blue: 'Blue',
+    Business: 'Business',
+    Government: 'Government'
+} as const;
+export type VerificationKind = Enum<typeof VerificationKind>;
 
 /**
  * Represents a user that doesn't exist, such as a user that has been suspended deactivated or a username that isn't taken

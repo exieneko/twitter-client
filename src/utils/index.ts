@@ -1,5 +1,32 @@
 import type { Endpoint, EndpointKind } from '../types/internal.js';
 
+export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][]): V | undefined;
+export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][], or: V | (() => V)): V;
+
+export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][], or?: V | (() => V)) {
+    for (const [k, value, condition] of cases) {
+        if ((Array.isArray(k) && k.includes(key)) || key === k) {
+            if ((typeof condition === 'boolean' && !condition) || (typeof condition === 'function' && !condition())) {
+                continue;
+            }
+
+            if (typeof value === 'function') {
+                return (value as () => V)();
+            }
+
+            return value;
+        }
+    }
+
+    if (!!or && typeof or === 'function') {
+        return (or as () => V)();
+    }
+
+    return or;
+}
+
+
+
 export function v11(route: string, useSubdomain: boolean = true) {
     if (useSubdomain) {
         return `https://api.twitter.com/1.1/${route}`;

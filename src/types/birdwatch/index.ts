@@ -1,3 +1,5 @@
+import type { Enum } from '../index.js';
+
 /**
  * Represents a single Birdwatch note
  */
@@ -82,24 +84,63 @@ interface HelpfulnessCount {
 /**
  * Status of a Birdwatch note
  */
-export type BirdwatchNoteStatus = 'RatedHelpful' | 'RatedUnhelpful' | 'Unrated';
+export const BirdwatchNoteStatus = {
+    RatedHelpful: 'RatedHelpful',
+    RatedUnhelpful: 'RatedUnhelpful',
+    Unrated: 'Unrated'
+} as const;
+export type BirdwatchNoteStatus = Enum<typeof BirdwatchNoteStatus>;
 
 /**
  * Tags showing why a Birdwatch note is helpful
  */
-export type BirdwatchHelpfulTag = 'GoodSources' | 'Clear' | 'AddressesClaim' | 'ImportantContext' | 'UnbiasedLanguage' | 'Other';
+export const BirdwatchHelpfulTag = {
+    GoodSources: 'GoodSources',
+    Clear: 'Clear',
+    AddressesClaim: 'AddressesClaim',
+    ImportantContext: 'ImportantContext',
+    UnbiasedLanguage: 'UnbiasedLanguage',
+    Other: 'Other'
+} as const;
+export type BirdwatchHelpfulTag = Enum<typeof BirdwatchHelpfulTag>;
 
 /**
  * Tags showing why a Birdwatch note isn't helpful
  */
-export type BirdwatchUnhelpfulTag = 'NoSources' | 'IrrelevantSources' | 'Incorrect' | 'OpinionSpeculation' | 'Unclear' | 'MissingKeyPoints' | 'Rude' | 'TwitterViolationAny' | 'Other';
+export const BirdwatchUnhelpfulTag = {
+    NoSources: 'NoSources',
+    IrrelevantSources: 'IrrelevantSources',
+    Incorrect: 'Incorrect',
+    OpinionSpeculation: 'OpinionSpeculation',
+    Unclear: 'Unclear',
+    MissingKeyPoints: 'MissingKeyPoints',
+    Rude: 'Rude',
+    TwitterViolationAny: 'TwitterViolationAny',
+    Other: 'Other'
+} as const;
+export type BirdwatchUnhelpfulTag = Enum<typeof BirdwatchUnhelpfulTag>;
 
 /**
  * Applied to a tweet by a Birdwatch note that wants to be displayed under the tweet
  */
-export type BirdwatchTweetMisleadingTag = 'FactualError' | 'MisinterpretedSatire' | 'MissingImportantContext' | 'ManipulatedMedia' | 'OutdatedInformation' | 'DisputedClaimAsFact' | 'Other';
+export const BirdwatchTweetMisleadingTag = {
+    FactualError: 'FactualError',
+    MisinterpretedSatire: 'MisinterpretedSatire',
+    MissingImportantContext: 'MissingImportantContext',
+    ManipulatedMedia: 'ManipulatedMedia',
+    OutdatedInformation: 'OutdatedInformation',
+    DisputedClaimAsFact: 'DisputedClaimAsFact',
+    Other: 'Other'
+} as const;
+export type BirdwatchTweetMisleadingTag = Enum<typeof BirdwatchTweetMisleadingTag>;
 
 /**
  * Applied to a tweet by a Birdwatch note that wants no other notes displayed under the tweet, since it doesn't need one
  */
-export type BirdwatchTweetNotMisleadingTag = 'FactuallyCorrect' | 'ClearlySatire' | 'Opinion' | 'Other';
+export const BirdwatchTweetNotMisleadingTag = {
+    FactuallyCorrect: 'FactuallyCorrect',
+    ClearlySatire: 'ClearlySatire',
+    Opinion: 'Opinion',
+    Other: 'Other'
+} as const;
+export type BirdwatchTweetNotMisleadingTag = Enum<typeof BirdwatchTweetNotMisleadingTag>;

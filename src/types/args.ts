@@ -1,4 +1,4 @@
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag } from './birdwatch/index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, Enum } from './index.js';
 
 export interface CursorOnly {
     cursor?: string
@@ -12,13 +12,29 @@ export interface ByUsername {
     byUsername?: boolean
 }
 
+export interface Filter<T extends string> {
+    filter?: T
+}
+
+export interface OrderBy<T extends string> {
+    orderBy?: T
+}
+
 
 
 export interface BlockedAccountsGetArgs extends CursorOnly {
     imported?: boolean
 }
 
-export type BirthDateVisibility = 'Private' | 'Followers' | 'Following' | 'Mutuals' | 'Public';
+export const BirthDateVisibility = {
+    Private: 'Private',
+    Followers: 'Followers',
+    Following: 'Following',
+    Mutuals: 'Mutuals',
+    Public: 'Public'
+} as const;
+export type BirthDateVisibility = Enum<typeof BirthDateVisibility>;
+
 export interface UpdateProfileArgs {
     name: string,
     description: string,
@@ -35,10 +51,13 @@ export interface BirdwatchRateNoteArgs {
     unhelpful_tags?: BirdwatchUnhelpfulTag[]
 }
 
-export type CommunitySort = 'Relevant' | 'Recent';
-export interface CommunityTimelineGetArgs extends CursorOnly {
-    sort?: CommunitySort
-}
+export const CommunityTweetsOrder = {
+    Relevance: 'Relevance',
+    New: 'New'
+} as const;
+export type CommunityTweetsOrder = Enum<typeof CommunityTweetsOrder>;
+
+export interface CommunityTimelineGetArgs extends CursorOnly, OrderBy<CommunityTweetsOrder> {}
 
 export interface ListCreateArgs {
     name: string,
@@ -46,22 +65,36 @@ export interface ListCreateArgs {
     private?: boolean
 }
 
-export type NotificationTimelineType = 'All' | 'Verified' | 'Mentions';
-export interface NotificationGetArgs extends CursorOnly {
-    type?: NotificationTimelineType
-}
+export const NotificationTimelineFilter = {
+    Verified: 'Verified',
+    Mentions: 'Mentions',
+    None: 'None'
+} as const;
+export type NotificationTimelineFilter = Enum<typeof NotificationTimelineFilter>;
 
-export type SearchTimelineType = 'Relevant' | 'Latest' | 'Media' | 'Users' | 'Lists';
+export interface NotificationGetArgs extends CursorOnly, Filter<NotificationTimelineFilter> {}
+
+export const SearchKind = {
+    Relevant: 'Relevant',
+    Latest: 'Latest',
+    Media: 'Media'
+} as const;
+export type SearchKind = Enum<typeof SearchKind>;
+
 export interface SearchArgs extends CursorOnly {
-    type?: SearchTimelineType
+    kind?: SearchKind
 }
 
-export type TimelineType = 'Algorithmical' | 'Chronological';
+export const TimelineKind = {
+    Algorithmical: 'Algorithmical',
+    Chronological: 'Chronological'
+} as const;
+export type TimelineKind = Enum<typeof TimelineKind>;
+
 export type TimelineGetArgs = ({
-    type?: TimelineType,
+    kind?: TimelineKind,
     seenTweetIds?: string[]
 } | {
-    type: 'Generic',
     id: string
 }) & CursorOnly;
 
@@ -72,7 +105,14 @@ export interface TweetVoteArgs {
     choice: number
 }
 
-export type TweetReplyPermission = 'Following' | 'Verified' | 'Mentioned' | 'None';
+export const ReplyPermission = {
+    Everyone: 'Everyone',
+    Following: 'Following',
+    Mentioned: 'Mentioned',
+    Verified: 'Verified'
+} as const;
+export type ReplyPermission = Enum<typeof ReplyPermission>;
+
 export interface TweetCreateArgs {
     text?: string,
     card?: {
@@ -86,7 +126,7 @@ export interface TweetCreateArgs {
     replyTo: string,
     mediaIds?: string[],
     sensitive?: boolean,
-    replyPermission?: TweetReplyPermission,
+    replyPermission?: ReplyPermission,
 }
 
 export interface ScheduledTweetCreateArgs {
@@ -100,11 +140,14 @@ export interface ThreadTweetArgs {
     mediaIds?: string[]
 }
 
+export const TweetOrder = {
+    Relevance: 'Relevance',
+    New: 'New',
+    Likes: 'Likes'
+} as const;
+export type TweetOrder = Enum<typeof TweetOrder>;
 
-export type TweetSort = 'Relevant' | 'Recent' | 'Likes';
-export interface TweetGetArgs extends CursorOnly {
-    sort?: TweetSort
-}
+export interface TweetGetArgs extends CursorOnly, OrderBy<TweetOrder> {}
 
 export interface UnsentTweetsGetArgs {
     ascending?: boolean

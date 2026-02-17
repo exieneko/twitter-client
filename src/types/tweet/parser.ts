@@ -1,4 +1,5 @@
-import type { DraftTweet, Entry, Media, Retweet, ScheduledTweet, Slice, TweetKind, Tweet, TweetMedia, TweetTombstone, TweetVideo, User, Cursor, CardKind, CardImage } from '../index.js';
+import { match } from '../../utils/index.js';
+import { type DraftTweet, type Entry, type Media, type Retweet, type ScheduledTweet, type Slice, type TweetKind, type Tweet, type TweetMedia, type TweetTombstone, type TweetVideo, type User, type Cursor, type CardKind, type CardImage, TweetMediaAvailability } from '../index.js';
 import * as p from '../parsers.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
@@ -117,13 +118,11 @@ export function media(value: any): TweetMedia {
         ai_generated: !!value.media_results?.result?.grok_image_annotation,
         alt_text: value.ext_alt_text || undefined,
         available: value.ext_media_availability?.status === 'Available',
-        availability: value.ext_media_availability?.reason === undefined
-            ? 'OK'
-        : value.ext_media_availability.reason === 'DMCAed'
-            ? 'Copyright'
-        : value.ext_media_availability.reason === 'Geoblocked'
-            ? 'GeoBlocked'
-            : 'Other',
+        availability: match(value.ext_media_availability?.reason, [
+            [undefined, TweetMediaAvailability.OK],
+            ['DMCAed', TweetMediaAvailability.Copyright],
+            ['Geoblocked', TweetMediaAvailability.GeoBlocked],
+        ], TweetMediaAvailability.Other),
         size: {
             width: value.original_info.width,
             height: value.original_info.height

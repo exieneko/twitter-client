@@ -1,4 +1,4 @@
-import type { Cursor, User } from '../index.js';
+import type { Cursor, Enum, User } from '../index.js';
 
 /**
  * Represents a single tweet
@@ -132,7 +132,13 @@ export interface TweetGif extends Omit<TweetVideo, '__typename'> {
     __typename: 'Gif'
 }
 
-export type TweetMediaAvailability = 'OK' | 'Copyright' | 'GeoBlocked' | 'Other';
+export const TweetMediaAvailability = {
+    OK: 'OK',
+    Copyright: 'Copyright',
+    GeoBlocked: 'GeoBlocked',
+    Other: 'Other'
+} as const;
+export type TweetMediaAvailability = Enum<typeof TweetMediaAvailability>;
 
 /** Union type of tweet media kinds */
 export type TweetMedia = TweetImage | TweetGif | TweetVideo;
@@ -180,9 +186,24 @@ export interface TweetTombstone {
  * + `Withheld` - Tweet withheld in your country (dependent on IP address) or all countries
  * + `Unavailable` - Fallback
  */
-export type TweetUnavailableReason = 'AgeVerificationRequired' | 'AuthorProtected' | 'AuthorSuspended' | 'AuthorUnavailable' | 'Deleted' | 'ViolatedRules' | 'Withheld' | 'Unavailable';
+export const TweetUnavailableReason = {
+    AgeVerificationRequired: 'AgeVerificationRequired',
+    AuthorProtected: 'AuthorProtected',
+    AuthorSuspended: 'AuthorSuspended',
+    AuthorUnavailable: 'AuthorUnavailable',
+    Deleted: 'Deleted',
+    ViolatedRules: 'ViolatedRules',
+    Withheld: 'Withheld',
+    Unavailable: 'Unavailable'
+} as const;
+export type TweetUnavailableReason = Enum<typeof TweetUnavailableReason>;
 
-export type TweetLimitedReason = 'Violent' | 'LimitedReplies' | 'Blocked';
+export const TweetLimitedReason = {
+    Violent: 'Violent',
+    LimitedReplies: 'LimitedReplies',
+    Blocked: 'Blocked'
+} as const;
+export type TweetLimitedReason = Enum<typeof TweetLimitedReason>;
 
 export type TweetKind = Tweet | Retweet | Conversation | TweetTombstone;
 

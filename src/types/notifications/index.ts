@@ -1,4 +1,4 @@
-import type { Tweet, User } from '../index.js';
+import type { Enum, Tweet, User } from '../index.js';
 
 /**
  * Represents a Twitter notification
@@ -9,13 +9,17 @@ export interface Notification {
     /** The list's creation datetime as an ISO string */
     created_at: string,
     /** Id of the primary object in a notification, like a tweet or Birdwatch note */
+    object_id?: string,
+    /** @deprecated typo, use `object_id` */
     objectId?: string,
     /**
      * Text contained in the notification, if applicable  
      * In the case of Birdwatch notifications, the text contains a preview for the note
      */
     text?: string,
-    type: NotificationType,
+    kind: NotificationKind,
+    /** @deprecated use `kind` */
+    type: NotificationKind,
     /** Array of tweets that are important to this notification */
     tweets: Tweet[],
     /** Array of users that are important to this notification */
@@ -44,12 +48,32 @@ export interface Notification {
  * + `Advertisement` - Advertisement for Twitter Blue
  * + `Unknown` - Fallback
  */
-export type NotificationType =
-    'NewTweets' | 'RecommendedTweets' |
-    'Mentioned' | 'NewFollowers' | 'TweetLiked' | 'TweetRetweeted' | 'RetweetLiked' | 'RetweetRetweeted' | 'AddedToList' | 'ListSubscribedTo' | 'PollFinished' | 
-    'BirdwatchNoteNeedsHelp' | 'BirdwatchNoteRatedHelpful' | 'BirdwatchNoteRatedNotHelpful' | 'BirdwatchNoteRatedDeleted' |
-    'LoggedIn' | 'ReportReceived' | 'ReportUpdate' | 'Advertisement' | 'Unknown'
-;
+export const NotificationKind = {
+    NewTweets: 'NewTweets',
+    RecommendedTweets: 'RecommendedTweets',
+
+    Mentioned: 'Mentioned',
+    NewFollowers: 'NewFollowers',
+    TweetLiked: 'TweetLiked',
+    TweetRetweeted: 'TweetRetweeted',
+    RetweetLiked: 'RetweetLiked',
+    RetweetRetweeted: 'RetweetRetweeted',
+    AddedToList: 'AddedToList',
+    ListSubscribedTo: 'ListSubscribedTo',
+    PollFinished: 'PollFinished',
+
+    BirdwatchNoteNeedsHelp: 'BirdwatchNoteNeedsHelp',
+    BirdwatchNoteRatedHelpful: 'BirdwatchNoteRatedHelpful',
+    BirdwatchNoteRatedNotHelpful: 'BirdwatchNoteRatedNotHelpful',
+    BirdwatchNoteRatedDeleted: 'BirdwatchNoteRatedDeleted',
+
+    LoggedIn: 'LoggedIn',
+    ReportReceived: 'ReportReceived',
+    ReportUpdate: 'ReportUpdate',
+    Advertisement: 'Advertisement',
+    Unknown: 'Unknown'
+} as const;
+export type NotificationKind = Enum<typeof NotificationKind>;
 
 /**
  * Represents unread notifications counter

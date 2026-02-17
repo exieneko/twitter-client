@@ -104,6 +104,12 @@ export interface Options {
     verbose: boolean
 }
 
+
+
+export type Enum<T> = T[keyof T];
+
+
+
 export interface Endpoint<P extends object = {}, V extends object = {}, R extends object = any, T extends object = any> {
     url: string,
     method: 'GET' | 'POST',
@@ -115,7 +121,13 @@ export interface Endpoint<P extends object = {}, V extends object = {}, R extend
     parser: (data: R) => T
 }
 
-export type EndpointKind = 'GraphQL' | 'v1.1' | 'v2' | 'Media';
+export const EndpointKind = {
+    GraphQL: 'GraphQL',
+    v11: 'v1.1',
+    v2: 'v2',
+    Media: 'Media'
+} as const;
+export type EndpointKind = Enum<typeof EndpointKind>;
 
 type OptionalUndefined<T extends object | undefined> = {
     [K in keyof T as undefined extends T[K] ? K : never]?: T[K];

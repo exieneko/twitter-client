@@ -1,3 +1,5 @@
+import { Enum } from './internal.js';
+
 export * from './args.js';
 export * from './internal.js';
 
@@ -49,4 +51,10 @@ export interface Cursor {
     value: string
 }
 
-export type CursorDirection = 'Previous' | 'Next' | 'ShowMore' | 'ShowSpam';
+export const CursorDirection = {
+    Previous: 'Previous',
+    Next: 'Next',
+    ShowMore: 'ShowMore',
+    ShowSpam: 'ShowSpam'
+} as const;
+export type CursorDirection = Enum<typeof CursorDirection>;

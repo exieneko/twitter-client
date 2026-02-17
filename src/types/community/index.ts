@@ -1,4 +1,4 @@
-import type { User } from '../index.js';
+import type { Enum, User } from '../index.js';
 
 /**
  * Represents a single Twitter community
@@ -30,16 +30,22 @@ export interface Community {
     pinned: boolean,
     /** Your role in the community */
     role: CommunityRole,
-    rules: Array<{
+    rules: {
         id: string,
         description?: string,
         name: string
-    }>,
+    }[],
     /** The primary topic of the community */
     topic: string
 }
 
-export type CommunityRole = 'Guest' | 'Member' | 'Moderator' | 'Owner';
+export const CommunityRole = {
+    Guest: 'Guest',
+    Member: 'Member',
+    Moderator: 'Moderator',
+    Owner: 'Owner'
+} as const;
+export type CommunityRole = Enum<typeof CommunityRole>;
 
 
 

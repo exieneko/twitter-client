@@ -1,4 +1,5 @@
-import type { Slice, UserKind, User, FanAccountKind, AboutUser } from '../index.js';
+import { match } from '../../utils/index.js';
+import { type Slice, type UserKind, type User, type FanAccountKind, type AboutUser, VerificationKind } from '../index.js';
 import * as p from '../parsers.js';
 
 export function user(value: any): UserKind {
@@ -9,6 +10,13 @@ export function user(value: any): UserKind {
     if (value.__typename === 'User') {
         const verified = !!value.verification?.verified || !!value.is_blue_verified;
         const verified_type = value.verification?.verified_type;
+
+        const verificationKind: VerificationKind = match(value.verification?.verified_type, [
+            ['Government', VerificationKind.Government],
+            ['Business', VerificationKind.Business],
+            [[], VerificationKind.Unverified, !verified_type && !verified],
+            [[], VerificationKind.Blue, verified],
+        ], VerificationKind.Unverified);
 
         return {
             __typename: 'User',
@@ -59,25 +67,9 @@ export function user(value: any): UserKind {
             username: value.core.screen_name,
             url: value.legacy.entities.url?.urls?.at(0)?.expanded_url?.replace(/\/$/, ''),
             verified,
-            verification_kind: verified_type === 'Government'
-                ? 'Government'
-            : verified_type === 'Business'
-                ? 'Business'
-            : !verified_type && !verified
-                ? 'Unverified'
-            : verified
-                ? 'Blue'
-                : 'Unverified',
+            verification_kind: verificationKind,
             verification: {
-                kind: verified_type === 'Government'
-                    ? 'Government'
-                : verified_type === 'Business'
-                    ? 'Business'
-                : !verified_type && !verified
-                    ? 'Unverified'
-                : verified
-                    ? 'Blue'
-                    : 'Unverified',
+                kind: verificationKind,
                 verified,
                 verified_since: verified
                     ? new Date(Number(value.verification_info?.reason?.verified_since_msec || '0')).toISOString()

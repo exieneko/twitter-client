@@ -1,7 +1,7 @@
-import type { List, ListKind, Slice, UnavailableList, User } from '../index.js';
+import type { List, ListKind, Slice, User } from '../index.js';
 import * as p from '../parsers.js';
 
-export function list(value: any): List | UnavailableList {
+export function list(value: any): ListKind {
     if (!value || !value.created_at) {
         return { __typename: 'UnavailableList' }
     }

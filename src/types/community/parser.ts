@@ -1,4 +1,5 @@
-import type { CommunityKind, User } from '../index.js';
+import { match } from '../../utils/index.js';
+import { CommunityRole, type CommunityKind, type User } from '../index.js';
 import * as p from '../parsers.js';
 
 export function community(value: any): CommunityKind {
@@ -21,18 +22,11 @@ export function community(value: any): CommunityKind {
         name: value.name,
         nsfw: !!value.is_nsfw,
         pinned: !!value.is_pinned,
-        role: (() => {
-            switch (value.role) {
-                case 'NonMember':
-                    return 'Guest';
-                case 'Member':
-                    return 'Member';
-                case 'Moderator':
-                    return 'Moderator';
-                default:
-                    return 'Owner';
-            }
-        })(),
+        role: match(value.role, [
+            ['NonMember', CommunityRole.Guest],
+            ['Member', CommunityRole.Member],
+            ['Moderator', CommunityRole.Moderator],
+        ], CommunityRole.Owner)!,
         rules: value.rules?.map((rule: any) => ({
             id: rule.rest_id,
             description: rule.description,

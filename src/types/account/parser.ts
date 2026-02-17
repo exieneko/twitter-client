@@ -1,18 +1,19 @@
-import type { Settings } from './index.js';
+import { match } from '../../utils/index.js';
+import { InboxPrivacy, type Settings } from './index.js';
 
 export function settings(value: any): Settings {
     return {
         autoplay: !value.autoplay_disabled,
         country: value.country_code || 'us',
         display_sensitive_media: !!value.display_sensitive_media,
-        dm_allowed_from: value.allow_dms_from === 'following'
-            ? 'Following'
-        : value.allow_dms_from === 'verified'
-            ? 'Verified'
-            : 'All',
-        dm_groups_allowed_from: value.allow_dm_groups_from === 'following'
-            ? 'Following'
-            : 'All',
+        dm_allowed_from: match(value.allow_dms_from, [
+            ['following', InboxPrivacy.Following],
+            ['verified', InboxPrivacy.Verified],
+        ], InboxPrivacy.Everyone),
+        dm_groups_allowed_from: match(value.allow_dm_groups_from, [
+            ['following', InboxPrivacy.Following],
+            ['verified', InboxPrivacy.Verified],
+        ], InboxPrivacy.Everyone),
         dm_receipts: value.dm_receipt_setting !== 'all_disabled',
         dm_quality_filter: value.dm_quality_filter !== 'disabled',
         is_eu: value.settings_medadata?.is_eu === 'true',

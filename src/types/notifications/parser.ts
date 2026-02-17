@@ -1,4 +1,5 @@
-import type { Cursor, Notification, Slice, TweetKind, UnreadCount, User } from '../index.js';
+import { match } from '../../utils/index.js';
+import { Cursor, Notification, NotificationKind, Slice, TweetKind, UnreadCount, User } from '../index.js';
 import * as p from '../parsers.js';
 
 export function unreadCount(value: any): UnreadCount {
@@ -9,80 +10,54 @@ export function unreadCount(value: any): UnreadCount {
 }
 
 export function notification(value: any, notificationKind: string): Notification {
-    const type = (() => {
-        switch (notificationKind) {
-            case 'device_follow_tweet_notification_entry':
-                return 'NewTweets';
-            case 'generic_magic_rec_pyle_recommended':
-                return 'RecommendedTweets';
+    const kind: NotificationKind = match(notificationKind, [
+        ['device_follow_tweet_notification_entry', NotificationKind.NewTweets],
+        ['generic_magic_rec_pyle_recommended', NotificationKind.RecommendedTweets],
+        
+        ['users_mentioned_you', NotificationKind.Mentioned],
+        ['users_followed_you', NotificationKind.NewFollowers],
+        ['users_liked_your_tweet', NotificationKind.TweetLiked],
+        ['users_retweeted_your_tweet', NotificationKind.TweetRetweeted],
+        ['users_liked_your_retweet', NotificationKind.RetweetLiked],
+        ['users_retweeted_your_tweet', NotificationKind.RetweetRetweeted],
+        ['users_added_you_to_lists', NotificationKind.AddedToList],
+        ['users_subscribed_to_your_list', NotificationKind.ListSubscribedTo],
+        ['generic_poll_voter_summary', NotificationKind.PollFinished],
+        
+        ['generic_birdwatch_needs_your_help', NotificationKind.BirdwatchNoteNeedsHelp],
+        ['generic_birdwatch_helpful_valid_rater', NotificationKind.BirdwatchNoteRatedHelpful],
+        ['generic_birdwatch_not_helpful_valid_rater', NotificationKind.BirdwatchNoteRatedNotHelpful],
+        ['generic_birdwatch_delete_post_rater', NotificationKind.BirdwatchNoteRatedDeleted],
+        
+        ['generic_login_notification', NotificationKind.LoggedIn],
+        ['generic_report_received', NotificationKind.ReportReceived],
+        ['generic_report_update', NotificationKind.ReportUpdate],
+        ['generic_subscription_promotion_premium', NotificationKind.Advertisement]
+    ], NotificationKind.Unknown);
 
-            case 'users_mentioned_you':
-                return 'Mentioned';
-            case 'users_followed_you':
-                return 'NewFollowers';
-            case 'users_liked_your_tweet':
-                return 'TweetLiked';
-            case 'users_retweeted_your_tweet':
-                return 'TweetRetweeted';
-            case 'users_liked_your_retweet':
-                return 'RetweetLiked';
-            case 'users_retweeted_your_tweet':
-                return 'RetweetRetweeted';
-            case 'users_added_you_to_lists':
-                return 'AddedToList';
-            case 'users_subscribed_to_your_list':
-                return 'ListSubscribedTo';
-            case 'generic_poll_voter_summary':
-                return 'PollFinished';
-
-            case 'generic_birdwatch_needs_your_help':
-                return 'BirdwatchNoteNeedsHelp';
-            case 'generic_birdwatch_helpful_valid_rater':
-                return 'BirdwatchNoteRatedHelpful';
-            case 'generic_birdwatch_not_helpful_valid_rater':
-                return 'BirdwatchNoteRatedNotHelpful';
-            case 'generic_birdwatch_delete_post_rater':
-                return 'BirdwatchNoteRatedDeleted';
-
-            case 'generic_login_notification':
-                return 'LoggedIn';
-            case 'generic_report_received':
-                return 'ReportReceived';
-            case 'generic_report_update':
-                return 'ReportUpdate';
-            case 'generic_subscription_promotion_premium':
-                return 'Advertisement';
-            default:
-                return 'Unknown';
-        }
-    })();
-
-    const _t = type === 'Mentioned' ? p.tweet(value.tweet_results.result) : undefined
+    const _t = kind === NotificationKind.Mentioned ? p.tweet(value.tweet_results.result) : undefined
     const tweet = _t?.__typename === 'Tweet' ? _t : undefined;
+
+    const objectId = match(kind, [
+        [NotificationKind.Mentioned, tweet?.id],
+        [[NotificationKind.TweetLiked, NotificationKind.TweetRetweeted, NotificationKind.RetweetLiked, NotificationKind.RetweetRetweeted], value.template?.target_objects?.at(0)?.result?.rest_id],
+        [[NotificationKind.AddedToList, NotificationKind.ListSubscribedTo], value.notification_url?.url?.match(/list\/(\d+?)$/)?.at(1)],
+        [[NotificationKind.BirdwatchNoteNeedsHelp, NotificationKind.BirdwatchNoteRatedHelpful, NotificationKind.BirdwatchNoteRatedNotHelpful, NotificationKind.BirdwatchNoteRatedDeleted], value?.rich_message?.text, value.notification_url?.url?.match(/birdwatch\/n\/(\d+?)(\?src|$)/)?.at(1)]
+    ]);
 
     return {
         __typename: 'Notification',
         id: value.id || tweet?.id,
         created_at: new Date(value.timestamp_ms).toISOString(),
-        objectId: type === 'Mentioned'
-            ? tweet?.id
-        : ['TweetLiked', 'TweetRetweeted', 'RetweetLiked', 'RetweetRetweeted'].includes(type)
-            ? value.template?.target_objects?.at(0)?.result?.rest_id
-        : ['AddedToList', 'ListSubscribedTo'].includes(type)
-            ? value.notification_url?.url?.match(/lists\/(\d+?)$/)?.at(1)
-        : type.startsWith('Birdwatch')
-            ? value.notification_url?.url?.match(/birdwatch\/n\/(\d+?)(\?src|$)/)?.at(1)
-        : type === 'ReportUpdate'
-            ? value?.rich_message?.text
-            : undefined,
-        text: ['AddedToList', 'ListSubscribedTo'].includes(type)
-            ? value.rich_message?.text?.match(/List\s(.*?)$/)?.at(1)
-        : type.startsWith('Birdwatch')
-            ? value.template?.additional_context?.text
-        : type === 'ReportUpdate'
-            ? value?.rich_message?.text
-            : undefined,
-        type,
+        object_id: objectId,
+        objectId,
+        text: match(kind, [
+            [NotificationKind.AddedToList, NotificationKind.ListSubscribedTo, value.rich_message?.text?.match(/List\s(.*?)$/)?.at(1)],
+            [[NotificationKind.BirdwatchNoteNeedsHelp, NotificationKind.BirdwatchNoteRatedHelpful, NotificationKind.BirdwatchNoteRatedNotHelpful, NotificationKind.BirdwatchNoteRatedDeleted], value.template?.additional_context?.text],
+            [NotificationKind.ReportUpdate, value?.rich_message?.text]
+        ]),
+        kind,
+        type: kind,
         tweets: tweet ?? (value.template?.target_objects || [])
             .filter((x: any) => x.__typename === 'TimelineNotificationTweetRef')
             .map((x: any) => p.tweet(x.result)),
