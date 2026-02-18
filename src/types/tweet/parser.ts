@@ -1,12 +1,22 @@
 import { match } from '../../utils/index.js';
-import { type DraftTweet, type Entry, type Media, type Retweet, type ScheduledTweet, type Slice, type TweetKind, type Tweet, type TweetMedia, type TweetTombstone, type TweetVideo, type User, type Cursor, type CardKind, type CardImage, TweetMediaAvailability } from '../index.js';
+import { type DraftTweet, type Entry, type Media, type Retweet, type ScheduledTweet, type Slice, type TweetKind, type Tweet, type TweetMedia, type TweetTombstone, type TweetVideo, type User, type Cursor, type CardKind, type CardImage, TweetMediaAvailability, TweetUnavailableReason } from '../index.js';
 import * as p from '../parsers.js';
 
 export function tweet(value: any, options?: { hasHiddenReplies?: boolean }): Tweet | Retweet | TweetTombstone {
     if (!value) {
         return {
             __typename: 'TweetTombstone',
-            reason: 'Unavailable'
+            reason: TweetUnavailableReason.Unavailable
+        };
+    }
+
+    if (value.__typename === 'TweetUnavailable') {
+        return {
+            __typename: 'TweetTombstone',
+            reason: match(value.reason, [
+                ['Suspended', TweetUnavailableReason.AuthorSuspended],
+                // TODO
+            ], TweetUnavailableReason.Unavailable)
         };
     }
 
