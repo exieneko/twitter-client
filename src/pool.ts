@@ -1,5 +1,5 @@
 import { TwitterClient } from './client.js';
-import type { ByUsername, CommunityTimelineGetArgs, CursorOnly, BySlug, MediaUploadArgs, Tokens, TweetGetArgs, UserTweetsGetArgs } from './types/index.js';
+import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, Tokens, TweetGetArgs, UserTweetsGetArgs } from './types/index.js';
 
 interface Account {
     id: number,
@@ -8,11 +8,23 @@ interface Account {
     uses: number
 }
 
+/**
+ * Asyncronous client utilizing `TwitterClient` instances to make requests to the Twitter browser API using several users
+ * 
+ * @class
+ * @since 0.7.0
+ */
 export class TwitterPool {
     #accounts: Account[] = [];
 
     private constructor() {}
 
+    /**
+     * Async contructor for `TwitterPool`
+     * 
+     * @param tokens Account tokens
+     * @returns Promise resolving to `TwitterPool`
+     */
     static async new(tokens: [Tokens, ...Tokens[]]): Promise<TwitterPool> {
         let pool = new TwitterPool();
         pool.setAccounts(tokens);
@@ -39,11 +51,13 @@ export class TwitterPool {
         );
     }
 
+
+
     async getCommunity(id: string) {
         return this.client().getCommunity(id);
     }
 
-    async getCommunityTweets(id: string, args?: CommunityTimelineGetArgs) {
+    async getCommunityTweets(id: string, args?: CommunityTweetsGetArgs) {
         return this.client().getCommunityTweets(id, args);
     }
 

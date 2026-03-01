@@ -1,59 +1,63 @@
 import type { Cursor, Enum, User } from '../index.js';
 
 /**
- * Represents a single tweet
+ * A timeline tweet. If this tweet is a reply under the currently focused tweet, it will be a `Conversation` instead
+ * 
+ * @see {@link Conversation}
  */
 export interface Tweet {
     __typename: 'Tweet',
     id: string,
     author: User,
-    /** Birdwatch note on this tweet, if it exists */
+    /** Birdwatch note on this tweet */
     birdwatch_note?: {
         id: string,
-        /**
-         * The full text of the note\
-         * Any `t.co` urls can't be converted to the actual url they redirect to unless the note is fetched by its id
-         */
+        /** The full text of the note */
         text: string,
         lang: string,
+        /** `true` is the note is written in a different language than the client language, and is a reasonable length */
         translatable: boolean,
-        /** Whether or not this note is publicly displayed on the tweet. It can only be `false` if you are a Birdwatch contributor */
+        /** `true` if this note is publicly displayed on the tweet. It can only be `false` if you are a Birdwatch contributor */
         public: boolean
     },
-    /** Whether or not you bookmarked the tweet */
+    /** `true` if you bookmarked this tweet */
     bookmarked: boolean,
-    /** Amount of users that bookmarked the tweet */
+    /** Amount of users that bookmarked this tweet */
     bookmarks_count: number,
+    /** Card content of the tweet. Can be an embed, poll, audiospace, etc */
     card?: CardKind,
     // community: {},
-    /** The tweet's creation datetime as an ISO string */
     created_at: string,
+    /**  */
     editing: {
         allowed: boolean,
         allowed_until: string,
         remaining_count: number,
+        /** The current id of this tweet and ids of all previous edits */
         tweet_ids: string[]
     },
-    /** Whether or not if the tweet is so long that the full text is not displayed normally. `this.text` will still contain all text */
+    /** `true` if the tweet is so long that the full text is not displayed normally. `this.text` will still contain all text */
     expandable: boolean,
     /**
-     * Whether or not any media in the tweet is labelled as ai generated
-     * @deprecated This property is redundant and will be removed in a later version
+     * `true` if any media in the tweet is labelled as ai generated
+     * 
+     * @deprecated This property is redundant because it's just `tweet.media.some(media => media.ai_generated)`
      */
     has_ai_generated_image: boolean,
-    /** Whether or not the tweet has an active or pending Birdwatch note */
+    /** `true` if the tweet has an active or pending Birdwatch note */
     has_birdwatch_note: boolean,
-    /** Whether or not the tweet has a preview of a chat with Grok */
+    /** `true` the tweet has a Grok conversation embed */
     has_grok_chat_embed: boolean,
     /**
-     * Whether or not the hidden replies badge should be displayed on a tweet
-     * @deprecated Twitter no longer supports this feature, so this will always be `false`
+     * `true` if the hidden replies badge should be displayed on a tweet
+     * 
+     * @deprecated Twitter no longer supports this feature on newer GraphQL endpoints
      */
     has_hidden_replies: boolean,
-    /** Whether or not the tweet is quoting another tweet */
+    /** `true` if this tweet is quoting another tweet */
     has_quoted_tweet: boolean,
     lang: string,
-    /** Whether or not you liked the tweet */
+    /** `true` if you liked this tweet */
     liked: boolean,
     /** Amount of users that liked the tweet */
     likes_count: number,
@@ -65,27 +69,25 @@ export interface Tweet {
     /** Amount of users that are quote tweeting the tweet */
     quote_tweets_count: number,
     /**
-     * The quoted tweet, if it exists
-     * 
-     * May be undefined even if `this.has_quoted_tweet && this.quoted_tweet_id !== undefined`, to avoid infinite recursion  
-     * Also, on rare occasions where the author of the quoted tweet has blocked the author of this tweet,
-     * this property may be `undefined` even though `this.quoted_tweet_id` will still show the id of the quoted tweet, but it must be fetched again
+     * The quoted tweet, if it exists. May be `undefined` even if `has_quoted_tweet` is `true` and `quoted_tweet_id` is a `string`, to avoid too many recursions. Due to issues on Twitter's end, sometimes the tweet is not sent in the response data, so this property may be `undefined` for no reason
      */
     quoted_tweet?: Tweet,
     /** Id of the quoted tweet, if it exists */
     quoted_tweet_id?: string,
     /** Amount of users that replied to the tweet */
     replies_count: number,
-    /** The \@username of the user the tweet is in reply to */
+    /** The username of the user the tweet is in reply to */
     replying_to_username?: string,
-    /** Whether or not you retweeted the tweet */
+    /** `true` if you retweeted this tweet */
     retweeted: boolean,
     /** Amount of users that retweeted the tweet */
     retweets_count: number,
+    /** The full text of the tweet, including user mentions in the beginning of replies. If the tweet is a note tweet, this property will contain the expanded text instead of the 280 character preview */
     text: string,
     translatable: boolean,
     /** Amount of views the tweet has. May be `undefined` if the tweet predates view tracking */
     views_count?: number,
+    /** Visibility status */
     visibility_limited?: TweetLimitedReason
 }
 
@@ -94,13 +96,14 @@ export interface Tweet {
 export interface TweetImage {
     __typename: 'Image',
     id: string,
-    /** Whether or not the media has been generated by Grok */
+    /** `true` if the media has been generated by Grok in-app */
     ai_generated: boolean,
     /** Alt text set on the media by the author of the tweet */
     alt_text?: string,
     /** 
-     * Whether or not the media is available to view. May be `false` if the media has been deleted or copyright claimed
-     * @deprecated Replaced by TweetImage.availability
+     * `true` the media is available to view. May be `false` if the media has been deleted or copyright claimed
+     * 
+     * @deprecated Replaced by `availability`
      */
     available: boolean,
     availability: TweetMediaAvailability,
@@ -109,16 +112,16 @@ export interface TweetImage {
         width: number,
         height: number
     },
-    /** Url of the image, or shorthand for the highest quality video variant */
+    /** URL of the image, or shorthand for the highest quality video variant */
     url: string
 }
 
 export interface TweetVideo extends Omit<TweetImage, '__typename'> {
     __typename: 'Video',
     aspect_ratio: [number, number],
-    /** Duration in milliseconds, may be `0` on gifs */
+    /** Duration in milliseconds. Always `0` on gifs */
     duration: number,
-    /** Url for the video's thumbnail */
+    /** URL for the video's thumbnail */
     thumbnail_url: string,
     /** Variants for all video's qualities, from lowest to highest */
     variants: Array<{
@@ -132,6 +135,11 @@ export interface TweetGif extends Omit<TweetVideo, '__typename'> {
     __typename: 'Gif'
 }
 
+/**
+ * Availability status of a media
+ * 
+ * @enum
+ */
 export const TweetMediaAvailability = {
     OK: 'OK',
     Copyright: 'Copyright',
@@ -140,13 +148,15 @@ export const TweetMediaAvailability = {
 } as const;
 export type TweetMediaAvailability = Enum<typeof TweetMediaAvailability>;
 
-/** Union type of tweet media kinds */
+/**
+ * Tweet media
+ */
 export type TweetMedia = TweetImage | TweetGif | TweetVideo;
 
 
 
 /**
- * Represents a retweet in a timeline that points to another tweet
+ * Retweet that contains the retweeted tweet within
  */
 export interface Retweet {
     __typename: 'Retweet',
@@ -158,17 +168,17 @@ export interface Retweet {
 
 
 /**
- * Represents a conversation that can contain multiple tweets
+ * Conversation that can contain multiple tweets
  */
 export interface Conversation {
     __typename: 'Conversation',
-    items: Tweet | TweetTombstone | Cursor[]
+    items: (Tweet | TweetTombstone | Cursor)[]
 }
 
 
 
 /**
- * Represents a deleted or unavailable tweet
+ * A deleted or unavailable tweet that is represented with a tombstone in-app
  */
 export interface TweetTombstone {
     __typename: 'TweetTombstone',
@@ -177,30 +187,41 @@ export interface TweetTombstone {
 }
 
 /**
- * + `AgeVerificationRequired` - Age verification is required to view this tweet, as it may be sensitive. Unlike blurred media marked sensitive, this is server-side and depends on your IP address
- * + `AuthorProtected` - The author has protected their tweets and you don't follow them
- * + `AuthorSuspended` - The author has been suspended
- * + `AuthorUnavailable` - The author is unavailable, likely because they deactivated
- * + `Deleted` - Tweet deleted by the author
- * + `ViolatedRules` - Tweet violated the Twitter rules and was removed
- * + `Withheld` - Tweet withheld in your country (dependent on IP address) or all countries
- * + `Unavailable` - Fallback
+ * Tweet unavailability reasons
+ * 
+ * @enum
  */
 export const TweetUnavailableReason = {
+    /** ID verification is required to view this tweet. Restricted server-side */
     AgeVerificationRequired: 'AgeVerificationRequired',
+    /** Author has protected their tweets */
     AuthorProtected: 'AuthorProtected',
+    /** Author has been suspended */
     AuthorSuspended: 'AuthorSuspended',
+    /** Author has deactivated or is otherwise unavailable */
     AuthorUnavailable: 'AuthorUnavailable',
+    /** Tweet has been deleted */
     Deleted: 'Deleted',
+    /** Tweet has been removed because it violated Twitter's rules */
     ViolatedRules: 'ViolatedRules',
+    /** Tweet has been withheld in your country or all countries */
     Withheld: 'Withheld',
+    /** @default */
     Unavailable: 'Unavailable'
 } as const;
 export type TweetUnavailableReason = Enum<typeof TweetUnavailableReason>;
 
+/**
+ * Tweet limitation status
+ * 
+ * @enum
+ */
 export const TweetLimitedReason = {
+    /** Tweet is violent and Twitter has restricted its visibility */
     Violent: 'Violent',
+    /** Author has limited the replies */
     LimitedReplies: 'LimitedReplies',
+    /** Author has blocked you */
     Blocked: 'Blocked'
 } as const;
 export type TweetLimitedReason = Enum<typeof TweetLimitedReason>;
@@ -251,8 +272,8 @@ export interface Media {
     /** Information about how Twitter handled the uploaded media */
     processing?: {
         /**
-         * `succeeded` means the media has been uploaded
-         * `failed` means the media has been rejected
+         * `succeeded` means the media has been uploaded  
+         * `failed` means the media has been rejected  
          * `pending` means a separate STATUS request needs to be made to get missing information
          */
         state: 'succeeded' | 'failed' | 'pending',
@@ -260,6 +281,9 @@ export interface Media {
     }
 }
 
+/**
+ * Shared card data
+ */
 interface Card {
     card_name: string,
     card_url: string
@@ -273,6 +297,9 @@ export interface CardImage {
 
 
 
+/**
+ * Embed of a website in a tweet
+ */
 export interface Embed extends Card {
     __typename: 'Embed',
     description: string,
@@ -281,6 +308,9 @@ export interface Embed extends Card {
     title: string
 }
 
+/**
+ * Poll with 2-4 choices
+ */
 export interface Poll extends Card {
     __typename: 'Poll',
     choices: PollChoice[],
@@ -290,17 +320,26 @@ export interface Poll extends Card {
     total_votes_count: number
 }
 
+/**
+ * Choice on a poll
+ */
 export interface PollChoice {
     text: string,
     image?: CardImage,
     votes_count: number,
 }
 
+/**
+ * Stream broadcast in a tweet
+ */
 export interface BroadcastCard extends Card {
     __typename: 'Broadcast',
+    /** Author of the embedded broadcast */
     author: User,
+    /** `true` if the broadcast has ended */
     ended: boolean,
     id: string,
+    /** Id of the broadcast video media */
     media_id: string,
     media_key: string,
     thumbnail?: CardImage,
@@ -309,7 +348,11 @@ export interface BroadcastCard extends Card {
     height: number
 }
 
-// TODO
+/**
+ * Audiospace or audio message in a tweet
+ * 
+ * @todo
+ */
 export interface Audiospace extends Card {
     __typename: 'Audiospace',
     author: User

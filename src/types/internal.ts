@@ -2,27 +2,7 @@ import type { Flags } from '../flags.js';
 import type { Slice } from './index.js';
 
 /**
- * Response object containing `errors` and `data` if there are no errors or they aren't fatal
- * 
- * # Examples
- * 
- * ```ts
- * const { errors, data: entries } = await twitter.getTimeline();
- * 
- * if (errors.length === 0) {
- *     console.error(`errors: ${errors}`);
- *     return;
- * }
- * 
- * console.log(entries!.map(entry => entry.content));
- * ```
- * 
- * Or just assume there are no errors:
- * 
- * ```ts
- * const { data: user } = await twitter.getUser('123456');
- * console.log(user?.name);
- * ```
+ * Response object returned by all methods on `TwitterClient`. Contains an `errors` array and optional `data` if the request was successful
  */
 export interface TwitterResponse<T> {
     errors: TwitterError[],
@@ -30,10 +10,7 @@ export interface TwitterResponse<T> {
 }
 
 /**
- * Represents an error returned by the Twitter API
- * 
- * The `code` property will be `-1` if the error is a caught exception that occured during parsing the response data  
- * If this is the case, all properties except `code` and `message` will be `undefined`. Additionally, `message` will contain the output of `error.stack`
+ * Represents an error returned by the Twitter API. Javascript exceptions and client-side errors use `-1` as `code`
  */
 export interface TwitterError {
     message: string,
@@ -51,62 +28,90 @@ export interface TwitterError {
     }
 }
 
+/**
+ * `AsyncGenerator` yielding a slice of `T`, where `T` is always an item inside of a timeline entry. Will return an empty slice when done
+ * 
+ * @example
+ * const timeline = twitter.getTimeline();
+ * const { value, done } = await timeline.next();
+ * 
+ * // `value` is always a `TwitterResponse`
+ * const { errors, data } = value;
+ * 
+ * @see {@link TwitterResponse}
+ */
 export type Timeline<T extends { __typename: string }> = AsyncGenerator<TwitterResponse<Slice<T>>, TwitterResponse<Slice<T>>, unknown>;
 
 
 
+export type Enum<T> = T[keyof T];
+
+/**
+ * Account tokens required to log into a Twitter account
+ */
 export interface Tokens {
     authToken: string,
     csrf: string
 }
 
+/**
+ * Additional options for `TwitterClient`
+ */
 export interface Options {
     /**
-     * Controls which domain gets fetched by all requests. This also affects some response data that includes URLs. "x.com" by default
+     * Set which domain to send requests to
      * 
-     * Default: `'twitter.com'`
+     * @default 'twitter.com'
      */
     domain: 'twitter.com' | 'x.com',
     /**
-     * Twitter client language. `'en'` is the default and only officially supported value
+     * Twitter client language. English is currently the only supported language
      * 
-     * Default: `'en'`
+     * @default 'en'
      */
     language: string,
     /**
-     * What to do when a tweet's text length exceeds 280 characters
+     * How to handle when a tweet's text length exceeds 280 characters
      * 
-     * + `Force` - Send the request anyway and return the result as normal
-     * + `Fail` - The request won't be sent to Twitter at all
-     * + `NoteTweet` - Fetches the current user, and creates a note tweet instead, which allows for longer character limits if you're verified
-     * + `NoteTweetUnchecked` - Same as `NoteTweet` but no request is made to check if you're verified
-     * 
-     * Default: `'Force'`
+     * @default LongTweetBehavior.Force
      */
-    longTweetBehavior: 'Force' | 'Fail' | 'NoteTweet' | 'NoteTweetUnchecked',
+    longTweetBehavior: LongTweetBehavior,
     /**
      * Optional http proxy url
      * 
-     * Default: `undefined`
+     * @default undefined
      */
     proxyUrl?: string,
     /**
      * User-Agent header to send with requests
      * 
-     * Default: `'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'`
+     * @default 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
      */
     userAgent: string,
     /**
      * Show logs in console?
      * 
-     * Default: `false`
+     * @default false
      */
     verbose: boolean
 }
 
-
-
-export type Enum<T> = T[keyof T];
+/**
+ * How to handle when a tweet's text length exceeds 280 characters
+ * 
+ * @enum
+ */
+export const LongTweetBehavior = {
+    /** Send the request anyway */
+    Force: 'Force',
+    /** Return an error without sending the request */
+    Fail: 'Fail',
+    /** Send the tweet as a note tweet. This requires a verified account. If `TwitterClient.self` is undefined, it will be set before checking for verification */
+    NoteTweet: 'NoteTweet',
+    /** Send the tweet as a note tweet, without checking if your account is verified */
+    NoteTweetUnchecked: 'NoteTweetUnchecked'
+} as const;
+export type LongTweetBehavior = Enum<typeof LongTweetBehavior>;
 
 
 

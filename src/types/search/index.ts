@@ -1,5 +1,5 @@
 /**
- * Represents live search results
+ * Live search typeahead
  */
 export interface Typeahead {
     results_count: number,

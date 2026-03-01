@@ -1,84 +1,64 @@
 import { Enum } from '../index.js';
 
 /**
- * Represents a single user
+ * User
  */
 export interface User {
     __typename: 'User',
     id: string,
-    /**
-     * Amount of affiliates the user has  
-     * Will always be `0` if `this.verification_kind` isn't `VerificationKind.Business`, since only business accounts can have affiliates
-     */
+    /** Amount of affiliates the user has */
     affiliates_count: number,
-    /** The user's affiliate label if they're associated with a business account */
+    /** User's affiliate label if they're associated with a business account */
     affiliate_label?: {
-        /** Title of the label */
         title: string,
-        /** The business account's \@username that the user is an affiliate of */
+        /** Username of the business account */
         owner: string,
-        /** Image displayed on the label, which is the `avatar_url` of the business account */
         image_url: string
     },
-    /** The url for the user's profile picture */
     avatar_url: string,
-    /** The url for the user's banner, `undefined` if the user hasn't set a banner yet */
     banner_url?: string,
-    /** The user's birthday. `year` may be `undefined` if the user chose to display on the month and day */
+    /** The user's birthday as an object */
     birthday?: {
         day: number,
         month: number,
         year?: number
     },
-    /** Whether or not the user is blocked by you */
+    /** `true` if you've blocked this user */
     blocked: boolean,
-    /** Whether or not the user has blocked you */
+    /** `true` if user has blocked you */
     blocked_by: boolean,
-    /** Whether or not you can send a direct message to the user */
+    /** `true` if you can send a direct message to the user */
     can_dm: boolean,
-    /** Whether or not you can credit a user in a media tweet by tagging them directly in the attachment */
+    /** `true` if you can credit a user in a media tweet by tagging them directly in the attachment */
     can_media_tag: boolean,
-    /** Whether or not the user allows others to super-follow them */
+    /** `true` if the user allows others to super-follow them */
     can_super_follow: boolean,
-    /** The user's registration datetime as an ISO string */
     created_at: string,
     description: string,
-    /** Whether the user is a fan or parody account, `undefined` if neither */
+    /** Indicates the fan status of an account */
     fan_account_kind?: FanAccountKind,
     /** Amount of followers the user has */
     followers_count: number,
     /** Amount of users the user is following */
     following_count: number,
-    /** Whether or not you're following the user */
+    /** `true` if you're following this user */
     followed: boolean,
-    /**
-     * Whether or not you've requested to follow the user  
-     * Will always be `false` if `this.protected` is `false`
-     */
+    /** `true` if you've requested to follow this user */
     follow_requested: boolean,
-    /** Whether or not the user follows you */
+    /** `true` if this user follows you */
     followed_by: boolean,
-    /** The user's set employment, `undefined` if empty */
     job?: string,
-    /** The user's location, `undefined` if empty */
     location?: string,
-    /** Whether or not the user is muted by you */
+    /** `true` if you've muted this user */
     muted: boolean,
-    /** The user's display name */
     name: string,
     /** `id` of the user's pinned tweet, `undefined` if it doesn't exist */
     pinned_tweet_id?: string,
-    /**
-     * Whether or not the user's tweets can only be viewed by users that follow them  
-     * Fetching tweets of this user will return an empty array if `this.followed` is false
-     */
+    /** `true` if the user's tweets can only be viewed by users that follow them */
     protected: boolean,
-    /**
-     * Amount of other users the user is super-following  
-     * Super-follows (aka creator subscriptions) are monthly subscriptions that the user pays to other users for super-follower-only tweets
-     */
+    /** Amount of other users the user is super-following */
     super_following_count: number,
-    /** Whether or not it can be viewed who the user is super-following */
+    /** `true` if user's user-following is hidden */
     super_following_hidden: boolean,
     translatable: boolean,
     /** Amount of total tweets the user created */
@@ -102,47 +82,53 @@ export interface User {
     verification: {
         /** Shows the kind of verification the user has */
         kind: VerificationKind,
-        /** Whether or not the user has a verification chechmark */
+        /** `true` if the user has a verification chechmark */
         verified: boolean,
-        /** When the user was initially verified, `undefined` if never */
+        /** When the user was initially verified */
         verified_since?: string,
-        /** Whether or not the user successfully verified their identity with a legal id */
+        /** `true` if the user successfully verified their identity with a legal id */
         verified_with_id: boolean
     },
-    /**
-     * Whether or not retweets of the user should be included in your timelines  
-     * Will always be `false` if `this.followed` is `false`
-     */
+    /** `true` if retweets of the user should be included in your timelines */
     want_retweets: boolean,
-    /**
-     * Whether or not tweets of the user should give you notifications  
-     * Will always be `false` if `this.followed` is `false`
-     */
+    /** `true` if tweets of the user should give you notifications */
     want_notifications: boolean
 }
 
+/**
+ * Fan account status
+ * 
+ * @enum
+ */
 export const FanAccountKind = {
     Fan: 'Fan',
     Parody: 'Parody'
 } as const;
 export type FanAccountKind = Enum<typeof FanAccountKind>;
 
-/** 
- * + `Unverified` - No verification
- * + `Blue` - Verification for buying Twitter Blue, being the affiliate of a business account, or having a legacy checkmark
- * + `Business` - Verification for being a business or organization, aka gold checkmark
- * + `Government` - Verification for being a government official, aka gray checkmark
-*/
+/**
+ * Verification status of a user
+ * 
+ * @enum
+ */
 export const VerificationKind = {
+    /**
+     * No verification
+     * 
+     * @default
+     */
     Unverified: 'Unverified',
+    /** Blue checkmark for Twitter Blue subscribers, legacy verified accounts, or business account affiliates */
     Blue: 'Blue',
+    /** Gold checkmark for business accounts */
     Business: 'Business',
+    /** Gray checkmark for official government accounts */
     Government: 'Government'
 } as const;
 export type VerificationKind = Enum<typeof VerificationKind>;
 
 /**
- * Represents a user that doesn't exist, such as a user that has been suspended deactivated or a username that isn't taken
+ * User that doesn't exist, such as a user that has been suspended deactivated or a username that isn't taken
  */
 export interface UnavailableUser {
     __typename: 'UnavailableUser' | 'SuspendedUser'
@@ -152,31 +138,31 @@ export type UserKind = User | UnavailableUser;
 
 
 
+/**
+ * Additional information about a user
+ */
 export interface AboutUser {
     __typename: 'AboutUser',
     id: string,
-    /** The url for the user's profile picture */
+    /** URL for the user's profile picture */
     avatar_url: string,
+    /** Country the user is based in */
     based_in?: string,
-    /** The user's registration datetime as an ISO string */
     created_at: string,
-    /** The user's display name */
     name: string,
-    /** Whether or not the user's tweets can only be viewed by users that follow them */
+    /** `true` if the user's tweets can only be viewed by users that follow them */
     protected: boolean,
     verification: {
         verified: boolean,
         verified_since?: string,
         verified_with_id: boolean
     },
-    /** Whether or not the user is using a VPN */
+    /** `true` if the user is using a VPN */
     vpn: boolean,
     usernames: {
-        /** Total times the user's \@username was changed */
+        /** Total times this user's username was changed */
         changed_count: number,
-        /** The user's current \@username */
         current: string,
-        /** The last time the user's \@username was changed */
         updated_at?: string
     }
 }
