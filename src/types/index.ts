@@ -1,4 +1,4 @@
-import { Enum } from './internal.js';
+import type { Enum } from './internal.js';
 
 export * from './args.js';
 export * from './internal.js';
@@ -13,10 +13,15 @@ export * from './search/index.js';
 export * from './tweet/index.js';
 export * from './user/index.js';
 
+export interface Type<S extends string> {
+    /** Unique identifier for types used by GraphQL */
+    __typename: S
+}
+
 /**
  * Entry in a timeline containing the item
  */
-export interface Entry<T extends { __typename: string }> {
+export interface Entry<T extends Type<U>, U extends string = string> {
     id: string,
     content: T
 }
@@ -37,7 +42,7 @@ export interface SliceCursors {
 /**
  * Slice of a timeline
  */
-export interface Slice<T extends { __typename: string }> {
+export interface Slice<T extends Type<U>, U extends string = string> {
     name?: string,
     segments?: Segment[],
     /** Timeline entries in this slice */
@@ -49,8 +54,7 @@ export interface Slice<T extends { __typename: string }> {
 /**
  * Represents a timeline cursor. The direction shows where the timeline continues from
  */
-export interface Cursor {
-    __typename: 'Cursor',
+export interface Cursor extends Type<'Cursor'> {
     direction: CursorDirection,
     value: string
 }

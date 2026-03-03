@@ -1,28 +1,27 @@
-import type { User } from '../index.js';
+import type { Type, User } from '../index.js';
 
 /**
  * A Twitter list. Lists contain users whose tweets can be viewed on the list's timeline
  */
-export interface List {
-    __typename: 'List',
+export interface List extends Type<'List'> {
     id: string,
     banner_url?: string,
     created_at: string,
     creator: User,
     description: string,
     /** `true` if you're on this list */
-    listed: boolean,
+    is_listed: boolean,
     /** Amount of users on this list */
     listed_count: number,
     /** `true` if you've muted this list */
     muted: boolean,
     name: string,
     /** `true` if this list is pinned on your timelines */
-    pinned: boolean,
+    is_pinned: boolean,
     /** `true` if this list is visible to everyone */
-    public: boolean,
+    is_public: boolean,
     /** `true` if you're subscribed to this list */
-    subscribed: boolean,
+    is_subscribed: boolean,
     /** Amount of users subscribed to this list */
     subscribers_count: number
 }

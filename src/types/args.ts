@@ -1,4 +1,4 @@
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, Enum } from './index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, Enum, ReplyPermission } from './index.js';
 
 export interface CursorOnly {
     /** Cursor determining where the timeline should continue from */
@@ -195,27 +195,6 @@ export interface TweetVoteArgs {
     /** 1-based index of the selected choice (1-4) */
     choice: number
 }
-
-/**
- * Tweet conversation control options
- * 
- * @enum
- */
-export const ReplyPermission = {
-    /**
-     * Everyone can reply
-     * 
-     * @default
-     */
-    Everyone: 'Everyone',
-    /** Only people you follow can reply */
-    Following: 'Following',
-    /** Only people you mentioned can reply */
-    Mentioned: 'Mentioned',
-    /** Only verified users can reply (not recommended) */
-    Verified: 'Verified'
-} as const;
-export type ReplyPermission = Enum<typeof ReplyPermission>;
 
 /**
  * Arguments for creating a tweet

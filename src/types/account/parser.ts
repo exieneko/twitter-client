@@ -20,7 +20,7 @@ export function settings(value: any): Settings {
         is_email_public: !!value.discoverable_by_email_address,
         is_nsfw: !!value.nfsw_user || !!value.nsfw_admin,
         is_phone_number_public: !!value.discoverable_by_mobile_phone,
-        lang: value.language,
+        language: value.language,
         protected: !!value.protected,
         privacy: {
             allow_personalized_ads: !!value.allow_ads_personalization,

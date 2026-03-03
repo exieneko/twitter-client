@@ -1,10 +1,9 @@
-import type { Enum, User } from '../index.js';
+import type { Enum, Type, User } from '../index.js';
 
 /**
  * A Twitter community
  */
-export interface Community {
-    __typename: 'Community',
+export interface Community extends Type<'Community'> {
     id: string,
     /** URL for the community's banner and preview image */
     banner_url?: string,
@@ -16,16 +15,16 @@ export interface Community {
     creator: User,
     description: string,
     /** `true` if you're a member or moderator of the community */
-    member: boolean,
+    is_member: boolean,
     /** Amount of members in this community */
     members_count: number,
     /** Amount of moderators in this community */
     moderators_count: number,
     name: string,
     /** `true` if the community is marked as NSFW */
-    nsfw: boolean,
+    is_nsfw: boolean,
     /** `true` if the community is pinned on your timelines */
-    pinned: boolean,
+    is_pinned: boolean,
     /** Your role in the community */
     role: CommunityRole,
     /** Community rules */
@@ -61,8 +60,6 @@ export type CommunityRole = Enum<typeof CommunityRole>;
 /**
  * Represents an unavailable community as a fallback
  */
-export interface UnavailableCommunity {
-    __typename: 'UnavailableCommunity'
-}
+export interface UnavailableCommunity extends Type<'UnavailableCommunity'> {}
 
 export type CommunityKind = Community | UnavailableCommunity;

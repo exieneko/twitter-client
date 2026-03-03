@@ -316,9 +316,6 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    /** @deprecated Use {@link TwitterClient.getBlockedUsers} */
-    getBlockedAccounts = this.getBlockedUsers;
-
     private async getBlockedUsersSlice(args?: BlockedUsersGetArgs) {
         if (args?.imported) {
             return await this.fetch(ENDPOINTS.BlockedAccountsImported, { cursor: args?.cursor });
@@ -338,9 +335,6 @@ export class TwitterClient {
         for await (const slice of this.getSlice(args, this.getMutedUsersSlice)) yield slice;
         return EMPTY_SLICE;
     }
-
-    /** @deprecated Use {@link TwitterClient.getMutedUsers} */
-    getMutedAccounts = this.getMutedUsers;
 
     private async getMutedUsersSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.MutedAccounts, args);
@@ -1061,9 +1055,6 @@ export class TwitterClient {
         return { errors, data: tweet };
     }
 
-    /** @deprecated Use the `createTweet` method instead */
-    tweet = this.createTweet;
-
     /**
      * Delete an owned tweet
      * 
@@ -1232,9 +1223,6 @@ export class TwitterClient {
     private async getQuoteTweetsSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as TwitterResponse<Slice<TweetKind>>;
     }
-
-    /** @deprecated Typo, use `getQuotedTweets` instead */
-    getQuotedTweets = this.getQuoteTweets;
 
     /**
      * Bookmark a tweet
@@ -1487,13 +1475,6 @@ export class TwitterClient {
         }
 
         return await this.fetch(ENDPOINTS.UserTweets, { userId: id, cursor: args?.cursor });
-    }
-
-    /**
-     * @deprecated Combined with `getUserTweets`, with the `replies` argument
-     */
-    private async getUserRepliesSlice(id: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, ...args });
     }
 
     /**

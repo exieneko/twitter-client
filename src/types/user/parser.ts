@@ -22,7 +22,7 @@ export function user(value: any): UserKind {
             __typename: 'User',
             id: value.rest_id,
             affiliates_count: value.business_account?.affiliates_count || 0,
-            affiliate_label: !!value.affiliates_highlighted_label?.label?.badge?.url ? {
+            affiliate_label: !!value.affiliates_highlighted_label?.label?.badge?.url && value.affiliates_highlighted_label.label.userLabelType !== 'AutomatedLabel' ? {
                 title: value.affiliates_highlighted_label.label.description,
                 owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 2)[1],
                 image_url: value.affiliates_highlighted_label.label.badge.url
@@ -50,6 +50,8 @@ export function user(value: any): UserKind {
             followed: !!value.relationship_perspectives.following,
             follow_requested: !!value.legacy.follow_request_sent,
             followed_by: !!value.relationship_perspectives.followed_by,
+            is_automated: value.affiliates_highlighted_label?.label?.userLabelType === 'AutomatedLabel',
+            is_translatable: !!value.is_profile_translatable,
             job: value.professional?.category?.at(0)?.name,
             location: !!value.location.location ? value.location.location : undefined,
             muted: !!value.relationship_perspectives.muting,
@@ -58,19 +60,16 @@ export function user(value: any): UserKind {
             protected: !!value.privacy.protected,
             super_following_count: value.creator_subscriptions_count || 0,
             super_following_hidden: !!value.has_hidden_subscriptions_on_profile,
-            translatable: !!value.is_profile_translatable,
             tweets_count: value.legacy.statuses_count,
             media_count: value.legacy.media_count,
             likes_count: value.legacy.favourites_count,
             listed_count: value.legacy.listed_count,
             highlighted_tweets_count: Number(value.highlights_info?.highlighted_tweets || '0'),
             username: value.core.screen_name,
-            url: value.legacy.entities.url?.urls?.at(0)?.expanded_url?.replace(/\/$/, ''),
-            verified,
-            verification_kind: verificationKind,
+            url: value.legacy.entities.url?.urls?.at?.(0)?.expanded_url?.replace(/^http:\/\//, 'https://')?.replace(/\/$/, ''),
             verification: {
                 kind: verificationKind,
-                verified,
+                is_verified: verified,
                 verified_since: verified
                     ? new Date(Number(value.verification_info?.reason?.verified_since_msec || '0')).toISOString()
                     : undefined,
@@ -107,13 +106,14 @@ export function userLegacy(value: any): User {
         followed: !!value.following,
         follow_requested: !!value.follow_request_sent,
         followed_by: !!value.followed_by,
+        is_automated: false,
+        is_translatable: false,
         location: value.location || undefined,
         muted: !!value.muting,
         name: value.name,
         protected: !!value.protected,
         super_following_count: 0,
         super_following_hidden: false,
-        translatable: false,
         tweets_count: value.statuses_count || 0,
         media_count: value.media_count || 0,
         likes_count: value.favorite_count || 0,
@@ -121,11 +121,9 @@ export function userLegacy(value: any): User {
         highlighted_tweets_count: 0,
         username: value.screen_name,
         url: undefined,
-        verified: !!value.ext_is_blue_verified,
-        verification_kind: !!value.ext_is_blue_verified ? 'Blue' : 'Unverified',
         verification: {
             kind: !!value.ext_is_blue_verified ? 'Blue' : 'Unverified',
-            verified: !!value.ext_is_blue_verified,
+            is_verified: !!value.ext_is_blue_verified,
             verified_with_id: false
         },
         want_retweets: !!value.want_retweets,

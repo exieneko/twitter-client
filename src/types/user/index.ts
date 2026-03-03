@@ -1,10 +1,9 @@
-import { Enum } from '../index.js';
+import type { Enum, Type } from '../index.js';
 
 /**
  * User
  */
-export interface User {
-    __typename: 'User',
+export interface User extends Type<'User'> {
     id: string,
     /** Amount of affiliates the user has */
     affiliates_count: number,
@@ -35,7 +34,7 @@ export interface User {
     can_super_follow: boolean,
     created_at: string,
     description: string,
-    /** Indicates the fan status of an account */
+    /** Fan status of an account */
     fan_account_kind?: FanAccountKind,
     /** Amount of followers the user has */
     followers_count: number,
@@ -47,6 +46,9 @@ export interface User {
     follow_requested: boolean,
     /** `true` if this user follows you */
     followed_by: boolean,
+    /** `true` if this user is marked as an automated account */
+    is_automated: boolean,
+    is_translatable: boolean,
     job?: string,
     location?: string,
     /** `true` if you've muted this user */
@@ -60,7 +62,6 @@ export interface User {
     super_following_count: number,
     /** `true` if user's user-following is hidden */
     super_following_hidden: boolean,
-    translatable: boolean,
     /** Amount of total tweets the user created */
     tweets_count: number,
     /** Amount of tweets the user created that contain media */
@@ -71,19 +72,14 @@ export interface User {
     listed_count: number,
     /** Amount of their tweets the user has highlighted */
     highlighted_tweets_count: number,
-    /** The user's unique \@username */
     username: string,
     /** The full url on the user's profile, `undefined` if empty */
     url?: string,
-    /** @deprecated moved to `verification.verified` */
-    verified: boolean,
-    /** @deprecated moved to `verification.kind` */
-    verification_kind: VerificationKind,
     verification: {
         /** Shows the kind of verification the user has */
         kind: VerificationKind,
         /** `true` if the user has a verification chechmark */
-        verified: boolean,
+        is_verified: boolean,
         /** When the user was initially verified */
         verified_since?: string,
         /** `true` if the user successfully verified their identity with a legal id */
@@ -130,9 +126,7 @@ export type VerificationKind = Enum<typeof VerificationKind>;
 /**
  * User that doesn't exist, such as a user that has been suspended deactivated or a username that isn't taken
  */
-export interface UnavailableUser {
-    __typename: 'UnavailableUser' | 'SuspendedUser'
-}
+export interface UnavailableUser extends Type<'UnavailableUser' | 'SuspendedUser'> {}
 
 export type UserKind = User | UnavailableUser;
 
@@ -141,8 +135,7 @@ export type UserKind = User | UnavailableUser;
 /**
  * Additional information about a user
  */
-export interface AboutUser {
-    __typename: 'AboutUser',
+export interface AboutUser extends Type<'AboutUser'> {
     id: string,
     /** URL for the user's profile picture */
     avatar_url: string,

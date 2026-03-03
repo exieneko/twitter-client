@@ -1,22 +1,16 @@
-import type { Enum, Tweet, User } from '../index.js';
+import type { Enum, Tweet, Type, User } from '../index.js';
 
 /**
  * A Twitter notification
  */
-export interface Notification {
-    __typename: 'Notification',
+export interface Notification extends Type<'Notification'> {
     id: string,
-    /** The list's creation datetime as an ISO string */
     created_at: string,
     /** Id of the primary object in a notification, like a tweet or Birdwatch note */
     object_id?: string,
-    /** @deprecated Typo, use `object_id` */
-    objectId?: string,
     /** Possible text content of this notification. May not be applicable for all notification types. In the case of Birdwatch notifications, the text contains a preview for the note */
     text?: string,
     kind: NotificationKind,
-    /** @deprecated Use `kind` */
-    type: NotificationKind,
     /** Array of tweets that are important to this notification */
     tweets: Tweet[],
     /** Array of users that are important to this notification */

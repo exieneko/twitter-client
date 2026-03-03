@@ -115,7 +115,7 @@ export const ENDPOINTS = {
         method: 'GET',
         params: {} as { alias: string },
         features: { responsive_web_birdwatch_top_contributor_enabled: true },
-        parser: data => parsers.birdwatchUser(data.birdwatch_profile_by_alias)
+        parser: data => parsers.birdwatchUser(data.birdwatch_profile_by_alias, false)
     },
     BirdwatchCreateRating: {
         url: gql('gbshFt1Vmddrlio4vHWhhQ/BirdwatchCreateRating'),

@@ -1,8 +1,9 @@
+import type { Type } from '../index.js';
+
 /**
  * A current trend
  */
-export interface Trend {
-    __typename: 'Trend',
+export interface Trend extends Type<'Trend'> {
     /** Optional topic or location context */
     context?: string,
     /** Names or hashtags of related trends */

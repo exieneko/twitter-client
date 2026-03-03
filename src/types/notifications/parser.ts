@@ -50,14 +50,12 @@ export function notification(value: any, notificationKind: string): Notification
         id: value.id || tweet?.id,
         created_at: new Date(value.timestamp_ms).toISOString(),
         object_id: objectId,
-        objectId,
         text: match(kind, [
             [NotificationKind.AddedToList, NotificationKind.ListSubscribedTo, value.rich_message?.text?.match(/List\s(.*?)$/)?.at(1)],
             [[NotificationKind.BirdwatchNoteNeedsHelp, NotificationKind.BirdwatchNoteRatedHelpful, NotificationKind.BirdwatchNoteRatedNotHelpful, NotificationKind.BirdwatchNoteRatedDeleted], value.template?.additional_context?.text],
             [NotificationKind.ReportUpdate, value?.rich_message?.text]
         ]),
         kind,
-        type: kind,
         tweets: tweet ?? (value.template?.target_objects || [])
             .filter((x: any) => x.__typename === 'TimelineNotificationTweetRef')
             .map((x: any) => p.tweet(x.result)),

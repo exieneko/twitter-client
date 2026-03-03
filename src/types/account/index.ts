@@ -27,7 +27,7 @@ export interface Settings {
     /** Can other users find you by your phone number? */
     is_phone_number_public: boolean,
     /** Twitter client language */
-    lang: string,
+    language: string,
     /** `true` if your tweets are protected */
     protected: boolean,
     /** Additional boolean privacy options */

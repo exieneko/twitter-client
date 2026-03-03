@@ -13,13 +13,13 @@ export function list(value: any): ListKind {
         created_at: new Date(value.created_at).toISOString(),
         creator: p.user(value.user_results?.result) as User,
         description: value.description || '',
-        listed: !!value.is_member,
+        is_listed: !!value.is_member,
         listed_count: value.member_count || 0,
         muted: !!value.muting,
         name: value.name,
-        pinned: !!value.pinning,
-        public: value.mode === 'Public',
-        subscribed: !!value.following,
+        is_pinned: !!value.pinning,
+        is_public: value.mode === 'Public',
+        is_subscribed: !!value.following,
         subscribers_count: value.subscriber_count || 0
     };
 }

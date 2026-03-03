@@ -2,10 +2,11 @@ import { match } from '../../utils/index.js';
 import { BirdwatchNoteStatus, type BirdwatchNote, type BirdwatchNotesOnTweet, type BirdwatchUser, type Slice, type TweetKind } from '../index.js';
 import * as p from '../parsers.js';
 
-export function birdwatchUser(value: any, isAi?: boolean): BirdwatchUser {
+export function birdwatchUser(value: any, isAi: boolean): BirdwatchUser {
     return {
+        __typename: 'BirdwatchUser',
         alias: value.alias,
-        is_ai: !!isAi || !!value.is_api_contributor,
+        is_ai: !!value.is_api_contributor || isAi,
         ratings: {
             successful: {
                 helpful_count: value.ratings_count?.successful?.helpful_count || 0,
@@ -33,7 +34,6 @@ export function birdwatchNote(value: any): BirdwatchNote {
     return {
         __typename: 'BirdwatchNote',
         id: value.rest_id,
-        ai_generated: !!value.is_api_author,
         author: birdwatchUser(value.birdwatch_profile, !!value.is_api_author),
         by_media: !!value.is_media_note,
         by_url: !!value.is_url_note,

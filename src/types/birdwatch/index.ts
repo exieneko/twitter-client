@@ -1,13 +1,10 @@
-import type { Enum } from '../index.js';
+import type { Enum, Type } from '../index.js';
 
 /**
  * Single Birdwatch note
  */
-export interface BirdwatchNote {
-    __typename: 'BirdwatchNote',
+export interface BirdwatchNote extends Type<'BirdwatchNote'> {
     id: string,
-    /** `true` if the note is written by an AI author */
-    ai_generated: boolean,
     author: BirdwatchUser,
     /** `true` if the note is added due to the media content of the tweet */
     by_media: boolean,
@@ -57,7 +54,7 @@ export interface BirdwatchNotesOnTweet {
 /**
  * A single Birdwatch contributor
  */
-export interface BirdwatchUser {
+export interface BirdwatchUser extends Type<'BirdwatchUser'> {
     alias: string,
     /** `true` if the user is an AI model */
     is_ai: boolean,
