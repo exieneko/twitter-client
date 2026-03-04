@@ -4,7 +4,7 @@ import { fetch, FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, MAX_TIMELINE_ITERATIONS, PUBLIC_TOKEN, TWEET_CHARACTER_LIMIT } from './consts.js';
-import { BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs as BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type Endpoint, type EndpointKind, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type Options, type Params, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, Type, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs as BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type Endpoint, type EndpointKind, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type Options, type Params, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
 import { endpointKind, match, toSearchParams } from './utils/index.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 
@@ -47,9 +47,9 @@ export class TwitterClient {
      * 
      * @since 1.0.0-rc.1
      */
-    public self?: User;
+    self?: User;
 
-    private constructor(transaction: ClientTransaction, tokens: Tokens, options: Options) {
+    constructor(transaction: ClientTransaction, tokens: Tokens, options: Options) {
         this.#transaction = transaction;
         this.#tokens = tokens;
         this.#options = options;
@@ -57,6 +57,18 @@ export class TwitterClient {
         if (this.#options.language.toLowerCase().startsWith('en-')) {
             this.#options.language = 'en';
         }
+    }
+
+    /**
+     * Fetches the x.com homepage and creates a `ClientTransaction` object, which is used to generate the `x-client-transaction-id` header for endpoints that require it
+     * 
+     * @returns Promise resolving to a `ClientTransaction`
+     * @since v1.0.0-rc.1
+     */
+    static async _transaction(): Promise<ClientTransaction> {
+        const document = await handleXMigration();
+        const transaction = await ClientTransaction.create(document);
+        return transaction;
     }
 
     /**
@@ -68,12 +80,9 @@ export class TwitterClient {
      * @returns Promise resolving to `TwitterClient`
      * @since v1.0.0-rc.1
      */
-    public static async new(tokens: Tokens, options?: Partial<Options>): Promise<TwitterClient> {
-        const document = await handleXMigration();
-        const transaction = await ClientTransaction.create(document);
-
+    static async new(tokens: Tokens, options?: Partial<Options>): Promise<TwitterClient> {
         const client = new TwitterClient(
-            transaction,
+            await TwitterClient._transaction(),
             tokens,
             {
                 domain: 'twitter.com',
@@ -162,7 +171,7 @@ export class TwitterClient {
         };
     }
 
-    private getAgent() {
+    private getProxyAgent() {
         if (!!this.#options.proxyUrl) {
             return new ProxyAgent(this.#options.proxyUrl);
         }
@@ -190,7 +199,7 @@ export class TwitterClient {
                     ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
                         method: endpoint.method,
                         headers,
-                        dispatcher: this.getAgent()
+                        dispatcher: this.getProxyAgent()
                     })
                     : fetch(url, {
                         method: endpoint.method,
@@ -200,14 +209,14 @@ export class TwitterClient {
                             features: endpoint.features,
                             queryId: endpoint.url.split('/', 1)[0]
                         }),
-                        dispatcher: this.getAgent()
+                        dispatcher: this.getProxyAgent()
                     })
                 )
                 : fetch(endpoint.method === 'GET' && body ? `${url}?${body}` : url, {
                     method: endpoint.method,
                     headers,
                     body: endpoint.method === 'POST' && body ? body : undefined,
-                    dispatcher: this.getAgent()
+                    dispatcher: this.getProxyAgent()
                 })
             );
 
@@ -281,7 +290,7 @@ export class TwitterClient {
      * @returns User
      * @since v1.0.0-rc.1
      */
-    public async setSelf(): Promise<TwitterResponse<User>> {
+    async setSelf(): Promise<TwitterResponse<User>> {
         const { errors, data: settings } = await this.getSettings();
 
         if (!settings) {
@@ -311,7 +320,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getBlockedUsers(args?: BlockedUsersGetArgs): Timeline<UserKind> {
+    async* getBlockedUsers(args?: BlockedUsersGetArgs): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, this.getBlockedUsersSlice)) yield slice;
         return EMPTY_SLICE;
     }
@@ -331,7 +340,7 @@ export class TwitterClient {
      * @yields Slice of accounts
      * @since v0.1.0
      */
-    public async* getMutedUsers(args?: CursorOnly): Timeline<UserKind> {
+    async* getMutedUsers(args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, this.getMutedUsersSlice)) yield slice;
         return EMPTY_SLICE;
     }
@@ -346,7 +355,7 @@ export class TwitterClient {
      * @returns Settings
      * @since v0.1.0
      */
-    public async getSettings() {
+    async getSettings() {
         return await this.fetch(ENDPOINTS.account_settings);
     }
 
@@ -357,7 +366,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async updateProfile(args: UpdateProfileArgs) {
+    async updateProfile(args: UpdateProfileArgs) {
         return await this.fetch(ENDPOINTS.account_update_profile, {
             name: args.name,
             description: args.description,
@@ -387,7 +396,7 @@ export class TwitterClient {
      * @param mediaId Media id
      * @returns Success status
      */
-    public async setAvatar(mediaId: string) {
+    async setAvatar(mediaId: string) {
         return await this.fetch(ENDPOINTS.account_update_profile_image, { media_id: mediaId });
     }
 
@@ -397,7 +406,7 @@ export class TwitterClient {
      * @returns Legacy user
      * @since v0.1.0
      */
-    public async verifyCredentials() {
+    async verifyCredentials() {
         return await this.fetch(ENDPOINTS.account_verify_credentials);
     }
 
@@ -410,7 +419,7 @@ export class TwitterClient {
      * @returns Birdwatch notes
      * @since v0.4.0
      */
-    public async getBirdwatchNotesOnTweet(id: string) {
+    async getBirdwatchNotesOnTweet(id: string) {
         return await this.fetch(ENDPOINTS.BirdwatchFetchNotes, { tweet_id: id });
     }
 
@@ -421,7 +430,7 @@ export class TwitterClient {
      * @returns Birdwatch user
      * @since v0.4.0
      */
-    public async getBirdwatchUser(alias: string) {
+    async getBirdwatchUser(alias: string) {
         return await this.fetch(ENDPOINTS.BirdwatchFetchBirdwatchProfile, { alias });
     }
 
@@ -433,7 +442,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.4.0
      */
-    public async rateBirdwatchNote(noteId: string, args: BirdwatchRateNoteArgs) {
+    async rateBirdwatchNote(noteId: string, args: BirdwatchRateNoteArgs) {
         return await this.fetch(ENDPOINTS.BirdwatchCreateRating, {
             data_v2: {
                 helpfulness_level: args.helpful_tags?.length && args.unhelpful_tags?.length ? 'SomewhatHelpful' : args.unhelpful_tags?.length ? 'NotHelpful' : 'Helpful',
@@ -441,7 +450,7 @@ export class TwitterClient {
                 not_helpful_tags: args.unhelpful_tags
             },
             note_id: noteId,
-            rating_source: 'BirdwatchHomeNeedsYourHelp',
+            rating_source: args.source === BirdwatchNoteSource.NeedsYourHelp ? 'BirdwatchHomeNeedsYourHelp' : 'BirdwatchForYouTimeline',
             source_platform: 'BirdwatchWeb',
             tweet_id: args.tweetId
         });
@@ -454,7 +463,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.4.0
      */
-    public async unrateBirdwatchNote(noteId: string) {
+    async unrateBirdwatchNote(noteId: string) {
         return await this.fetch(ENDPOINTS.BirdwatchDeleteRating, { note_id: noteId });
     }
 
@@ -467,7 +476,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getBookmarks(args?: CursorOnly): Timeline<TweetKind> {
+    async* getBookmarks(args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getBookmarksSlice(args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -484,12 +493,12 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.6.0
      */
-    public async* searchBookmarks(query: string | QueryBuilder, args?: CursorOnly): Timeline<TweetKind> {
+    async* searchBookmarks(query: string | QueryBuilder, args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.searchBookmarksSlice(query, args))) yield slice;
         return EMPTY_SLICE;
     }
 
-    public async searchBookmarksSlice(query: string | QueryBuilder, args?: CursorOnly) {
+    async searchBookmarksSlice(query: string | QueryBuilder, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), ...args });
     }
 
@@ -499,7 +508,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async clearBookmarks() {
+    async clearBookmarks() {
         return await this.fetch(ENDPOINTS.BookmarksAllDelete);
     }
 
@@ -512,7 +521,7 @@ export class TwitterClient {
      * @returns Community
      * @since v0.3.0
      */
-    public async getCommunity(id: string) {
+    async getCommunity(id: string) {
         return await this.fetch(ENDPOINTS.CommunityByRestId, { communityId: id });
     }
 
@@ -524,13 +533,13 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.3.0
      */
-    public async* getCommunityTweets(id: string, args?: CommunityTweetsGetArgs): Timeline<TweetKind> {
+    async* getCommunityTweets(id: string, args?: CommunityTweetsGetArgs): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getCommunityTweetsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
     private async getCommunityTweetsSlice(id: string, args?: CommunityTweetsGetArgs) {
-        const rankingMode = args?.orderBy === CommunityTweetsOrder.New ? 'Recency' : 'Relevance';
+        const rankingMode = args?.orderBy === CommunityTweetsOrder.Latest ? 'Recency' : 'Relevance';
         return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, cursor: args?.cursor });
     }
 
@@ -542,7 +551,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.3.0
      */
-    public async* getCommunityMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
+    async* getCommunityMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getCommunityMediaSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -558,7 +567,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.3.0
      */
-    public async joinCommunity(id: string) {
+    async joinCommunity(id: string) {
         return await this.fetch(ENDPOINTS.JoinCommunity, { communityId: id });
     }
 
@@ -569,7 +578,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.3.0
      */
-    public async leaveCommunity(id: string) {
+    async leaveCommunity(id: string) {
         return await this.fetch(ENDPOINTS.LeaveCommunity, { communityId: id });
     }
 
@@ -583,7 +592,7 @@ export class TwitterClient {
      * @returns List
      * @since v0.1.0
      */
-    public async getList(id: string, args?: BySlug) {
+    async getList(id: string, args?: BySlug) {
         if (args?.bySlug) {
             return await this.fetch(ENDPOINTS.ListBySlug, { listId: id });
         }
@@ -599,7 +608,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getListTweets(id: string, args?: CursorOnly) {
+    async* getListTweets(id: string, args?: CursorOnly) {
         for await (const slice of this.getSlice(args, args => this.getListTweetsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -614,7 +623,7 @@ export class TwitterClient {
      * @returns Slice of lists
      * @since v0.6.0
      */
-    public async getListDiscovery() {
+    async getListDiscovery() {
         return await this.fetch(ENDPOINTS.ListsDiscovery);
     }
 
@@ -626,11 +635,11 @@ export class TwitterClient {
      * @returns Slice of lists
      * @since v0.6.0
      */
-    public async listedOn(args?: CursorOnly) {
+    async listedOn(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListMemberships, args);
     }
 
-    public async getOwnedLists(userId: string, otherUserId: string, args?: CursorOnly) {
+    async getOwnedLists(userId: string, otherUserId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListOwnerships, { userId, isListMemberTargetUserId: otherUserId, ...args });
     }
 
@@ -642,7 +651,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getListMembers(id: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getListMembers(id: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getListMembersSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -659,7 +668,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getListSubscribers(id: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getListSubscribers(id: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getListSubscribersSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -675,7 +684,7 @@ export class TwitterClient {
      * @returns List
      * @since v0.1.0
      */
-    public async createList(args: ListCreateArgs) {
+    async createList(args: ListCreateArgs) {
         return await this.fetch(ENDPOINTS.CreateList, { name: args.name, description: args.description || '', isPrivate: !!args.private });
     }
 
@@ -687,7 +696,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async editList(id: string, args: Required<ListCreateArgs>) {
+    async editList(id: string, args: Required<ListCreateArgs>) {
         return await this.fetch(ENDPOINTS.UpdateList, { listId: id, name: args.name, description: args.description, isPrivate: args.private });
     }
 
@@ -698,7 +707,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async deleteList(id: string) {
+    async deleteList(id: string) {
         return await this.fetch(ENDPOINTS.DeleteList, { listId: id });
     }
 
@@ -710,7 +719,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    public async setListBanner(listId: string, mediaId: string) {
+    async setListBanner(listId: string, mediaId: string) {
         if (mediaId) {
             return await this.fetch(ENDPOINTS.EditListBanner, { listId, mediaId });
         }
@@ -725,7 +734,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async listUser(listId: string, userId: string) {
+    async listUser(listId: string, userId: string) {
         return await this.fetch(ENDPOINTS.ListAddMember, { listId, userId });
     }
 
@@ -737,7 +746,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unlistUser(listId: string, userId: string) {
+    async unlistUser(listId: string, userId: string) {
         return await this.fetch(ENDPOINTS.ListRemoveMember, { listId, userId });
     }
 
@@ -748,7 +757,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async subscribeToList(id: string) {
+    async subscribeToList(id: string) {
         return await this.fetch(ENDPOINTS.ListSubscribe, { listId: id });
     }
 
@@ -759,7 +768,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unsubscribeFromList(id: string) {
+    async unsubscribeFromList(id: string) {
         return await this.fetch(ENDPOINTS.ListUnsubscribe, { listId: id });
     }
 
@@ -770,7 +779,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    public async pinList(id: string) {
+    async pinList(id: string) {
         return await this.fetch(ENDPOINTS.PinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
     }
 
@@ -781,7 +790,7 @@ export class TwitterClient {
      * @since v0.6.0
      * @returns Success status
      */
-    public async unpinList(id: string) {
+    async unpinList(id: string) {
         return await this.fetch(ENDPOINTS.UnpinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
     }
 
@@ -792,7 +801,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    public async muteList(id: string) {
+    async muteList(id: string) {
         return await this.fetch(ENDPOINTS.MuteList, { listId: id });
     }
 
@@ -803,7 +812,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    public async unmuteList(id: string) {
+    async unmuteList(id: string) {
         return await this.fetch(ENDPOINTS.UnmuteList, { listId: id });
     }
 
@@ -816,7 +825,7 @@ export class TwitterClient {
      * @yields Slice of notifications
      * @since v0.1.0
      */
-    public async* getNotifications(args?: NotificationGetArgs): Timeline<Notification> {
+    async* getNotifications(args?: NotificationGetArgs): Timeline<Notification> {
         for await (const slice of this.getSlice(args, this.getNotificationsSlice)) yield slice;
         return EMPTY_SLICE;
     }
@@ -833,7 +842,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getNotifiedTweets(args?: CursorOnly): Timeline<TweetKind> {
+    async* getNotifiedTweets(args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, this.getNotifiedTweetsSlice)) yield slice;
         return EMPTY_SLICE;
     }
@@ -849,7 +858,7 @@ export class TwitterClient {
      * @returns Cursor
      * @since v0.6.0
      */
-    public async lastSeenCursor(cursor: string) {
+    async lastSeenCursor(cursor: string) {
         return await this.fetch(ENDPOINTS.last_seen_cursor, { cursor });
     }
 
@@ -859,7 +868,7 @@ export class TwitterClient {
      * @returns Unread count
      * @since v0.1.0
      */
-    public async getUnreadCount() {
+    async getUnreadCount() {
         return await this.fetch(ENDPOINTS.badge_count);
     }
 
@@ -872,24 +881,43 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getTimeline(args?: TimelineGetArgs): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, this.getTimelineSlice)) yield slice;
+    getTimeline(args?: TimelineGetArgs): Timeline<TweetKind>;
+    /**
+     * Get tweets of a generic timeline by its id
+     * 
+     * @param id Generic timeline id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
+     */
+    getTimeline(id: string, args?: CursorOnly): Timeline<TweetKind>;
+
+    async* getTimeline(idOrArgs?: string | TimelineGetArgs, args?: CursorOnly): Timeline<TweetKind> {
+        if (typeof idOrArgs === 'string') {
+            for await (const slice of this.getSlice(args, args => this.getTimelineSlice(idOrArgs, args))) yield slice;
+        } else {
+            for await (const slice of this.getSlice(idOrArgs, args => this.getTimelineSlice(args))) yield slice;
+        }
+
         return EMPTY_SLICE;
     }
 
-    private async getTimelineSlice(args: TimelineGetArgs = {}) {
-        if ('id' in args) {
-            return await this.fetch(ENDPOINTS.GenericTimelineById, { timelineId: args.id, cursor: args.cursor });
+    private async getTimelineSlice(args?: TimelineGetArgs): Promise<TwitterResponse<Slice<TweetKind>>>;
+    private async getTimelineSlice(id: string, args?: CursorOnly): Promise<TwitterResponse<Slice<TweetKind>>>;
+
+    private async getTimelineSlice(idOrArgs: string | TimelineGetArgs = {}, args?: CursorOnly) {
+        if (typeof idOrArgs === 'string') {
+            return await this.fetch(ENDPOINTS.GenericTimelineById, { timelineId: idOrArgs, cursor: args?.cursor });
         }
 
-        const seenTweetIds = args.seenTweetIds ?? [];
-        const requestContext = args.cursor ? undefined : 'launch';
+        const seenTweetIds = idOrArgs.seenTweetIds ?? [];
+        const requestContext = idOrArgs.cursor ? undefined : 'launch';
 
-        if (args?.kind === 'Chronological') {
-            return await this.fetch(ENDPOINTS.HomeLatestTimeline, { seenTweetIds, requestContext, cursor: args.cursor });
+        if (idOrArgs.orderBy === 'Latest') {
+            return await this.fetch(ENDPOINTS.HomeLatestTimeline, { seenTweetIds, requestContext, cursor: idOrArgs.cursor });
         }
 
-        return await this.fetch(ENDPOINTS.HomeTimeline, { seenTweetIds, requestContext, cursor: args.cursor });
+        return await this.fetch(ENDPOINTS.HomeTimeline, { seenTweetIds, requestContext, cursor: idOrArgs.cursor });
     }
 
     /**
@@ -900,13 +928,39 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* search(query: string | QueryBuilder, args?: SearchArgs): Timeline<TweetKind | UserKind | ListKind> {
-        for await (const slice of this.getSlice(args, args => this.searchSlice(query, args))) yield slice;
+    search(query: string | QueryBuilder, args?: SearchArgs & { kind?: 'Relevant' | 'Latest' | 'Media' }): Timeline<TweetKind>;
+    /**
+     * Search users
+     * 
+     * @param query Query
+     * @param [args] {@link SearchArgs}
+     * @yields Slice of tweets
+     * @since v0.1.0
+     */
+    search(query: string | QueryBuilder, args?: SearchArgs & { kind: 'Users' }): Timeline<UserKind>;
+    /**
+     * Search lists
+     * 
+     * @param query Query
+     * @param [args] {@link SearchArgs}
+     * @yields Slice of tweets
+     * @since v0.1.0
+     */
+    search(query: string | QueryBuilder, args?: SearchArgs & { kind: 'Lists' }): Timeline<ListKind>;
+
+    async* search<T extends Type<string>>(query: string | QueryBuilder, args?: SearchArgs): Timeline<T> {
+        for await (const slice of this.getSlice(args, args => this.searchSlice(query, args))) yield slice as TwitterResponse<Slice<T>>;
         return EMPTY_SLICE;
     }
 
-    public async searchSlice(query: string | QueryBuilder, args?: SearchArgs) {
-        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
+    async searchSlice(query: string | QueryBuilder, args?: SearchArgs) {
+        const product = args?.kind === 'Relevant'
+            ? 'Top'
+        : args?.kind === 'Users'
+            ? 'People'
+            : args?.kind || 'Top';
+
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product, cursor: args?.cursor });
     }
 
     /**
@@ -916,7 +970,7 @@ export class TwitterClient {
      * @returns Search typeahead
      * @since v0.1.0
      */
-    public async typeahead(query: string) {
+    async typeahead(query: string) {
         return await this.fetch(ENDPOINTS.search_typeahead, { q: query });
     }
 
@@ -927,15 +981,29 @@ export class TwitterClient {
      * 
      * Additional thread tweets will be created with individual requests, as Twitter doesn't have an official way of handling this
      * 
-     * Note: this endpoint is protected by Twitter and may be unsafe to fetch repeatedly. Read {@link https://github.com/exieneko/twitter-client#how-to-protect-your-account the README} for more information
+     * Note: this endpoint is protected by Twitter and may be unsafe to fetch repeatedly. Read {@link https://github.com/exieneko/twitter-client#how-to-protect-your-account|the README} for more information
      * 
      * @param args {@link TweetCreateArgs}
      * @param [thread] Additional tweets
      * @returns Tweet
      * @since v0.1.0
      */
-    public async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>> {
-        const text = args.text || '';
+    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>>;
+
+    /**
+     * Creates a new tweet with the specified content
+     * 
+     * Note: this endpoint is protected by Twitter and may be unsafe to fetch repeatedly. Read {@link https://github.com/exieneko/twitter-client#how-to-protect-your-account|the README} for more information
+     * 
+     * @param text Tweet text
+     * @returns Tweet
+     * @since v0.1.0
+     */
+    async createTweet(text: string): Promise<TwitterResponse<Tweet>>;
+
+    async createTweet(argsOrText: string | TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>> {
+        const args: TweetCreateArgs = typeof argsOrText === 'string' ? {} : argsOrText;
+        const text = (typeof argsOrText === 'string' ? argsOrText : argsOrText.text) || '';
 
         if (text.length > TWEET_CHARACTER_LIMIT && this.#options.longTweetBehavior === 'Fail') {
             return {
@@ -963,7 +1031,7 @@ export class TwitterClient {
 
         let cardUri: string | undefined = undefined;
 
-        if (args.card?.type === 'Poll') {
+        if (args.card?.kind === 'Poll') {
             if (args.card.choices.length < 2 || args.card.choices.length > 4) {
                 return {
                     errors: [{
@@ -1002,6 +1070,14 @@ export class TwitterClient {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
             card_uri: cardUri,
             conversation_control: mode ? { mode } : undefined,
+            content_disclosure: args.content_disclosures?.is_ai_generated || args.content_disclosures?.is_sponsored ? {
+                advertising_promotion: args.content_disclosures.is_sponsored ? {
+                    is_paid_promotion: !!args.content_disclosures.is_sponsored
+                } : undefined,
+                ai_generated_disclosure: args.content_disclosures.is_ai_generated ? {
+                    has_ai_generated_media: !!args.content_disclosures.is_ai_generated
+                } : undefined
+            } : undefined,
             media: {
                 media_entities: args.mediaIds?.map(id => ({
                     media_id: id,
@@ -1009,7 +1085,7 @@ export class TwitterClient {
                 })) || [],
                 possibly_sensitive: !!args.sensitive
             },
-            reply: args.replyTo ? {
+            reply: !!args.replyTo ? {
                 exclude_reply_user_ids: [],
                 in_reply_to_tweet_id: args.replyTo
             } : undefined,
@@ -1062,7 +1138,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async deleteTweet(id: string) {
+    async deleteTweet(id: string) {
         return await this.fetch(ENDPOINTS.DeleteTweet, { tweet_id: id });
     }
 
@@ -1073,7 +1149,7 @@ export class TwitterClient {
      * @returns Scheduled tweet id
      * @since v1.0.0-rc.1
      */
-    public async createScheduledTweet(args: ScheduledTweetCreateArgs) {
+    async createScheduledTweet(args: ScheduledTweetCreateArgs) {
         return await this.fetch(ENDPOINTS.CreateScheduledTweet, {
             execute_at: (typeof args.sendAt === 'number' ? args.sendAt : args.sendAt.getTime()) / 1000,
             post_tweet_request: {
@@ -1093,7 +1169,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v1.0.0-rc.1
      */
-    public async editScheduledTweet(id: string, args: ScheduledTweetCreateArgs) {
+    async editScheduledTweet(id: string, args: ScheduledTweetCreateArgs) {
         return await this.fetch(ENDPOINTS.EditScheduledTweet, {
             execute_at: (typeof args.sendAt === 'number' ? args.sendAt : args.sendAt.getTime()) / 1000,
             post_tweet_request: {
@@ -1106,7 +1182,7 @@ export class TwitterClient {
         });
     }
 
-    public async getScheduledTweets(args?: UnsentTweetsGetArgs) {
+    async getScheduledTweets(args?: UnsentTweetsGetArgs) {
         return await this.fetch(ENDPOINTS.FetchScheduledTweets, { ascending: !!args?.ascending });
     }
 
@@ -1118,7 +1194,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getTweet(id: string, args?: TweetGetArgs): Timeline<TweetKind> {
+    async* getTweet(id: string, args?: TweetGetArgs): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getTweetSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1139,7 +1215,7 @@ export class TwitterClient {
      * @returns Tweet
      * @since v0.6.0
      */
-    public async getTweetResult(id: string) {
+    async getTweetResult(id: string) {
         return await this.fetch(ENDPOINTS.TweetResultByRestId, { tweetId: id });
     }
 
@@ -1150,7 +1226,7 @@ export class TwitterClient {
      * @returns Array of tweets
      * @since v0.6.0
      */
-    public async getTweetResults(ids: [string, ...string[]]) {
+    async getTweetResults(ids: string[]) {
         return await this.fetch(ENDPOINTS.TweetResultsByRestIds, { tweetIds: ids });
     }
 
@@ -1162,7 +1238,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getHiddenReplies(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
+    async* getHiddenReplies(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getHiddenRepliesSlice(tweetId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1179,7 +1255,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getLikes(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getLikes(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getLikesSlice(tweetId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1196,7 +1272,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getRetweets(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getRetweets(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getRetweetsSlice(tweetId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1208,14 +1284,12 @@ export class TwitterClient {
     /**
      * Get quote tweets to a tweet by the original tweet's id
      * 
-     * Equivalent to searching for query 
-     * 
      * @param tweetId Original tweet's id
      * @param [args] {@link CursorOnly}
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getQuoteTweets(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
+    async* getQuoteTweets(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getQuoteTweetsSlice(tweetId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1231,7 +1305,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async bookmark(tweetId: string) {
+    async bookmark(tweetId: string) {
         return await this.fetch(ENDPOINTS.CreateBookmark, { tweet_id: tweetId });
     }
 
@@ -1242,7 +1316,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unbookmark(tweetId: string) {
+    async unbookmark(tweetId: string) {
         return await this.fetch(ENDPOINTS.DeleteBookmark, { tweet_id: tweetId });
     }
 
@@ -1253,7 +1327,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async like(tweetId: string) {
+    async like(tweetId: string) {
         return await this.fetch(ENDPOINTS.FavoriteTweet, { tweet_id: tweetId });
     }
 
@@ -1264,7 +1338,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unlike(tweetId: string) {
+    async unlike(tweetId: string) {
         return await this.fetch(ENDPOINTS.UnfavoriteTweet, { tweet_id: tweetId });
     }
 
@@ -1275,7 +1349,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async retweet(tweetId: string) {
+    async retweet(tweetId: string) {
         return await this.fetch(ENDPOINTS.CreateRetweet, { tweet_id: tweetId });
     }
 
@@ -1286,7 +1360,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unretweet(tweetId: string) {
+    async unretweet(tweetId: string) {
         return await this.fetch(ENDPOINTS.DeleteRetweet, { source_tweet_id: tweetId });
     }
 
@@ -1297,7 +1371,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async hideTweet(id: string) {
+    async hideTweet(id: string) {
         return await this.fetch(ENDPOINTS.ModerateTweet, { tweetId: id });
     }
 
@@ -1308,7 +1382,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unhideTweet(id: string) {
+    async unhideTweet(id: string) {
         return await this.fetch(ENDPOINTS.UnmoderateTweet, { tweetId: id });
     }
 
@@ -1319,7 +1393,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async pinTweet(id: string) {
+    async pinTweet(id: string) {
         return await this.fetch(ENDPOINTS.PinTweet, { tweet_id: id });
     }
 
@@ -1330,7 +1404,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unpinTweet(id: string) {
+    async unpinTweet(id: string) {
         return await this.fetch(ENDPOINTS.UnpinTweet, { tweet_id: id });
     }
 
@@ -1341,7 +1415,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async vote(args: TweetVoteArgs): Promise<TwitterResponse<boolean>> {
+    async vote(args: TweetVoteArgs): Promise<TwitterResponse<boolean>> {
         if (args.choice < 1 || args.choice > 4) {
             return {
                 errors: [{
@@ -1367,7 +1441,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    public async changeReplyPermission(tweetId: string, permission?: ReplyPermission) {
+    async changeReplyPermission(tweetId: string, permission?: ReplyPermission) {
         if (!permission || permission === ReplyPermission.Everyone) {
             return await this.fetch(ENDPOINTS.ConversationControlDelete, { tweet_id: tweetId });
         }
@@ -1387,7 +1461,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    public async unmention(id: string) {
+    async unmention(id: string) {
         return await this.fetch(ENDPOINTS.UnmentionUserFromConversation, { tweet_id: id });
     }
 
@@ -1398,7 +1472,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async muteTweet(id: string) {
+    async muteTweet(id: string) {
         return await this.fetch(ENDPOINTS.mutes_conversations_create, { tweet_id: id });
     }
 
@@ -1409,7 +1483,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unmuteTweet(id: string) {
+    async unmuteTweet(id: string) {
         return await this.fetch(ENDPOINTS.mutes_conversations_destroy, { tweet_id: id });
     }
 
@@ -1423,7 +1497,7 @@ export class TwitterClient {
      * @returns User
      * @since v0.1.0
      */
-    public async getUser(id: string, args?: ByUsername) {
+    async getUser(id: string, args?: ByUsername) {
         const { errors, data: user } = await (args?.byUsername
             ? this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id })
             : this.fetch(ENDPOINTS.UserByRestId, { userId: id })
@@ -1448,7 +1522,7 @@ export class TwitterClient {
      * @returns Users
      * @since v0.1.0
      */
-    public async getUsers(ids: [string, ...string[]], args?: ByUsername) {
+    async getUsers(ids: string[], args?: ByUsername) {
         if (args?.byUsername) {
             return await this.fetch(ENDPOINTS.UsersByScreenNames, { screen_names: ids });
         }
@@ -1464,7 +1538,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getUserTweets(id: string, args?: UserTweetsGetArgs): Timeline<TweetKind> {
+    async* getUserTweets(id: string, args?: UserTweetsGetArgs): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getUserTweetsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1485,7 +1559,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getUserMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
+    async* getUserMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getUserMediaSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1502,7 +1576,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getUserLikes(id: string, args?: CursorOnly): Timeline<TweetKind> {
+    async* getUserLikes(id: string, args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getUserLikesSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1519,7 +1593,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    public async* getUserHighlightedTweets(id: string, args?: CursorOnly): Timeline<TweetKind> {
+    async* getUserHighlightedTweets(id: string, args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.getUserHighlightedTweetsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1536,7 +1610,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getFollowingSlice(userId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1553,8 +1627,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getFollowingSlice(userId, args))) yield slice;
+    async* getFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowersSlice(userId, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1570,7 +1644,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getFollowersYouKnow(userId: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getFollowersYouKnow(userId: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getFollowersYouKnowSlice(userId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1587,7 +1661,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getVerifiedFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getVerifiedFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getVerifiedFollowersSlice(userId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1604,7 +1678,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getSuperFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getSuperFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getSuperFollowingSlice(userId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1621,7 +1695,7 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    public async* getAffiliates(userId: string, args?: CursorOnly): Timeline<UserKind> {
+    async* getAffiliates(userId: string, args?: CursorOnly): Timeline<UserKind> {
         for await (const slice of this.getSlice(args, args => this.getAffiliatesSlice(userId, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1638,7 +1712,7 @@ export class TwitterClient {
      * @yields Slice of lists
      * @since v0.1.0
      */
-    public async* getUserLists(id: string, args?: CursorOnly): Timeline<ListKind> {
+    async* getUserLists(id: string, args?: CursorOnly): Timeline<ListKind> {
         for await (const slice of this.getSlice(args, args => this.getUserListsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
@@ -1655,7 +1729,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async followUser(id: string, args?: ByUsername) {
+    async followUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
@@ -1667,7 +1741,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unfollowUser(id: string, args?: ByUsername) {
+    async unfollowUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
@@ -1678,7 +1752,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    public async enableRetweets(userId: string) {
+    async enableRetweets(userId: string) {
         return await this.fetch(ENDPOINTS.friendships_update, { id: userId, retweets: true });
     }
 
@@ -1689,7 +1763,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    public async disableRetweets(userId: string) {
+    async disableRetweets(userId: string) {
         return await this.fetch(ENDPOINTS.friendships_update, { id: userId, retweets: false });
     }
 
@@ -1700,7 +1774,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    public async enableNotifications(userId: string) {
+    async enableNotifications(userId: string) {
         return await this.fetch(ENDPOINTS.friendships_update, { id: userId, device: true });
     }
 
@@ -1711,7 +1785,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    public async disableNotifications(userId: string) {
+    async disableNotifications(userId: string) {
         return await this.fetch(ENDPOINTS.friendships_update, { id: userId, device: false });
     }
 
@@ -1722,7 +1796,7 @@ export class TwitterClient {
      * @returns User ids
      * @since v0.1.0
      */
-    public async getFollowRequests(args?: CursorOnly) {
+    async getFollowRequests(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.friendships_incoming, { cursor: Number(args?.cursor || '-1') });
     }
 
@@ -1734,7 +1808,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async cancelFollowRequest(userId: string, args?: ByUsername) {
+    async cancelFollowRequest(userId: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_cancel, args?.byUsername ? { screen_name: userId } : { user_id: userId });
     }
 
@@ -1746,7 +1820,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async acceptFollowRequest(userId: string, args?: ByUsername) {
+    async acceptFollowRequest(userId: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_accept, args?.byUsername ? { screen_name: userId } : { user_id: userId });
     }
 
@@ -1758,7 +1832,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async declineFollowRequest(userId: string, args?: ByUsername) {
+    async declineFollowRequest(userId: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_deny, args?.byUsername ? { screen_name: userId } : { user_id: userId });
     }
 
@@ -1770,7 +1844,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async blockUser(id: string, args?: ByUsername) {
+    async blockUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.blocks_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
@@ -1784,7 +1858,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unblockUser(id: string, args?: ByUsername) {
+    async unblockUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.blocks_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
@@ -1795,7 +1869,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v1.0.0-rc.1
      */
-    public async softblockUser(id: string) {
+    async softblockUser(id: string) {
         return await this.fetch(ENDPOINTS.RemoveFollower, { target_user_id: id });
     }
 
@@ -1807,7 +1881,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async muteUser(id: string, args?: ByUsername) {
+    async muteUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.mutes_users_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
@@ -1819,7 +1893,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    public async unmuteUser(id: string, args?: ByUsername) {
+    async unmuteUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.mutes_users_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
@@ -1832,7 +1906,7 @@ export class TwitterClient {
      * @returns Media
      * @since v0.6.0
      */
-    public async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<TwitterResponse<Media>> {
+    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<TwitterResponse<Media>> {
         const append = async (id: string, data: ArrayBuffer, index: number, contentType: string) => {
             const body = new URLSearchParams({
                 command: 'APPEND',
@@ -1847,7 +1921,7 @@ export class TwitterClient {
                 method: 'POST',
                 headers: this.getHeaders(PUBLIC_TOKEN, 'Media'),
                 body: formData,
-                dispatcher: this.getAgent()
+                dispatcher: this.getProxyAgent()
             });
         };
 
@@ -1907,8 +1981,8 @@ export class TwitterClient {
      * @returns Media
      * @since v0.6.0
      */
-    public async mediaStatus(id: string) {
-        return await this.fetch(ENDPOINTS.media_upload_STATUS);
+    async mediaStatus(id: string) {
+        return await this.fetch(ENDPOINTS.media_upload_STATUS, { media_id: id });
     }
 
     /**
@@ -1919,7 +1993,7 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    public async addAltText(id: string, text: string) {
+    async addAltText(id: string, text: string) {
         return await this.fetch(ENDPOINTS.media_metadata_create, {
             allow_download_status: { allow_download: 'true' },
             alt_text: { text },

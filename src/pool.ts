@@ -25,7 +25,7 @@ export class TwitterPool {
      * @param tokens Account tokens
      * @returns Promise resolving to `TwitterPool`
      */
-    static async new(tokens: [Tokens, ...Tokens[]]): Promise<TwitterPool> {
+    static async new(tokens: Tokens[]): Promise<TwitterPool> {
         let pool = new TwitterPool();
         pool.setAccounts(tokens);
         return pool;
@@ -41,7 +41,7 @@ export class TwitterPool {
 
 
 
-    private async setAccounts(tokens: [Tokens, ...Tokens[]]) {
+    private async setAccounts(tokens: Tokens[]) {
         this.#accounts = await Promise.all(
             tokens.map(async (t, i) => ({
                 id: i,
@@ -110,7 +110,7 @@ export class TwitterPool {
     }
 
     async getQuotedTweets(tweetId: string, args?: CursorOnly) {
-        return this.client().getQuotedTweets(tweetId, args);
+        return this.client().getQuoteTweets(tweetId, args);
     }
 
 
@@ -119,7 +119,7 @@ export class TwitterPool {
         return this.client().getUser(id, args);
     }
 
-    async getUsers(ids: [string, ...string[]], args?: ByUsername) {
+    async getUsers(ids: string[], args?: ByUsername) {
         return this.client().getUsers(ids, args);
     }
     

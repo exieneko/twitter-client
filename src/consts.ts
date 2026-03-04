@@ -127,7 +127,7 @@ export const ENDPOINTS = {
                 helpfulness_level: 'Helpful' | 'SomewhatHelpful' | 'NotHelpful'
             },
             note_id: string,
-            rating_source: 'BirdwatchHomeNeedsYourHelp',
+            rating_source: 'BirdwatchForYouTimeline' | 'BirdwatchHomeNeedsYourHelp',
             source_platform: 'BirdwatchWeb',
             tweet_id: string
         },
@@ -526,6 +526,14 @@ export const ENDPOINTS = {
             card_uri?: string,
             conversation_control?: {
                 mode: 'Community' | 'Verified' | 'ByInvitation'
+            },
+            content_disclosure?: {
+                advertising_promotion?: {
+                    is_paid_promotion: boolean
+                },
+                ai_generated_disclosure?: {
+                    has_ai_generated_media: boolean
+                }
             },
             media: {
                 media_entities: {

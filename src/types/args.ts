@@ -1,4 +1,4 @@
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, Enum, ReplyPermission } from './index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, Enum, ReplyPermission, Tweet } from './index.js';
 
 export interface CursorOnly {
     /** Cursor determining where the timeline should continue from */
@@ -78,13 +78,30 @@ export interface UpdateProfileArgs {
     birthDayVisibility: BirthDateVisibility
 }
 
+/**
+ * Source of a Birdwatch note rating
+ * 
+ * @enum
+ */
+export const BirdwatchNoteSource = {
+    /** @default */
+    Timeline: 'Timeline',
+    /** Note coming from the "needs your help" timeline */
+    NeedsYourHelp: 'NeedsYourHelp'
+} as const;
+export type BirdwatchNoteSource = Enum<typeof BirdwatchNoteSource>;
+
+/**
+ * Arguments for rating a Birdwatch note
+ */
 export interface BirdwatchRateNoteArgs {
     /** Tweet id containing the note */
     tweetId: string,
     /** Tags showing why this note should be displayed */
     helpful_tags?: BirdwatchHelpfulTag[],
     /** Tags showing why this note should not be displayed */
-    unhelpful_tags?: BirdwatchUnhelpfulTag[]
+    unhelpful_tags?: BirdwatchUnhelpfulTag[],
+    source?: BirdwatchNoteSource
 }
 
 /**
@@ -96,7 +113,7 @@ export const CommunityTweetsOrder = {
     /** Popular tweets first */
     Relevance: 'Relevance',
     /** New tweets first */
-    New: 'New'
+    Latest: 'Latest'
 } as const;
 export type CommunityTweetsOrder = Enum<typeof CommunityTweetsOrder>;
 
@@ -144,9 +161,20 @@ export interface NotificationGetArgs extends CursorOnly, Filter<NotificationTime
  * @enum
  */
 export const SearchKind = {
+    /**
+     * Most relevant tweet results
+     * 
+     * @default
+     */
     Relevant: 'Relevant',
+    /** Latest tweet results */
     Latest: 'Latest',
-    Media: 'Media'
+    /** Most relevant tweets containing media */
+    Media: 'Media',
+    /** Most relevant users */
+    Users: 'Users',
+    /** Most relevant lists */
+    Lists: 'Lists'
 } as const;
 export type SearchKind = Enum<typeof SearchKind>;
 
@@ -154,33 +182,35 @@ export type SearchKind = Enum<typeof SearchKind>;
  * Arguments for searching tweets
  */
 export interface SearchArgs extends CursorOnly {
-    kind?: SearchKind
+    kind?: SearchKind,
+    /** Source for the search. Should be `typed_query` in almost all cases */
+    source?: 'typed_query' | 'recent_search_click'
 }
 
 /**
- * Home timeline kinds
+ * Home timeline order
  * 
- * @todo Change this to use `Filter`
  * @enum
  */
 export const TimelineKind = {
-    Algorithmical: 'Algorithmical',
-    Chronological: 'Chronological'
+    /**
+     * Algorithmical timeline
+     * 
+     * @default
+     */
+    Automatic: 'Automatic',
+    /** Chronological timeline */
+    Latest: 'Latest'
 } as const;
 export type TimelineKind = Enum<typeof TimelineKind>;
 
 /**
  * Arguments for getting a timeline
  */
-export type TimelineGetArgs = ({
-    /** Kind of timeline */
-    kind?: TimelineKind,
+export interface TimelineGetArgs extends CursorOnly, OrderBy<TimelineKind> {
     /** Tweet ids of already seen tweets */
     seenTweetIds?: string[]
-} | {
-    /** Generic timeline id */
-    id: string
-}) & CursorOnly;
+}
 
 /**
  * Arguments for voting on a poll
@@ -202,16 +232,19 @@ export interface TweetVoteArgs {
 export interface TweetCreateArgs {
     /** Content of the tweet. Defaults to an empty string. Tweets over 280 characters can only be sent as a note tweet */
     text?: string,
+    /** Card content of the tweet */
     card?: {
-        type: 'Poll',
+        kind: 'Poll',
         duration: number,
         choices: {
             text: string,
             media_id?: string
         }[]
     },
+    /** Tweet content disclosures */
+    content_disclosures?: Partial<Tweet['content_disclosures']>,
     /** Tweet id to reply to */
-    replyTo: string,
+    replyTo?: string,
     /** Media ids to attach to the tweet. Tweets with over 4 medias can only be sent as a note tweet */
     mediaIds?: string[],
     /** Mark this tweet as sensitive? */
