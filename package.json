@@ -28,7 +28,8 @@
     }
   },
   "scripts": {
-    "build": "pnpm exec tsc"
+    "build": "pnpm exec tsc",
+    "test": "pnpm exec jest"
   },
   "license": "MIT",
   "keywords": [
@@ -38,6 +39,7 @@
   "packageManager": "pnpm@10.12.4",
   "devDependencies": {
     "@types/node": "^25.1.0",
+    "dotenv": "^17.3.1",
     "typescript": "^5.8.3"
   },
   "dependencies": {

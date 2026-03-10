@@ -1,5 +1,8 @@
 node_modules
 /src
+/tests
+
+.env*
 tsconfig.json
 
 /*.tgz
