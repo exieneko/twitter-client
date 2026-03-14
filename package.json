@@ -29,7 +29,7 @@
   },
   "scripts": {
     "build": "pnpm exec tsc",
-    "test": "pnpm exec jest"
+    "test": "node tests/index.js"
   },
   "license": "MIT",
   "keywords": [
