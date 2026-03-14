@@ -1,8 +1,5 @@
 import type { Enum } from './internal.js';
 
-export * from './args.js';
-export * from './internal.js';
-
 export * from './account/index.js';
 export * from './birdwatch/index.js';
 export * from './community/index.js';
@@ -12,70 +9,101 @@ export * from './notifications/index.js';
 export * from './search/index.js';
 export * from './tweet/index.js';
 export * from './user/index.js';
+export * from './args.js';
+export * from './timeline.js';
 
-export interface Type<S extends string> {
-    /** Unique identifier for types used by GraphQL */
-    __typename: S
+/**
+ * Response object returned by all methods on `TwitterClient`. Contains an `errors` array and optional `data` if the request was successful
+ */
+export interface TwitterResponse<T> {
+    errors: TwitterError[],
+    data?: T
 }
 
 /**
- * Entry in a timeline containing the item
+ * Represents an error returned by the Twitter API. Javascript exceptions and client-side errors use `-1` as `code`
  */
-export interface Entry<T extends Type<U>, U extends string = string> {
-    id: string,
-    content: T
-}
-
-/**
- * Segment in a timeline, if the timeline uses Twitter's SegmentedTimelines feature
- */
-export interface Segment {
-    id: string,
-    name: string
-}
-
-export interface SliceCursors {
-    previous?: string,
-    next?: string
-}
-
-/**
- * Slice of a timeline
- */
-export interface Slice<T extends Type<U>, U extends string = string> {
+export interface TwitterError {
+    message: string,
+    locations?: {
+        line: number,
+        column: number
+    }[],
+    path?: string[],
+    code: number,
+    kind?: string, // Validation, Permissions
     name?: string,
-    segments?: Segment[],
-    /** Timeline entries in this slice */
-    entries: Entry<T | Cursor>[],
-    /** Cloned top and bottom cursor values in `entries` */
-    cursors: SliceCursors
+    source?: string,
+    tracing?: {
+        trace_id: string
+    }
 }
 
+
+
 /**
- * Represents a timeline cursor. The direction shows where the timeline continues from
+ * Account tokens required to log into a Twitter account
  */
-export interface Cursor extends Type<'Cursor'> {
-    direction: CursorDirection,
-    value: string
+export interface Tokens {
+    authToken: string,
+    csrf: string
 }
 
 /**
- * Cursor type showing what fetching the next slice of the timeline with the cursor will do
+ * Additional options for `TwitterClient`
+ */
+export interface Options {
+    /**
+     * Set which domain to send requests to
+     * 
+     * @default 'twitter.com'
+     */
+    domain: 'twitter.com' | 'x.com',
+    /**
+     * Twitter client language. English is currently the only supported language
+     * 
+     * @default 'en'
+     */
+    language: string,
+    /**
+     * How to handle when a tweet's text length exceeds 280 characters
+     * 
+     * @default LongTweetBehavior.Force
+     */
+    longTweetBehavior: LongTweetBehavior,
+    /**
+     * Optional http proxy url
+     * 
+     * @default undefined
+     */
+    proxyUrl?: string,
+    /**
+     * User-Agent header to send with requests
+     * 
+     * @default 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+     */
+    userAgent: string,
+    /**
+     * Show logs in console?
+     * 
+     * @default false
+     */
+    verbose: boolean
+}
+
+/**
+ * How to handle when a tweet's text length exceeds 280 characters
  * 
  * @enum
  */
-export const CursorDirection = {
-    /** Top of the timeline */
-    Previous: 'Previous',
-    /**
-     * Bottom of the timeline
-     * 
-     * @default
-     */
-    Next: 'Next',
-    /** Show more replies under a tweet */
-    ShowMore: 'ShowMore',
-    /** Show possible spam replies under a tweet */
-    ShowSpam: 'ShowSpam'
+export const LongTweetBehavior = {
+    /** Send the request anyway */
+    Force: 'Force',
+    /** Return an error without sending the request */
+    Fail: 'Fail',
+    /** Send the tweet as a note tweet. This requires a verified account. If `TwitterClient.self` is undefined, it will be set before checking for verification */
+    NoteTweet: 'NoteTweet',
+    /** Send the tweet as a note tweet, without checking if your account is verified */
+    NoteTweetUnchecked: 'NoteTweetUnchecked'
 } as const;
-export type CursorDirection = Enum<typeof CursorDirection>;
+export type LongTweetBehavior = Enum<typeof LongTweetBehavior>;

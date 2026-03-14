@@ -1,4 +1,4 @@
-import type { Enum } from '../index.js';
+import type { Enum } from '../internal.js';
 
 /**
  * Settings for the current user

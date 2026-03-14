@@ -4,7 +4,8 @@ import { fetch, FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, MAX_TIMELINE_ITERATIONS, PUBLIC_TOKEN, TWEET_CHARACTER_LIMIT } from './consts.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, Type, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs as BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type Endpoint, type EndpointKind, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type Options, type Params, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type Options, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { EndpointKind, type Endpoint, type Params, type Type } from './types/internal.js';
 import { endpointKind, match, toSearchParams } from './utils/index.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 
@@ -134,7 +135,7 @@ export class TwitterClient {
         return transactionId;
     }
 
-    private getHeaders(token?: string, endpointKind: EndpointKind = 'GraphQL', url?: string, transactionId?: string): Record<string, string> {
+    private getHeaders(token?: string, endpointKind: EndpointKind = EndpointKind.GraphQL, url?: string, transactionId?: string): Record<string, string> {
         const tokenHeaders = () => {
             return {
                 'x-csrf-token': this.#tokens.csrf,
@@ -146,9 +147,9 @@ export class TwitterClient {
 
         let result: Record<string, string> = transactionId ? { 'x-client-transaction-id': transactionId } : {};
 
-        const contentType = endpointKind === 'GraphQL'
+        const contentType = endpointKind === EndpointKind.GraphQL
             ? 'application/json'
-        : endpointKind === 'Media'
+        : endpointKind === EndpointKind.Media
             ? undefined
             : 'application/x-www-form-urlencoded';
 
@@ -194,7 +195,7 @@ export class TwitterClient {
             this.log(`${endpoint.method} ${url}`);
 
             const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
-            const response = await (endpointKind(endpoint) === 'GraphQL'
+            const response = await (endpointKind(endpoint) === EndpointKind.GraphQL
                 ? (endpoint.method === 'GET'
                     ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
                         method: endpoint.method,

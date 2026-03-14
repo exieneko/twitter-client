@@ -1,4 +1,3 @@
-import { type BodyInit, type Dispatcher, fetch } from 'undici';
 import type { Endpoint, EndpointKind } from '../types/internal.js';
 
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][]): V | undefined;

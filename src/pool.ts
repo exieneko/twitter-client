@@ -1,12 +1,6 @@
 import { TwitterClient } from './client.js';
 import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, Tokens, TweetGetArgs, UserTweetsGetArgs } from './types/index.js';
-
-interface Account {
-    id: number,
-    client: TwitterClient,
-    // TODO: make this read the rate limit header instead of just increasing the count for every action
-    uses: number
-}
+import type { Account } from './types/internal.js';
 
 /**
  * Asyncronous client utilizing `TwitterClient` instances to make requests to the Twitter browser API using several users

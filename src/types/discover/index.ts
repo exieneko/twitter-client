@@ -1,4 +1,4 @@
-import type { Type } from '../index.js';
+import type { Type } from '../internal.js';
 
 /**
  * A current trend

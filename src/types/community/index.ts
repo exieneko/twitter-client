@@ -1,4 +1,5 @@
-import type { Enum, Type, User } from '../index.js';
+import type { User } from '../index.js';
+import type { Enum, Type } from '../internal.js';
 
 /**
  * A Twitter community

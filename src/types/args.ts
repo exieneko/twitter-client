@@ -1,4 +1,5 @@
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, Enum, ReplyPermission, Tweet } from './index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, ReplyPermission, Tweet } from './index.js';
+import type { Enum } from './internal.js';
 
 export interface CursorOnly {
     /** Cursor determining where the timeline should continue from */

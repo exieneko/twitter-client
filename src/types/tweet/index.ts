@@ -1,4 +1,5 @@
-import type { CommunityKind, Cursor, Enum, Type, User } from '../index.js';
+import type { CommunityKind, Cursor, User } from '../index.js';
+import type { Enum, Type } from '../internal.js';
 
 /**
  * A timeline tweet. If this tweet is a reply under the currently focused tweet, it will be a `Conversation` instead

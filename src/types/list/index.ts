@@ -1,4 +1,5 @@
-import type { Type, User } from '../index.js';
+import type { User } from '../index.js';
+import type { Type } from '../internal.js';
 
 /**
  * A Twitter list. Lists contain users whose tweets can be viewed on the list's timeline

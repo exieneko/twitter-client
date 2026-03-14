@@ -1,4 +1,4 @@
-import type { Enum, Type } from '../index.js';
+import type { Enum, Type } from '../internal.js';
 
 /**
  * Single Birdwatch note

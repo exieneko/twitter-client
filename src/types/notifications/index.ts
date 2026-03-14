@@ -1,4 +1,5 @@
-import type { Enum, Tweet, Type, User } from '../index.js';
+import type { Tweet, User } from '../index.js';
+import type { Enum, Type } from '../internal.js';
 
 /**
  * A Twitter notification
