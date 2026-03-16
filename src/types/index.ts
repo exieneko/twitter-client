@@ -1,3 +1,4 @@
+import type { TwitterError } from './error.js';
 import type { Enum } from './internal.js';
 
 export * from './account/index.js';
@@ -10,6 +11,7 @@ export * from './search/index.js';
 export * from './tweet/index.js';
 export * from './user/index.js';
 export * from './args.js';
+export * from './error.js';
 export * from './timeline.js';
 
 /**
@@ -18,25 +20,6 @@ export * from './timeline.js';
 export interface TwitterResponse<T> {
     errors: TwitterError[],
     data?: T
-}
-
-/**
- * Represents an error returned by the Twitter API. Javascript exceptions and client-side errors use `-1` as `code`
- */
-export interface TwitterError {
-    message: string,
-    locations?: {
-        line: number,
-        column: number
-    }[],
-    path?: string[],
-    code: number,
-    kind?: string, // Validation, Permissions
-    name?: string,
-    source?: string,
-    tracing?: {
-        trace_id: string
-    }
 }
 
 

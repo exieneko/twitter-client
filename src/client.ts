@@ -4,7 +4,7 @@ import { fetch, FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, MAX_TIMELINE_ITERATIONS, PUBLIC_TOKEN, TWEET_CHARACTER_LIMIT } from './consts.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type Options, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type Options, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
 import { EndpointKind, type Endpoint, type Params, type Type } from './types/internal.js';
 import { endpointKind, match, toSearchParams } from './utils/index.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
@@ -235,29 +235,23 @@ export class TwitterClient {
 
             if (data?.errors && !data.data) {
                 return {
-                    errors: data.errors
+                    errors: TwitterError.from(data.errors)
                 };
             }
 
             try {
                 return {
-                    errors: data?.errors || [],
+                    errors: TwitterError.from(data?.errors),
                     data: endpoint.parser(data)
                 };
             } catch (error: any) {
                 return {
-                    errors: [{
-                        code: -1,
-                        message: String(error.stack)
-                    }]
+                    errors: [new TwitterError()]
                 };
             }
         } catch (error: any) {
             return {
-                errors: [{
-                    code: -1,
-                    message: String(error.stack)
-                }]
+                errors: [new TwitterError()]
             };
         }
     }
@@ -1008,10 +1002,7 @@ export class TwitterClient {
 
         if (text.length > TWEET_CHARACTER_LIMIT && this.#options.longTweetBehavior === 'Fail') {
             return {
-                errors: [{
-                    code: -1,
-                    message: 'Tweet exceeded character limit'
-                }]
+                errors: [new TwitterError(TwitterErrorCode.InvalidTweetTextLength, { data: text.length })]
             };
         }
 
@@ -1023,10 +1014,13 @@ export class TwitterClient {
 
         if (text.length > TWEET_CHARACTER_LIMIT && (this.#options.longTweetBehavior === 'NoteTweet' || this.#options.longTweetBehavior === 'NoteTweetUnchecked')) {
             return {
-                errors: [{
-                    code: -1,
-                    message: 'Unimplemented'
-                }]
+                errors: [new TwitterError(TwitterErrorCode.NotImplemented)]
+            };
+        }
+
+        if (args.mediaIds?.length && args.mediaIds.length > 4) {
+            return {
+                errors: [new TwitterError(TwitterErrorCode.InvalidMediaCount, { data: args.mediaIds.length })]
             };
         }
 
@@ -1035,10 +1029,7 @@ export class TwitterClient {
         if (args.card?.kind === 'Poll') {
             if (args.card.choices.length < 2 || args.card.choices.length > 4) {
                 return {
-                    errors: [{
-                        code: -1,
-                        message: `Polls must have between 2-4 choices (got ${args.card.choices.length})`
-                    }]
+                    errors: [new TwitterError(TwitterErrorCode.InvalidPollChoicesCount, { data: args.card.choices.length })]
                 };
             }
 
@@ -1419,10 +1410,7 @@ export class TwitterClient {
     async vote(args: TweetVoteArgs): Promise<TwitterResponse<boolean>> {
         if (args.choice < 1 || args.choice > 4) {
             return {
-                errors: [{
-                    code: -1,
-                    message: `Poll choice must be between 1-4 (got ${args.choice})`
-                }]
+                errors: [new TwitterError(TwitterErrorCode.InvalidVoteIndex, { data: args.choice })]
             };
         }
 
@@ -1967,10 +1955,7 @@ export class TwitterClient {
             return final;
         } catch (error) {
             return {
-                errors: [{
-                    code: -1,
-                    message: String(error)
-                }]
+                errors: [new TwitterError(0, { cause: error })]
             };
         }
     }
