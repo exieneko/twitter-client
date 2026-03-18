@@ -4,7 +4,8 @@ import { fetch, FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, MAX_TIMELINE_ITERATIONS, PUBLIC_TOKEN, TWEET_CHARACTER_LIMIT } from './consts.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type Options, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { TwitterFormatter } from './fmt/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
 import { EndpointKind, type Endpoint, type Params, type Type } from './types/internal.js';
 import { endpointKind, match, toSearchParams } from './utils/index.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
@@ -40,9 +41,8 @@ export async function slice<T extends { __typename: string }>(timeline: Timeline
  */
 export class TwitterClient {
     #transaction: ClientTransaction;
-    #tokens: Tokens;
-    #options: Options;
-
+    #tokens: TwitterTokens;
+    options: TwitterOptions;
     /**
      * The current user
      * 
@@ -50,13 +50,13 @@ export class TwitterClient {
      */
     self?: User;
 
-    constructor(transaction: ClientTransaction, tokens: Tokens, options: Options) {
+    constructor(transaction: ClientTransaction, tokens: TwitterTokens, options: TwitterOptions) {
         this.#transaction = transaction;
         this.#tokens = tokens;
-        this.#options = options;
+        this.options = options;
 
-        if (this.#options.language.toLowerCase().startsWith('en-')) {
-            this.#options.language = 'en';
+        if (this.options.language.toLowerCase().startsWith('en-')) {
+            this.options.language = 'en';
         }
     }
 
@@ -81,24 +81,26 @@ export class TwitterClient {
      * @returns Promise resolving to `TwitterClient`
      * @since v1.0.0-rc.1
      */
-    static async new(tokens: Tokens, options?: Partial<Options>): Promise<TwitterClient> {
+    static async new(tokens: TwitterTokens, options?: Partial<TwitterOptions>): Promise<TwitterClient> {
+        const opts: TwitterOptions = {
+            domain: 'twitter.com',
+            language: 'en',
+            longTweetBehavior: 'Force',
+            proxyUrl: undefined,
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+            verbose: false,
+            ...options
+        };
+
         const client = new TwitterClient(
             await TwitterClient._transaction(),
             tokens,
-            {
-                domain: 'twitter.com',
-                language: 'en',
-                longTweetBehavior: 'Force',
-                proxyUrl: undefined,
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
-                verbose: false,
-                ...options
-            }
+            opts
         );
 
         client.log('Initialized TwitterClient');
 
-        if (client.#options.language !== 'en') {
+        if (client.options.language !== 'en') {
             client.warn('Setting `language` to values other than "en" may have unexpected effects - if you find any bugs, please open an issue here: https://github.com/exieneko/twitter-client/issues <3');
         }
 
@@ -108,19 +110,19 @@ export class TwitterClient {
 
 
     private log(message: string) {
-        if (this.#options.verbose) {
+        if (this.options.verbose) {
             logger.info(message);
         }
     }
 
     private warn(message: string) {
-        if (this.#options.verbose) {
+        if (this.options.verbose) {
             logger.warn(message);
         }
     }
 
     private error(message: string) {
-        if (this.#options.verbose) {
+        if (this.options.verbose) {
             logger.error(message);
         }
     }
@@ -140,8 +142,8 @@ export class TwitterClient {
             return {
                 'x-csrf-token': this.#tokens.csrf,
                 cookie: !!this.self?.id
-                    ? `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; twid=u%3D${this.self.id}; lang=${this.#options.language}`
-                    : `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; lang=${this.#options.language}`
+                    ? `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; twid=u%3D${this.self.id}; lang=${this.options.language}`
+                    : `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; lang=${this.options.language}`
             };
         }
 
@@ -159,26 +161,26 @@ export class TwitterClient {
 
         return {
             ...HEADERS,
-            'Accept-Language': `${this.#options.language === 'en' ? 'en-US,en' : this.#options.language};q=0.5`,
+            'Accept-Language': `${this.options.language === 'en' ? 'en-US,en' : this.options.language};q=0.5`,
             Host: url
-                ? (url?.replace('https://', '').replace('.com/', '') + '.com').replace('twitter.com', this.#options.domain)
-                : this.#options.domain,
-            Origin: `https://${this.#options.domain}`,
-            Referer: `https://${this.#options.domain}/`,
+                ? (url?.replace('https://', '').replace('.com/', '') + '.com').replace('twitter.com', this.options.domain)
+                : this.options.domain,
+            Origin: `https://${this.options.domain}`,
+            Referer: `https://${this.options.domain}/`,
             authorization: token || PUBLIC_TOKEN,
-            'User-Agent': this.#options.userAgent,
+            'User-Agent': this.options.userAgent,
             ...tokenHeaders(),
             ...result
         };
     }
 
     private getProxyAgent() {
-        if (!!this.#options.proxyUrl) {
-            return new ProxyAgent(this.#options.proxyUrl);
+        if (!!this.options.proxyUrl) {
+            return new ProxyAgent(this.options.proxyUrl);
         }
     }
 
-    private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<TwitterResponse<ReturnType<T['parser']>>> {
+    private async fetch<EP extends Endpoint>(endpoint: EP, params?: Params<EP>): Promise<TwitterResponse<Awaited<ReturnType<EP['format']>>>> {
         const headers = this.getHeaders(
             endpoint.token,
             endpointKind(endpoint),
@@ -188,7 +190,7 @@ export class TwitterClient {
                 : undefined
         );
 
-        const url = endpoint.url.replace('twitter.com', this.#options.domain);
+        const url = endpoint.url.replace('twitter.com', this.options.domain);
 
         try {
             const start = hrtime.bigint();
@@ -231,7 +233,8 @@ export class TwitterClient {
                 this.error(text);
             }
 
-            const data: Parameters<Endpoint['parser']>[0] = await response.json();
+            const fmt = new TwitterFormatter(this);
+            const data: Parameters<Endpoint['format']>[1] = await response.json();
 
             if (data?.errors && !data.data) {
                 return {
@@ -242,7 +245,7 @@ export class TwitterClient {
             try {
                 return {
                     errors: TwitterError.from(data?.errors),
-                    data: endpoint.parser(data)
+                    data: await fmt.next(endpoint.format, data)
                 };
             } catch (error: any) {
                 return {
@@ -256,7 +259,7 @@ export class TwitterClient {
         }
     }
 
-    private async* getSlice<T extends { __typename: string }, U extends CursorOnly>(args: U | undefined, callback: (args: U) => Promise<TwitterResponse<Slice<T>>>): Timeline<T> {
+    private async* getSlice<T extends Type, U extends CursorOnly>(args: U | undefined, callback: (args: U) => Promise<TwitterResponse<Slice<T>>>): Timeline<T> {
         const a = (args ?? {}) as U;
 
         let iterations = 0;
@@ -1000,7 +1003,7 @@ export class TwitterClient {
         const args: TweetCreateArgs = typeof argsOrText === 'string' ? {} : argsOrText;
         const text = (typeof argsOrText === 'string' ? argsOrText : argsOrText.text) || '';
 
-        if (text.length > TWEET_CHARACTER_LIMIT && this.#options.longTweetBehavior === 'Fail') {
+        if (text.length > TWEET_CHARACTER_LIMIT && this.options.longTweetBehavior === 'Fail') {
             return {
                 errors: [new TwitterError(TwitterErrorCode.InvalidTweetTextLength, { data: text.length })]
             };
@@ -1012,7 +1015,7 @@ export class TwitterClient {
             [ReplyPermission.Following, 'ByInvitation']
         ] as const);
 
-        if (text.length > TWEET_CHARACTER_LIMIT && (this.#options.longTweetBehavior === 'NoteTweet' || this.#options.longTweetBehavior === 'NoteTweetUnchecked')) {
+        if (text.length > TWEET_CHARACTER_LIMIT && (this.options.longTweetBehavior === 'NoteTweet' || this.options.longTweetBehavior === 'NoteTweetUnchecked')) {
             return {
                 errors: [new TwitterError(TwitterErrorCode.NotImplemented)]
             };
@@ -1906,7 +1909,7 @@ export class TwitterClient {
             let formData = new FormData();
             formData.append('media', new Blob([data], { type: contentType }));
 
-            return await fetch(`https://upload.${this.#options.domain}/1.1/media/upload.json?${body}`, {
+            return await fetch(`https://upload.${this.options.domain}/1.1/media/upload.json?${body}`, {
                 method: 'POST',
                 headers: this.getHeaders(PUBLIC_TOKEN, 'Media'),
                 body: formData,

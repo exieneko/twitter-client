@@ -27,7 +27,7 @@ export interface TwitterResponse<T> {
 /**
  * Account tokens required to log into a Twitter account
  */
-export interface Tokens {
+export interface TwitterTokens {
     authToken: string,
     csrf: string
 }
@@ -35,7 +35,7 @@ export interface Tokens {
 /**
  * Additional options for `TwitterClient`
  */
-export interface Options {
+export interface TwitterOptions {
     /**
      * Set which domain to send requests to
      * 

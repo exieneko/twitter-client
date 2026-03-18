@@ -1,5 +1,5 @@
 import { TwitterClient } from './client.js';
-import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, Tokens, TweetGetArgs, UserTweetsGetArgs } from './types/index.js';
+import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TwitterTokens, TweetGetArgs, UserTweetsGetArgs } from './types/index.js';
 import type { Account } from './types/internal.js';
 
 /**
@@ -19,7 +19,7 @@ export class TwitterPool {
      * @param tokens Account tokens
      * @returns Promise resolving to `TwitterPool`
      */
-    static async new(tokens: Tokens[]): Promise<TwitterPool> {
+    static async new(tokens: TwitterTokens[]): Promise<TwitterPool> {
         let pool = new TwitterPool();
         pool.setAccounts(tokens);
         return pool;
@@ -35,7 +35,7 @@ export class TwitterPool {
 
 
 
-    private async setAccounts(tokens: Tokens[]) {
+    private async setAccounts(tokens: TwitterTokens[]) {
         this.#accounts = await Promise.all(
             tokens.map(async (t, i) => ({
                 id: i,

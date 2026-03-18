@@ -1,12 +1,17 @@
 import type { TwitterClient } from '../client.js';
 import type { Flags } from '../flags.js';
+import type { TwitterFormatter } from '../fmt/index.js';
 
 export type Enum<T> = T[keyof T];
 
-export interface Type<K extends string> {
+export interface Type<K extends string = string> {
     /** Unique identifier for types used by GraphQL */
     __typename: K
 }
+
+export type AsyncConstructor<This, T = any, O extends Record<string, any> | null = null> = O extends null
+    ? (fmt: TwitterFormatter, value: T) => Promise<This>
+    : (fmt: TwitterFormatter, value: T, opts: O) => Promise<This>;
 
 
 
@@ -17,7 +22,7 @@ export interface Account {
     uses: number
 }
 
-export interface Endpoint<P extends object = {}, V extends object = {}, R extends object = any, T extends object = any> {
+export interface Endpoint<P extends object = {}, V extends object = {}, T = any> {
     url: string,
     method: 'GET' | 'POST',
     params?: P,
@@ -25,7 +30,7 @@ export interface Endpoint<P extends object = {}, V extends object = {}, R extend
     features?: Flags,
     token?: string,
     requiresTransactionId?: boolean,
-    parser: (data: R) => T
+    format: AsyncConstructor<T>
 }
 
 export const EndpointKind = {
