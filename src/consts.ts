@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, Slice, Tweet, TweetTombstone, TwitterResponse, UnavailableUser, User } from './types/index.js';
-import { EndpointKind, type Endpoint } from './types/internal.js';
+import type { Endpoint } from './types/internal.js';
 import * as parsers from './types/parsers.js';
 import { gql, v11 } from './utils/index.js';
 
@@ -9,6 +9,7 @@ export const ALT_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAAFXzAwAAAAAAMHCxpeSDG1gLNLg
 export const OAUTH_KEY = 'Bearer AAAAAAAAAAAAAAAAAAAAAG5LOQEAAAAAbEKsIYYIhrfOQqm4H8u7xcahRkU%3Dz98HKmzbeXdKqBfUDmElcqYl0cmmKY9KdS2UoNIz3Phapgsowi';
 
 export const MAX_ACCEPTABLE_REQUEST_TIME = 1 << 10;
+export const UPLOAD_SEGMENT_SIZE = 1 << 20;
 export const MAX_TIMELINE_ITERATIONS = 5;
 export const TWEET_CHARACTER_LIMIT = 280;
 

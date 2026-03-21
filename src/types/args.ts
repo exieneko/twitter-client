@@ -310,7 +310,7 @@ export interface MediaUploadArgs {
     /**
      * Override the default segment size. Reducing the number will increase the amount of requests made
      * 
-     * @default 1_084_576
+     * @default 1048576
      */
     segmentSizeOverride?: number
 }
