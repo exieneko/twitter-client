@@ -1,4 +1,4 @@
-import type { Endpoint, EndpointKind } from '../types/internal.js';
+import { Endpoint, EndpointKind } from '../types/internal.js';
 
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][]): V | undefined;
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][], or: V | (() => V)): V;
@@ -42,13 +42,15 @@ export function gql(route: string) {
 
 
 export function endpointKind(endpoint: Endpoint): EndpointKind {
-    if (endpoint.url.includes('/i/api/graphql')) {
-        return 'GraphQL';
+    if (endpoint.url.includes('upload.twitter.com')) {
+        return EndpointKind.Media;
+    } else if (endpoint.url.includes('/i/api/graphql')) {
+        return EndpointKind.GraphQL;
     } else if (endpoint.url.includes('/i/api/2')) {
-        return 'v2';
+        return EndpointKind.v2;
     }
 
-    return 'v1.1';
+    return EndpointKind.v11;
 }
 
 

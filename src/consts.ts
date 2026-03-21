@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, List, MediaUploadInit, Slice, Tweet, TweetTombstone, TwitterResponse, UnavailableUser, User } from './types/index.js';
-import type { Endpoint } from './types/internal.js';
+import { EndpointKind, type Endpoint } from './types/internal.js';
 import * as parsers from './types/parsers.js';
 import { gql, v11 } from './utils/index.js';
 
@@ -20,7 +20,7 @@ export const EMPTY_SLICE: TwitterResponse<Slice<any>> = {
     }
 };
 
-export const HEADERS = {
+export const GLOBAL_HEADERS = {
     Accept: '*/*',
     Connection: 'keep-alive',
     'x-twitter-active-user': 'yes',
@@ -827,6 +827,13 @@ export const ENDPOINTS = {
         params: {} as { total_bytes: string, media_type: string, media_category: 'tweet_image' | 'tweet_gif' | 'tweet_video' },
         format: async (fmt, value) => value as MediaUploadInit
     },
+    media_upload_APPEND: {
+        url: 'https://upload.twitter.com/1.1/media/upload.json',
+        method: 'POST',
+        variables: {"command":"APPEND"},
+        params: {} as { media_id: string, segment_index: number },
+        format: async (fmt, value) => 0
+    },
     media_upload_FINALIZE: {
         url: 'https://upload.twitter.com/1.1/media/upload.json',
         method: 'GET',
@@ -856,7 +863,6 @@ export const ENDPOINTS = {
         method: 'GET',
         params: {} as { screen_name: string },
         features: flags.user,
-        // format: async (fmt, value) => parsers.user(value.data.user.result)
         format: async (fmt, value) => parsers.user(value.data.user.result)
     },
     UsersByScreenNames: {

@@ -1,14 +1,15 @@
 import logger from 'node-color-log';
 import { hrtime } from 'process';
-import { fetch, FormData, ProxyAgent } from 'undici';
+import { FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
-import { EMPTY_SLICE, ENDPOINTS, HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, MAX_TIMELINE_ITERATIONS, PUBLIC_TOKEN, TWEET_CHARACTER_LIMIT } from './consts.js';
+import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT } from './consts.js';
 import { TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
-import { EndpointKind, type Endpoint, type Params, type Type } from './types/internal.js';
-import { endpointKind, match, toSearchParams } from './utils/index.js';
+import { AsyncConstructor, type Endpoint, type Params, type Type } from './types/internal.js';
+import { match } from './utils/index.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
+import { request } from './utils/request.js';
 
 /**
  * Shorthand for quickly getting only the current slice of a timeline, then discarding the generator. If you want to reuse the generator, call `timeline.next()`
@@ -40,6 +41,7 @@ export async function slice<T extends { __typename: string }>(timeline: Timeline
  * @since v0.1.0
  */
 export class TwitterClient {
+    #proxyAgent?: ProxyAgent;
     #transaction: ClientTransaction;
     #tokens: TwitterTokens;
     options: TwitterOptions;
@@ -54,6 +56,14 @@ export class TwitterClient {
         this.#transaction = transaction;
         this.#tokens = tokens;
         this.options = options;
+
+        if (options.proxyUrl) {
+            try {
+                this.#proxyAgent = new ProxyAgent(options.proxyUrl);
+            } catch (error) {
+                this.log(`Error while creating proxy agent with url "${options.proxyUrl}": ${error}`);
+            }
+        }
 
         if (this.options.language.toLowerCase().startsWith('en-')) {
             this.options.language = 'en';
@@ -129,7 +139,11 @@ export class TwitterClient {
 
 
 
-    private async getTransactionId(endpoint: Endpoint): Promise<string> {
+    private async getTransactionId(endpoint: Endpoint): Promise<string | undefined> {
+        if (!endpoint.requiresTransactionId) {
+            return;
+        }
+
         const path = endpoint.url.replace(/.*twitter\.com\//, '/');
         const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
 
@@ -137,124 +151,66 @@ export class TwitterClient {
         return transactionId;
     }
 
-    private getHeaders(token?: string, endpointKind: EndpointKind = EndpointKind.GraphQL, url?: string, transactionId?: string): Record<string, string> {
-        const tokenHeaders = () => {
+    /**
+     * Main method responsible for interacting with the Twitter API. Calling this function with a valid `Endpoint` as a target will send a request to that endpoint and expect data back
+     * 
+     * If set, `params`, will be appended to the body of the request, the type of which is inferred from the pathname and method of the endpoint. This object is sent to the API as is, so the keys must have the name Twitter expects
+     * 
+     * @example
+     * const { errors, data: user } = await this.fetch({
+     *     url: 'https://twitter.com/i/api/graphql/-oaLodhGbbnzJBACb1kk2Q/UserByScreenName',
+     *     method: 'GET',
+     *     params: { screen_name: String() }, // <- only exists to define this object's shape
+     *     features: {},
+     *     format: async (fmt, value) => fmt.next(doSomethingWith(value))
+     * }, { screen_name: 'exieneko' }); // <- actual values set here
+     * 
+     * @param endpoint Target endpoint
+     * @param params Dynamic parameters to send to the endpoint
+     * @returns Expected awaited return type of the target endpoint's `format` method
+     * @see {@link Endpoint}
+     */
+    private async fetch<EP extends Endpoint, In = Parameters<EP['format']>[1], Out = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: Params<EP>): Promise<TwitterResponse<Out>> {
+        // TODO: re-add timing functions, logs, etc
+
+        const [json, response] = await request<EP, In>(
+            endpoint,
+            params,
+            this.options,
+            this.#tokens,
+            this.#proxyAgent,
+            this.self?.id,
+            await this.getTransactionId(endpoint)
+        );
+
+        if (json instanceof Error) {
             return {
-                'x-csrf-token': this.#tokens.csrf,
-                cookie: !!this.self?.id
-                    ? `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; twid=u%3D${this.self.id}; lang=${this.options.language}`
-                    : `auth_token=${this.#tokens.authToken}; ct0=${this.#tokens.csrf}; lang=${this.options.language}`
+                errors: [new TwitterError(json)]
+            };
+        // @ts-ignore
+        } else if (json?.errors && !json.data) {
+            return {
+                // @ts-ignore
+                errors: TwitterError.from(json.errors)
+            };
+        } else if (!json) {
+            return {
+                errors: [new TwitterError()]
             };
         }
 
-        let result: Record<string, string> = transactionId ? { 'x-client-transaction-id': transactionId } : {};
-
-        const contentType = endpointKind === EndpointKind.GraphQL
-            ? 'application/json'
-        : endpointKind === EndpointKind.Media
-            ? undefined
-            : 'application/x-www-form-urlencoded';
-
-        if (contentType) {
-            Object.defineProperty(result, 'Content-Type', { configurable: true, enumerable: true, writable: true, value: contentType });
-        }
-
-        return {
-            ...HEADERS,
-            'Accept-Language': `${this.options.language === 'en' ? 'en-US,en' : this.options.language};q=0.5`,
-            Host: url
-                ? (url?.replace('https://', '').replace('.com/', '') + '.com').replace('twitter.com', this.options.domain)
-                : this.options.domain,
-            Origin: `https://${this.options.domain}`,
-            Referer: `https://${this.options.domain}/`,
-            authorization: token || PUBLIC_TOKEN,
-            'User-Agent': this.options.userAgent,
-            ...tokenHeaders(),
-            ...result
-        };
-    }
-
-    private getProxyAgent() {
-        if (!!this.options.proxyUrl) {
-            return new ProxyAgent(this.options.proxyUrl);
-        }
-    }
-
-    private async fetch<EP extends Endpoint>(endpoint: EP, params?: Params<EP>): Promise<TwitterResponse<Awaited<ReturnType<EP['format']>>>> {
-        const headers = this.getHeaders(
-            endpoint.token,
-            endpointKind(endpoint),
-            endpoint.url,
-            endpoint.requiresTransactionId
-                ? await this.getTransactionId(endpoint)
-                : undefined
-        );
-
-        const url = endpoint.url.replace('twitter.com', this.options.domain);
+        const fmt = new TwitterFormatter(this);
 
         try {
-            const start = hrtime.bigint();
-            this.log(`${endpoint.method} ${url}`);
+            const result = await fmt.next<Out, AsyncConstructor<Out, NonNullable<In>>>(endpoint.format, json);
 
-            const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
-            const response = await (endpointKind(endpoint) === EndpointKind.GraphQL
-                ? (endpoint.method === 'GET'
-                    ? fetch(url + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
-                        method: endpoint.method,
-                        headers,
-                        dispatcher: this.getProxyAgent()
-                    })
-                    : fetch(url, {
-                        method: endpoint.method,
-                        headers,
-                        body: JSON.stringify({
-                            variables: { ...endpoint.variables, ...params },
-                            features: endpoint.features,
-                            queryId: endpoint.url.split('/', 1)[0]
-                        }),
-                        dispatcher: this.getProxyAgent()
-                    })
-                )
-                : fetch(endpoint.method === 'GET' && body ? `${url}?${body}` : url, {
-                    method: endpoint.method,
-                    headers,
-                    body: endpoint.method === 'POST' && body ? body : undefined,
-                    dispatcher: this.getProxyAgent()
-                })
-            );
-
-            const elapsed = Number(hrtime.bigint() - start) / 1e6;
-            const text = `${response.status} ${response.statusText} in ${Math.floor(elapsed)}ms`;
-            if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
-                this.warn(text);
-            } else if (response.ok) {
-                this.log(text);
-            } else {
-                this.error(text);
-            }
-
-            const fmt = new TwitterFormatter(this);
-            const data: Parameters<Endpoint['format']>[1] = await response.json();
-
-            if (data?.errors && !data.data) {
-                return {
-                    errors: TwitterError.from(data.errors)
-                };
-            }
-
-            try {
-                return {
-                    errors: TwitterError.from(data?.errors),
-                    data: await fmt.next(endpoint.format, data)
-                };
-            } catch (error: any) {
-                return {
-                    errors: [new TwitterError()]
-                };
-            }
+            return {
+                data: result,
+                errors: fmt.errors
+            };
         } catch (error: any) {
             return {
-                errors: [new TwitterError()]
+                errors: [new TwitterError(error)]
             };
         }
     }
@@ -1900,67 +1856,51 @@ export class TwitterClient {
      */
     async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<TwitterResponse<Media>> {
         const append = async (id: string, data: ArrayBuffer, index: number, contentType: string) => {
-            const body = new URLSearchParams({
-                command: 'APPEND',
-                media_id: id,
-                segment_index: index.toString()
-            }).toString();
-
             let formData = new FormData();
             formData.append('media', new Blob([data], { type: contentType }));
 
-            return await fetch(`https://upload.${this.options.domain}/1.1/media/upload.json?${body}`, {
-                method: 'POST',
-                headers: this.getHeaders(PUBLIC_TOKEN, 'Media'),
-                body: formData,
-                dispatcher: this.getProxyAgent()
-            });
+            // media upload appends use the request function directly because this.fetch isn't set up to accept FormData bodies
+            return await request<typeof ENDPOINTS.media_upload_APPEND, never>(ENDPOINTS.media_upload_APPEND, { media_id: id, segment_index: index }, this.options, this.#tokens, this.#proxyAgent, this.self?.id, undefined, formData);
         };
 
-        try {
-            const { errors: errorsInit, data: init } = await this.fetch(ENDPOINTS.media_upload_INIT, {
-                total_bytes: media.byteLength.toString(),
-                media_type: args.contentType,
-                media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
-            });
+        const { errors, data: init } = await this.fetch(ENDPOINTS.media_upload_INIT, {
+            total_bytes: media.byteLength.toString(),
+            media_type: args.contentType,
+            media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
+        });
 
-            if (errorsInit.length) {
-                return { errors: errorsInit };
-            }
-
-            const chunkSize = args.segmentSizeOverride || 1_084_576;
-            const chunksNeeded = Math.ceil(media.byteLength / chunkSize);
-
-            const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
-
-            for (const [index, chunk] of chunks.entries()) {
-                const response = await append(init!.media_id_string, chunk, index, args.contentType);
-
-                if (!response.ok) {
-                    const { errors }: any = await response.json();
-
-                    if (!!errors) {
-                        return { errors };
-                    }
-
-                    throw response.statusText;
-                }
-
-                callback?.(chunk, index, chunksNeeded);
-            }
-
-            const final = await this.fetch(ENDPOINTS.media_upload_FINALIZE, { media_id: init!.media_id_string });
-
-            if (!!final.data && !!args.altText) {
-                this.addAltText(init!.media_id_string, args.altText);
-            }
-
-            return final;
-        } catch (error) {
-            return {
-                errors: [new TwitterError(0, { cause: error })]
-            };
+        if (errors.length) {
+            return { errors };
         }
+
+        const chunkSize = args.segmentSizeOverride || 1_084_576;
+        const chunksNeeded = Math.ceil(media.byteLength / chunkSize);
+
+        const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
+
+        for (const [index, chunk] of chunks.entries()) {
+            const [e, response] = await append(init!.media_id_string, chunk, index, args.contentType);
+
+            if (e instanceof Error) {
+                return {
+                    errors: [new TwitterError(e)]
+                };
+            } else if (!response?.ok) {
+                return {
+                    errors: [new TwitterError(0)]
+                };
+            }
+
+            callback?.(chunk, index, chunksNeeded);
+        }
+
+        const final = await this.fetch(ENDPOINTS.media_upload_FINALIZE, { media_id: init!.media_id_string });
+
+        if (!!final.data && !!args.altText) {
+            this.addAltText(init!.media_id_string, args.altText);
+        }
+
+        return final;
     }
 
     /**
