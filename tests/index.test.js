@@ -24,14 +24,7 @@ describe('get self', options, async () => {
     assert(typeof twitter.self.created_at === 'string');
 });
 
-describe('perform a search', options, async () => {
-    const query = new QueryBuilder()
-        .includesAllExact('twitter')
-        .from('elonmusk')
-        .toString();
-
-    const timeline = twitter.search(query);
-    const { value } = await timeline.next();
-
-    assert('next' in value.data.cursors);
+describe('get a tweet', options, async () => {
+    const { data: tweet } = await twitter.getTweetResult('20');
+    assert(tweet.author.username === 'jack');
 });
