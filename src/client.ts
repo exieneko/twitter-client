@@ -1,4 +1,3 @@
-import logger from 'node-color-log';
 import { hrtime } from 'process';
 import { FormData, ProxyAgent } from 'undici';
 import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
@@ -7,7 +6,7 @@ import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT 
 import { TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
 import { AsyncConstructor, type Endpoint, type Params, type Type } from './types/internal.js';
-import { match } from './utils/index.js';
+import { log, match, warn } from './utils/index.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 import { request } from './utils/request.js';
 
@@ -61,7 +60,7 @@ export class TwitterClient {
             try {
                 this.#proxyAgent = new ProxyAgent(options.proxyUrl);
             } catch (error) {
-                this.log(`Error while creating proxy agent with url "${options.proxyUrl}": ${error}`);
+                log(options, `Error while creating proxy agent with url "${options.proxyUrl}": ${error}`);
             }
         }
 
@@ -102,39 +101,20 @@ export class TwitterClient {
             ...options
         };
 
-        const client = new TwitterClient(
-            await TwitterClient._transaction(),
-            tokens,
-            opts
-        );
+        const start = hrtime.bigint();
+        log(opts, `Initializing TwitterClient with ${!!options ? `options: ${options}` : 'default options'}`);
 
-        client.log('Initialized TwitterClient');
+        const transaction = await TwitterClient._transaction();
+        const client = new TwitterClient(transaction, tokens, opts);
+
+        const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
+        log(client, `Initialized TwitterClient in ${elapsed}ms`);
 
         if (client.options.language !== 'en') {
-            client.warn('Setting `language` to values other than "en" may have unexpected effects - if you find any bugs, please open an issue here: https://github.com/exieneko/twitter-client/issues <3');
+            warn(client, 'Setting `language` to values other than "en" may have unexpected effects');
         }
 
         return client;
-    }
-
-
-
-    private log(message: string) {
-        if (this.options.verbose) {
-            logger.info(message);
-        }
-    }
-
-    private warn(message: string) {
-        if (this.options.verbose) {
-            logger.warn(message);
-        }
-    }
-
-    private error(message: string) {
-        if (this.options.verbose) {
-            logger.error(message);
-        }
     }
 
 
@@ -147,7 +127,7 @@ export class TwitterClient {
         const path = endpoint.url.replace(/.*twitter\.com\//, '/');
         const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
 
-        this.log(`Generated x-client-transaction-id for ${endpoint.method} ${path} (${transactionId})`);
+        log(this, `Generated x-client-transaction-id for ${endpoint.method} ${path} (${transactionId})`);
         return transactionId;
     }
 

@@ -1,4 +1,8 @@
-import { Endpoint, EndpointKind } from '../types/internal.js';
+import logger from 'node-color-log';
+import { TwitterClient } from '../client.js';
+import { type Endpoint, EndpointKind } from '../types/internal.js';
+import { TwitterFormatter } from '../fmt/index.js';
+import { TwitterOptions } from '../types/index.js';
 
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][]): V | undefined;
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][], or: V | (() => V)): V;
@@ -53,8 +57,6 @@ export function endpointKind(endpoint: Endpoint): EndpointKind {
     return EndpointKind.v11;
 }
 
-
-
 export function toSearchParams(obj: object) {
     if (!obj || Object.entries(obj).every(([, value]) => value === undefined)) {
         return '';
@@ -64,4 +66,30 @@ export function toSearchParams(obj: object) {
         .filter(([, value]) => value !== undefined)
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(typeof value === 'string' ? value : JSON.stringify(value))}`)
         .join('&');
+}
+
+
+
+type TwitterInstance = TwitterFormatter | TwitterClient | TwitterOptions | boolean;
+
+function shouldLog(value: TwitterInstance) {
+    return (value instanceof TwitterFormatter && value.client.options.verbose) || (value instanceof TwitterClient && value.options.verbose) || (!(value instanceof TwitterFormatter) && !(value instanceof TwitterClient) && typeof value !== 'boolean' && value.verbose) || (typeof value === 'boolean' && value);
+}
+
+export function log(client: TwitterInstance, ...data: any[]) {
+    if (shouldLog(client)) {
+        logger.info(data);
+    }
+}
+
+export function warn(client: TwitterInstance, ...data: any[]) {
+    if (shouldLog(client)) {
+        logger.warn(data);
+    }
+}
+
+export function err(client: TwitterInstance, ...data: any[]) {
+    if (shouldLog(client)) {
+        logger.error(data);
+    }
 }

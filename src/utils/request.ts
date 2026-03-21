@@ -1,11 +1,13 @@
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
+import { hrtime } from 'process';
 
-import { endpointKind, toSearchParams } from './index.js';
-import { GLOBAL_HEADERS, PUBLIC_TOKEN } from '../consts.js';
+import { endpointKind, err, log, toSearchParams, warn } from './index.js';
+import { GLOBAL_HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, PUBLIC_TOKEN } from '../consts.js';
 import type { TwitterOptions, TwitterTokens } from '../types/index.js';
 import { EndpointKind, type Endpoint, type Params } from '../types/internal.js';
 
 export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: Params<EP> | undefined, options: TwitterOptions, tokens: TwitterTokens, proxyAgent?: ProxyAgent, userId?: string, transactionId?: string, body?: BodyInit): Promise<[T | E, Response?]> {
+    const start = hrtime.bigint();
     const kind = endpointKind(endpoint);
 
     const headers: Record<string, string> = {
@@ -48,18 +50,33 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         proxyAgent
     ] as const;
 
+    log(options, endpoint.method, endpoint.url);
+
     try {
         const response = kind === EndpointKind.GraphQL
             ? await sendGqlRequest<EP, E>(...requestData)
             : await sendRequest<EP, E>(...requestData, kind === EndpointKind.Media ? body : undefined);
 
         if (response instanceof Error) {
+            err(options, 'Unexpected error:', response);
             return [response as E];
+        }
+
+        const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
+        const logData = [options, `${response.status} ${response.statusText} in ${elapsed}ms`] as const;
+
+        if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
+            warn(...logData);
+        } else if (response.ok) {
+            log(...logData);
+        } else {
+            err(...logData);
         }
 
         const data = <T>await response.json();
         return [data, response];
     } catch (error) {
+        err(options, 'Unexpected error:', error);
         return [error as E];
     }
 }
