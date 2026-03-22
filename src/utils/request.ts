@@ -85,7 +85,7 @@ async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string,
     const variables = { ...endpoint.variables, ...params };
 
     try {
-        return await fetch(endpoint.method === 'GET' ? url + toSearchParams({ ...variables, ...endpoint.features }) : url, {
+        return await fetch(endpoint.method === 'GET' ? url + toSearchParams({ variables, features: endpoint.features }) : url, {
             method: endpoint.method,
             headers,
             body: endpoint.method === 'POST' ? JSON.stringify({
