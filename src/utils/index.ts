@@ -45,18 +45,6 @@ export function gql(route: string) {
 
 
 
-export function endpointKind(endpoint: Endpoint): EndpointKind {
-    if (endpoint.url.includes('upload.twitter.com')) {
-        return EndpointKind.Media;
-    } else if (endpoint.url.includes('/i/api/graphql')) {
-        return EndpointKind.GraphQL;
-    } else if (endpoint.url.includes('/i/api/2')) {
-        return EndpointKind.v2;
-    }
-
-    return EndpointKind.v11;
-}
-
 export function toSearchParams(obj: object) {
     if (!obj || Object.entries(obj).every(([, value]) => value === undefined)) {
         return '';

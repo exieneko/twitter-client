@@ -137,13 +137,11 @@ export class TwitterClient {
      * If set, `params`, will be appended to the body of the request, the type of which is inferred from the pathname and method of the endpoint. This object is sent to the API as is, so the keys must have the name Twitter expects
      * 
      * @example
-     * const { errors, data: user } = await this.fetch({
+     * const { errors, data: user } = await this.fetch(new Endpoint<ReturnType, { screen_name: string }>({
      *     url: 'https://twitter.com/i/api/graphql/-oaLodhGbbnzJBACb1kk2Q/UserByScreenName',
-     *     method: 'GET',
-     *     params: { screen_name: String() }, // <- only exists to define this object's shape
-     *     features: {},
-     *     format: async (fmt, value) => fmt.next(doSomethingWith(value))
-     * }, { screen_name: 'exieneko' }); // <- actual values set here
+     *     method: 'get',
+     *     features: {}
+     * }, async (fmt, value) => fmt.next(doSomethingWith(value))));
      * 
      * @param endpoint Target endpoint
      * @param params Dynamic parameters to send to the endpoint
@@ -153,7 +151,7 @@ export class TwitterClient {
     private async fetch<EP extends Endpoint, In = Parameters<EP['format']>[1], Out = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: Params<EP>): Promise<TwitterResponse<Out>> {
         // TODO: re-add timing functions, logs, etc
 
-        const [json, response] = await request<EP, In>(
+        const [json] = await request<EP, In>(
             endpoint,
             params,
             this.options,
@@ -385,7 +383,6 @@ export class TwitterClient {
             },
             note_id: noteId,
             rating_source: args.source === BirdwatchNoteSource.NeedsYourHelp ? 'BirdwatchHomeNeedsYourHelp' : 'BirdwatchForYouTimeline',
-            source_platform: 'BirdwatchWeb',
             tweet_id: args.tweetId
         });
     }
@@ -1840,10 +1837,10 @@ export class TwitterClient {
             formData.append('media', new Blob([data], { type: contentType }));
 
             // media upload appends use the request function directly because this.fetch isn't set up to accept FormData bodies
-            return await request<typeof ENDPOINTS.media_upload_APPEND, never>(ENDPOINTS.media_upload_APPEND, { media_id: id, segment_index: index }, this.options, this.#tokens, this.#proxyAgent, this.self?.id, undefined, formData);
+            return await request<typeof ENDPOINTS.media_upload.append, never>(ENDPOINTS.media_upload.append, { media_id: id, segment_index: index }, this.options, this.#tokens, this.#proxyAgent, this.self?.id, undefined, formData);
         };
 
-        const { errors, data: init } = await this.fetch(ENDPOINTS.media_upload_INIT, {
+        const { errors, data: init } = await this.fetch(ENDPOINTS.media_upload.init, {
             total_bytes: media.byteLength.toString(),
             media_type: args.contentType,
             media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
@@ -1874,7 +1871,7 @@ export class TwitterClient {
             callback?.(chunk, index, chunksNeeded);
         }
 
-        const final = await this.fetch(ENDPOINTS.media_upload_FINALIZE, { media_id: init!.media_id_string });
+        const final = await this.fetch(ENDPOINTS.media_upload.finalize, { media_id: init!.media_id_string });
 
         if (!!final.data && !!args.altText) {
             this.addAltText(init!.media_id_string, args.altText);
@@ -1891,7 +1888,7 @@ export class TwitterClient {
      * @since v0.6.0
      */
     async mediaStatus(id: string) {
-        return await this.fetch(ENDPOINTS.media_upload_STATUS, { media_id: id });
+        return await this.fetch(ENDPOINTS.media_upload.status, { media_id: id });
     }
 
     /**

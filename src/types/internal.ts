@@ -1,4 +1,5 @@
 import type { TwitterClient } from '../client.js';
+import { PUBLIC_TOKEN } from '../consts.js';
 import type { Flags } from '../flags.js';
 import type { TwitterFormatter } from '../fmt/index.js';
 
@@ -22,15 +23,50 @@ export interface Account {
     uses: number
 }
 
-export interface Endpoint<P extends object = {}, V extends object = {}, T = any> {
-    url: string,
-    method: 'GET' | 'POST',
-    params?: P,
-    variables?: V,
-    features?: Flags,
-    token?: string,
-    requiresTransactionId?: boolean,
-    format: AsyncConstructor<T>
+export class Endpoint<T = any, P extends object = {}, V extends object = {}> {
+    url: string;
+    method: 'get' | 'post';
+    variables?: V;
+    features?: Flags;
+    token: string;
+    requiresTransactionId: boolean;
+    _params: P;
+
+    constructor(opts: { url: string, method: 'get' | 'post', variables?: V, features?: Flags, token?: string, requiresTransactionId?: boolean }, public format: AsyncConstructor<T>) {
+        this.url = opts.url;
+        this.method = opts.method;
+        this.variables = opts.variables;
+        this.features = opts.features;
+        this.token = opts.token || PUBLIC_TOKEN;
+        this.requiresTransactionId = !!opts.requiresTransactionId;
+        this._params = {} as P;
+    }
+
+    get(url: string, body?: string) {
+        if (this.method === 'get' && body && body.length > 0) {
+            return url + body;
+        }
+
+        return url;
+    }
+
+    post(body?: any): string | undefined {
+        if (this.method === 'post' && body) {
+            return JSON.stringify(body);
+        }
+    }
+
+    kind(): EndpointKind {
+        if (this.url.includes('upload.twitter.com')) {
+            return EndpointKind.Media;
+        } else if (this.url.includes('/i/api/graphql')) {
+            return EndpointKind.GraphQL;
+        } else if (this.url.includes('/i/api/2')) {
+            return EndpointKind.v2;
+        }
+
+        return EndpointKind.v11;
+    }
 }
 
 export const EndpointKind = {
@@ -41,10 +77,16 @@ export const EndpointKind = {
 } as const;
 export type EndpointKind = Enum<typeof EndpointKind>;
 
+export interface EndpointGroup {
+    [key: string]: Endpoint
+}
+
+
+
 type OptionalUndefined<T extends object | undefined> = {
     [K in keyof T as undefined extends T[K] ? K : never]?: T[K];
 } & {
     [K in keyof T as undefined extends T[K] ? never : K]: T[K];
 };
 
-export type Params<T extends { params?: object }> = OptionalUndefined<T['params']>;
+export type Params<T extends { _params?: object }> = OptionalUndefined<T['_params']>;
