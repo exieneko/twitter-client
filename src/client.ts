@@ -6,7 +6,7 @@ import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT,
 import { TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
 import { AsyncConstructor, type Endpoint, type Params, type Type } from './types/internal.js';
-import { log, match, warn } from './utils/index.js';
+import { err, log, match, warn } from './utils/index.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 import { request } from './utils/request.js';
 
@@ -41,7 +41,7 @@ export async function slice<T extends { __typename: string }>(timeline: Timeline
  */
 export class TwitterClient {
     #proxyAgent?: ProxyAgent;
-    #transaction: ClientTransaction;
+    #transaction?: ClientTransaction;
     #tokens: TwitterTokens;
     options: TwitterOptions;
     /**
@@ -51,7 +51,7 @@ export class TwitterClient {
      */
     self?: User;
 
-    constructor(transaction: ClientTransaction, tokens: TwitterTokens, options: TwitterOptions) {
+    constructor(transaction: ClientTransaction | undefined, tokens: TwitterTokens, options: TwitterOptions) {
         this.#transaction = transaction;
         this.#tokens = tokens;
         this.options = options;
@@ -75,10 +75,18 @@ export class TwitterClient {
      * @returns Promise resolving to a `ClientTransaction`
      * @since v1.0.0-rc.1
      */
-    static async _transaction(): Promise<ClientTransaction> {
-        const document = await handleXMigration();
-        const transaction = await ClientTransaction.create(document);
-        return transaction;
+    static async _transaction(log: boolean = false): Promise<ClientTransaction | undefined> {
+        try {
+            const document = await handleXMigration();
+            const transaction = await ClientTransaction.create(document);
+            return transaction;
+        } catch (error: any) {
+            if (typeof error === 'object' && !!error.message) {
+                err(log, `Failed to initialize ClientTransaction because of ${error.message}`);
+            } else {
+                err(log, `Failed to initialize ClientTransaction because of ${error}`);
+            }
+        }
     }
 
     /**
@@ -125,7 +133,7 @@ export class TwitterClient {
         }
 
         const path = endpoint.url.replace(/.*twitter\.com\//, '/');
-        const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
+        const transactionId = await this.#transaction?.generateTransactionId(endpoint.method, path);
 
         log(this, `Generated x-client-transaction-id for ${endpoint.method} ${path} (${transactionId})`);
         return transactionId;
