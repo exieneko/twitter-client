@@ -69,11 +69,11 @@ export interface Tweet extends Type<'Tweet'> {
     replies_count: number,
     /** Reply permission controlling who can reply to this tweet */
     reply_permission: ReplyPermission,
-    replying_to: {
+    replying_to?: {
         /** Username of the user this tweet is in reply to */
-        username?: string,
+        username: string,
         /** Id of the tweet this tweet is in reply to */
-        tweet_id?: string
+        tweet_id: string
     },
     retweeted: boolean,
     /** Amount of users that retweeted the tweet */

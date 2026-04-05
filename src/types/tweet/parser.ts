@@ -114,10 +114,10 @@ export function tweet(value: any): Tweet | Retweet | TweetTombstone {
             ['Verified', ReplyPermission.Verified],
             ['ByInvitation', ReplyPermission.Mentioned]
         ], ReplyPermission.Everyone),
-        replying_to: {
+        replying_to: t.legacy.in_reply_to_screen_name ? {
             tweet_id: t.legacy.in_reply_to_status_id_str,
             username: t.legacy.in_reply_to_screen_name
-        },
+        } : undefined,
         retweeted: !!t.legacy.retweeted,
         retweets_count: t.legacy.retweet_count || 0,
         text: !!t.legacy.entities.media?.length
