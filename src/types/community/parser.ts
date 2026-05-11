@@ -1,7 +1,8 @@
-import { CommunityRole, type Community, type User, type UnavailableCommunity } from '../types/index.js';
-import { user } from './user.js';
+import { match } from '../../utils/index.js';
+import { CommunityRole, type CommunityKind, type User } from '../index.js';
+import * as p from '../parsers.js';
 
-export function community(value: any): Community | UnavailableCommunity {
+export function community(value: any): CommunityKind {
     if (!value || value.__typename === 'CommunityUnavailable') {
         return { __typename: 'UnavailableCommunity' };
     }
@@ -13,26 +14,19 @@ export function community(value: any): Community | UnavailableCommunity {
         can_join: value.join_policy === 'Open',
         can_invite: value.invites_policy === 'MemberInvitesAllowed' && !value.invites_result?.__typename.includes('Unavailable'),
         created_at: new Date(value.created_at).toISOString(),
-        creator: user(value.creator_results?.result) as User,
+        creator: p.user(value.creator_results?.result) as User,
         description: value.description || '',
-        member: !!value.is_member,
+        is_member: !!value.is_member,
         members_count: value.member_count || 0,
         moderators_count: value.moderator_count || 0,
         name: value.name,
-        nsfw: !!value.is_nsfw,
-        pinned: !!value.is_pinned,
-        role: (() => {
-            switch (value.role) {
-                case 'NonMember':
-                    return CommunityRole.Guest;
-                case 'Member':
-                    return CommunityRole.Member;
-                case 'Moderator':
-                    return CommunityRole.Moderator;
-                default:
-                    return CommunityRole.Owner;
-            }
-        })(),
+        is_nsfw: !!value.is_nsfw,
+        is_pinned: !!value.is_pinned,
+        role: match(value.role, [
+            ['NonMember', CommunityRole.Guest],
+            ['Member', CommunityRole.Member],
+            ['Moderator', CommunityRole.Moderator],
+        ], CommunityRole.Owner)!,
         rules: value.rules?.map((rule: any) => ({
             id: rule.rest_id,
             description: rule.description,

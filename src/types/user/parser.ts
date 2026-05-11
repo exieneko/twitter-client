@@ -1,7 +1,8 @@
-import { Entry, SuspendedUser, TimelineUser, UnavailableUser, User, VerificationKind } from '../types/index.js';
-import { cursor, getEntries } from './index.js';
+import { match } from '../../utils/index.js';
+import { type Slice, type UserKind, type User, type FanAccountKind, type AboutUser, VerificationKind } from '../index.js';
+import * as p from '../parsers.js';
 
-export function user(value: any): User | SuspendedUser | UnavailableUser {
+export function user(value: any): UserKind {
     if (!value) {
         return { __typename: 'UnavailableUser' };
     }
@@ -10,13 +11,20 @@ export function user(value: any): User | SuspendedUser | UnavailableUser {
         const verified = !!value.verification?.verified || !!value.is_blue_verified;
         const verified_type = value.verification?.verified_type;
 
+        const verificationKind: VerificationKind = match(value.verification?.verified_type, [
+            ['Government', VerificationKind.Government],
+            ['Business', VerificationKind.Business],
+            [[], VerificationKind.Unverified, !verified_type && !verified],
+            [[], VerificationKind.Blue, verified],
+        ], VerificationKind.Unverified);
+
         return {
             __typename: 'User',
             id: value.rest_id,
             affiliates_count: value.business_account?.affiliates_count || 0,
-            affiliate_label: !!value.affiliates_highlighted_label?.label?.badge?.url ? {
+            affiliate_label: !!value.affiliates_highlighted_label?.label?.badge?.url && value.affiliates_highlighted_label.label.userLabelType !== 'AutomatedLabel' ? {
                 title: value.affiliates_highlighted_label.label.description,
-                owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 1)[1],
+                owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 2)[1],
                 image_url: value.affiliates_highlighted_label.label.badge.url
             } : undefined,
             avatar_url: value.avatar.image_url.replace('normal', '400x400'),
@@ -32,15 +40,18 @@ export function user(value: any): User | SuspendedUser | UnavailableUser {
             can_media_tag: !!value.media_permissions.can_media_tag,
             can_super_follow: !!value.super_follow_eligible,
             created_at: new Date(value.core.created_at).toISOString(),
-            description: (value.legacy.description as string).replace(
+            description: ((value.profile_bio?.description ?? value.legacy.description ?? '') as string).replace(
                 /\bhttps:\/\/t\.co\/[a-zA-Z0-9]+/,
                 sub => value.legacy.entities.description?.urls?.find((x: any) => x.url === sub)?.expanded_url.replace(/\/$/, '') || sub
             ),
+            fan_account_kind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None' ? undefined : value.parody_commentary_fan_label as FanAccountKind,
             followers_count: value.legacy.followers_count,
             following_count: value.legacy.friends_count,
             followed: !!value.relationship_perspectives.following,
             follow_requested: !!value.legacy.follow_request_sent,
             followed_by: !!value.relationship_perspectives.followed_by,
+            is_automated: value.affiliates_highlighted_label?.label?.userLabelType === 'AutomatedLabel',
+            is_translatable: !!value.is_profile_translatable,
             job: value.professional?.category?.at(0)?.name,
             location: !!value.location.location ? value.location.location : undefined,
             muted: !!value.relationship_perspectives.muting,
@@ -49,23 +60,21 @@ export function user(value: any): User | SuspendedUser | UnavailableUser {
             protected: !!value.privacy.protected,
             super_following_count: value.creator_subscriptions_count || 0,
             super_following_hidden: !!value.has_hidden_subscriptions_on_profile,
-            translatable: !!value.is_profile_translatable,
             tweets_count: value.legacy.statuses_count,
             media_count: value.legacy.media_count,
             likes_count: value.legacy.favourites_count,
             listed_count: value.legacy.listed_count,
+            highlighted_tweets_count: Number(value.highlights_info?.highlighted_tweets || '0'),
             username: value.core.screen_name,
-            url: value.legacy.entities.url?.urls?.at(0)?.expanded_url?.replace(/\/$/, ''),
-            verified,
-            verification_kind: verified_type === 'Government'
-                ? VerificationKind.Government
-            : verified_type === 'Business'
-                ? VerificationKind.Business
-            : !verified_type && !verified
-                ? VerificationKind.Unverified
-            : verified
-                ? VerificationKind.Blue
-                : VerificationKind.Unverified,
+            url: value.legacy.entities.url?.urls?.at?.(0)?.expanded_url?.replace(/^http:\/\//, 'https://')?.replace(/\/$/, ''),
+            verification: {
+                kind: verificationKind,
+                is_verified: verified,
+                verified_since: verified
+                    ? new Date(Number(value.verification_info?.reason?.verified_since_msec || '0')).toISOString()
+                    : undefined,
+                verified_with_id: !!value.verification_info?.is_identity_verified
+            },
             want_retweets: !!value.legacy.want_retweets,
             want_notifications: !!value.legacy.notifications
         };
@@ -97,35 +106,72 @@ export function userLegacy(value: any): User {
         followed: !!value.following,
         follow_requested: !!value.follow_request_sent,
         followed_by: !!value.followed_by,
+        is_automated: false,
+        is_translatable: false,
         location: value.location || undefined,
         muted: !!value.muting,
         name: value.name,
         protected: !!value.protected,
         super_following_count: 0,
         super_following_hidden: false,
-        translatable: false,
         tweets_count: value.statuses_count || 0,
         media_count: value.media_count || 0,
         likes_count: value.favorite_count || 0,
         listed_count: value.listed_count || 0,
+        highlighted_tweets_count: 0,
         username: value.screen_name,
         url: undefined,
-        verified: value.ext_is_blue_verified,
-        verification_kind: VerificationKind.Blue,
+        verification: {
+            kind: !!value.ext_is_blue_verified ? 'Blue' : 'Unverified',
+            is_verified: !!value.ext_is_blue_verified,
+            verified_with_id: false
+        },
         want_retweets: !!value.want_retweets,
         want_notifications: !!value.notification
     }
 }
 
+export function aboutUser(value: any): AboutUser {
+    return {
+        __typename: 'AboutUser',
+        id: value.rest_id,
+        avatar_url: value.avatar.image_url.replace('normal', '400x400'),
+        based_in: value.about_profile?.account_based_in,
+        created_at: new Date(value.core.created_at).toISOString(),
+        name: value.core.name,
+        protected: !!value.privacy?.protected,
+        verification: {
+            verified: !!value.is_blue_verified,
+            verified_since: !!value.verification_info?.reason?.verified_since_msec
+                ? new Date(Number(value.verification_info.reason.verified_since_msec)).toISOString()
+                : undefined,
+            verified_with_id: !!value.verification_info?.is_identity_verified
+        },
+        vpn: !!value.about_profile?.location_accurate,
+        usernames: {
+            changed_count: Number(value.username_changes?.count || '0'),
+            current: value.core.screen_name,
+            updated_at: !!value.username_changes?.last_changed_at
+                ? new Date(Number(value.username_changes.last_changed_at)).toISOString()
+                : undefined
+        }
+    };
+}
 
 
-export function userEntries(instructions: any): Entry<TimelineUser>[] {
-    const value: any[] = getEntries(instructions);
 
-    return value.map(entry => ({
+export function userEntries(instructions: any): Slice<UserKind> {
+    const value: any[] = p.getEntries(instructions);
+
+    const entries = value.map(entry => ({
         id: entry.entryId,
         content: entry.content.__typename === 'TimelineTimelineCursor'
-            ? cursor(entry.content)
+            ? p.cursor(entry.content)
             : user(entry.content.itemContent.user_results?.result)
     }));
+
+    return {
+        entries,
+        cursors: p.cursorsOf(entries)
+    };
 }

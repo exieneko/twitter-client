@@ -1,96 +1,271 @@
-import { ENDPOINTS, HEADERS, PUBLIC_TOKEN } from './consts.js';
-import { mediaUpload } from './formatter/tweet.js';
-import type { BirdwatchRateNoteArgs, BlockedAccountsGetArgs, ByUsername, ClientResponse, CommunityTimelineGetArgs, CursorOnly, Entry, ListBySlug, ListCreateArgs, Media, MediaUploadArgs, MediaUploadInit, NotificationGetArgs, QueryBuilder, ScheduledTweetCreateArgs, SearchArgs, ThreadTweetArgs, TimelineGetArgs, TimelineTweet, Tweet, TweetCreateArgs, TweetGetArgs, TweetReplyPermission, TweetTombstone, UnsentTweetsGetArgs, UpdateProfileArgs } from './types/index.js';
-import { gql, tokenHeaders, toSearchParams, type Endpoint, type Params, type Tokens } from './utils.js';
+import { hrtime } from 'process';
+import { FormData, ProxyAgent } from 'undici';
+import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
+import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT, UPLOAD_SEGMENT_SIZE } from './consts.js';
+import { TwitterFormatter } from './fmt/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { AsyncConstructor, type Endpoint, type Params, type Type } from './types/internal.js';
+import { err, log, match, warn } from './utils/index.js';
+import type { QueryBuilder } from './utils/querybuilder.js';
+import { request } from './utils/request.js';
+
+/**
+ * Shorthand for quickly getting only the current slice of a timeline, then discarding the generator. If you want to reuse the generator, call `timeline.next()`
+ * 
+ * Previously, all methods on `TwitterClient` that fetched a timeline returned only one slice, now they're generators. This function can be used to restore that behavior if needed
+ * 
+ * @example 
+ * import { slice, TwitterClient } from '@exieneko/twitter-client';
+ * 
+ * const twitter = await TwitterClient.new(...);
+ * const { errors, data } = await slice(twitter.getTweet('123456789', { sort: 'Likes' }));
+ * 
+ * @param timeline The timeline returned by the generator function
+ * @returns Current slice of `T`
+ * @since v1.0.0-rc.1
+ */
+export async function slice<T extends { __typename: string }>(timeline: Timeline<T>): Promise<TwitterResponse<Slice<T>>> {
+    const { value } = await timeline.next();
+    await timeline.return(EMPTY_SLICE);
+    return value;
+}
+
+
+
+/**
+ * Asyncronous client used to make requests to the Twitter browser API while logged in as a Twitter user
+ * 
+ * @class
+ * @since v0.1.0
+ */
 export class TwitterClient {
-    #tokens: Tokens;
+    #proxyAgent?: ProxyAgent;
+    #transaction?: ClientTransaction;
+    #tokens: TwitterTokens;
+    options: TwitterOptions;
+    /**
+     * The current user
+     * 
+     * @since 1.0.0-rc.1
+     */
+    self?: User;
 
-    constructor(tokens: Tokens) {
+    constructor(transaction: ClientTransaction | undefined, tokens: TwitterTokens, options: TwitterOptions) {
+        this.#transaction = transaction;
         this.#tokens = tokens;
+        this.options = options;
+
+        if (options.proxyUrl) {
+            try {
+                this.#proxyAgent = new ProxyAgent(options.proxyUrl);
+            } catch (error) {
+                log(options, `Error while creating proxy agent with url "${options.proxyUrl}": ${error}`);
+            }
+        }
+
+        if (this.options.language.toLowerCase().startsWith('en-')) {
+            this.options.language = 'en';
+        }
     }
 
-    private headers(token?: string, type: 'gql' | 'v1.1' | 'fd' = 'gql'): Record<string, string> {
-        return type === 'fd' ? {
-            ...HEADERS,
-            authorization: token || PUBLIC_TOKEN,
-            ...tokenHeaders(this.#tokens)
-        } : {
-            ...HEADERS,
-            authorization: token || PUBLIC_TOKEN,
-            'content-type': `${type === 'gql' ? 'application/json' : 'application/x-www-form-urlencoded'}; charset=utf-8`,
-            ...tokenHeaders(this.#tokens)
+    /**
+     * Fetches the x.com homepage and creates a `ClientTransaction` object, which is used to generate the `x-client-transaction-id` header for endpoints that require it
+     * 
+     * @returns Promise resolving to a `ClientTransaction`
+     * @since v1.0.0-rc.1
+     */
+    static async _transaction(log: boolean = false): Promise<ClientTransaction | undefined> {
+        try {
+            const document = await handleXMigration();
+            const transaction = await ClientTransaction.create(document);
+            return transaction;
+        } catch (error: any) {
+            if (typeof error === 'object' && !!error.message) {
+                err(log, `Failed to initialize ClientTransaction because of ${error.message}`);
+            } else {
+                err(log, `Failed to initialize ClientTransaction because of ${error}`);
+            }
+        }
+    }
+
+    /**
+     * Async constructor for `TwitterClient`
+     * 
+     * @constructor
+     * @param tokens Your Twitter account's login tokens
+     * @param [options] Additional options
+     * @returns Promise resolving to `TwitterClient`
+     * @since v1.0.0-rc.1
+     */
+    static async new(tokens: TwitterTokens, options?: Partial<TwitterOptions>): Promise<TwitterClient> {
+        const opts: TwitterOptions = {
+            domain: 'twitter.com',
+            language: 'en',
+            longTweetBehavior: 'Force',
+            proxyUrl: undefined,
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
+            verbose: false,
+            ...options
         };
+
+        const start = hrtime.bigint();
+        log(opts, `Initializing TwitterClient with ${!!options ? `options: ${options}` : 'default options'}`);
+
+        const transaction = await TwitterClient._transaction();
+        const client = new TwitterClient(transaction, tokens, opts);
+
+        const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
+        log(client, `Initialized TwitterClient in ${elapsed}ms`);
+
+        if (client.options.language !== 'en') {
+            warn(client, 'Setting `language` to values other than "en" may have unexpected effects');
+        }
+
+        return client;
     }
 
-    private async fetch<T extends Endpoint>(endpoint: T, params?: Params<T>): Promise<ClientResponse<ReturnType<T['parser']>>> {
-        const isGql = !endpoint.url.startsWith('https')
 
-        const headers = this.headers(endpoint.token, isGql ? 'gql' : 'v1.1');
 
-        let data: Parameters<Endpoint['parser']>[0] | null = null;
+    private async getTransactionId(endpoint: Endpoint): Promise<string | undefined> {
+        if (!endpoint.requiresTransactionId) {
+            return;
+        }
+
+        const path = endpoint.url.replace(/.*twitter\.com\//, '/');
+        const transactionId = await this.#transaction?.generateTransactionId(endpoint.method, path);
+
+        log(this, `Generated x-client-transaction-id for ${endpoint.method} ${path} (${transactionId})`);
+        return transactionId;
+    }
+
+    /**
+     * Main method responsible for interacting with the Twitter API. Calling this function with a valid `Endpoint` as a target will send a request to that endpoint and expect data back
+     * 
+     * If set, `params`, will be appended to the body of the request, the type of which is inferred from the pathname and method of the endpoint. This object is sent to the API as is, so the keys must have the name Twitter expects
+     * 
+     * @example
+     * const { errors, data: user } = await this.fetch(new Endpoint<ReturnType, { screen_name: string }>({
+     *     url: 'https://twitter.com/i/api/graphql/-oaLodhGbbnzJBACb1kk2Q/UserByScreenName',
+     *     method: 'get',
+     *     features: {}
+     * }, async (fmt, value) => fmt.next(doSomethingWith(value))));
+     * 
+     * @param endpoint Target endpoint
+     * @param params Dynamic parameters to send to the endpoint
+     * @returns Expected awaited return type of the target endpoint's `format` method
+     * @see {@link Endpoint}
+     */
+    private async fetch<EP extends Endpoint, In = Parameters<EP['format']>[1], Out = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: Params<EP>): Promise<TwitterResponse<Out>> {
+        // TODO: re-add timing functions, logs, etc
+
+        const [json] = await request<EP, In>(
+            endpoint,
+            params,
+            this.options,
+            this.#tokens,
+            this.#proxyAgent,
+            this.self?.id,
+            await this.getTransactionId(endpoint)
+        );
+
+        if (json instanceof Error) {
+            return {
+                errors: [new TwitterError(json)]
+            };
+        // @ts-ignore
+        } else if (json?.errors && !json.data) {
+            return {
+                // @ts-ignore
+                errors: TwitterError.from(json.errors)
+            };
+        } else if (!json) {
+            return {
+                errors: [new TwitterError()]
+            };
+        }
+
+        const fmt = new TwitterFormatter(this);
 
         try {
-            const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
-            const response = await (isGql
-                ? (endpoint.method === 'get'
-                    ? fetch(gql(endpoint.url) + toSearchParams({ variables: { ...endpoint.variables, ...params }, features: endpoint.features }), {
-                        method: endpoint.method,
-                        headers
-                    })
-                    : fetch(gql(endpoint.url), {
-                        method: endpoint.method,
-                        headers,
-                        body: JSON.stringify({
-                            variables: { ...endpoint.variables, ...params },
-                            features: endpoint.features,
-                            queryId: endpoint.url.split('/', 1)[0]
-                        })
-                    })
-                )
-                : fetch(endpoint.method === 'get' && body ? `${endpoint.url}?${body}` : endpoint.url, {
-                    method: endpoint.method,
-                    headers,
-                    body: endpoint.method === 'post' && body ? body : undefined
-                })
-            );
+            const result = await fmt.next<Out, AsyncConstructor<Out, NonNullable<In>>>(endpoint.format, json);
 
-            data = await response.json();
+            return {
+                data: result,
+                errors: fmt.errors
+            };
         } catch (error: any) {
-            return [[{
-                code: -1,
-                message: String(error.stack)
-            }]];
+            return {
+                errors: [new TwitterError(error)]
+            };
+        }
+    }
+
+    private async* getSlice<T extends Type, U extends CursorOnly>(args: U | undefined, callback: (args: U) => Promise<TwitterResponse<Slice<T>>>): Timeline<T> {
+        const a = (args ?? {}) as U;
+
+        let iterations = 0;
+        let cursors: string[] = [];
+
+        while (cursors.length < 2 ? iterations < MAX_TIMELINE_ITERATIONS : cursors.at(-1) !== cursors.at(-2)) {
+            const currentArgs: U = { ...a, cursor: cursors.at(-1) ?? args?.cursor };
+            const next = await callback(currentArgs);
+
+            iterations++;
+            if (next.data?.cursors.next) {
+                cursors.push(next.data.cursors.next);
+            }
+
+            yield next;
         }
 
-        if (data?.errors && !data.data) {
-            return [data.errors];
-        }
-
-        try {
-            return [data?.errors || [], endpoint.parser(data)];
-        } catch (error: any) {
-            return [[{
-                code: -1,
-                message: String(error.stack)
-            }]];
-        }
+        return EMPTY_SLICE;
     }
 
 
 
     /**
-     * Gets blocked accounts
+     * Sets the {@link TwitterClient.self} property and returns its value
      * 
-     * Arguments:
-     * 
-     * + `imported?: boolean = false` - Get imported bookmarks only?
-     * + `cursor?: string`
-     * 
-     * @param args Arguments
-     * @returns Slice of blocked accounts
+     * @returns User
+     * @since v1.0.0-rc.1
      */
-    async getBlockedAccounts(args?: BlockedAccountsGetArgs) {
+    async setSelf(): Promise<TwitterResponse<User>> {
+        const { errors, data: settings } = await this.getSettings();
+
+        if (!settings) {
+            return { errors };
+        }
+
+        const { errors: errors2, data: user } = await this.getUser(settings.username, { byUsername: true });
+
+        if (!user || user.__typename !== 'User') {
+            return { errors: errors2 };
+        }
+
+        this.self = user as User;
+
+        return {
+            errors: [...errors, ...errors2],
+            data: this.self
+        };
+    }
+
+
+
+    /**
+     * Get users you've blocked
+     * 
+     * @param [args] {@link BlockedUsersGetArgs}
+     * @yields Slice of users
+     * @since v0.1.0
+     */
+    async* getBlockedUsers(args?: BlockedUsersGetArgs): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, this.getBlockedUsersSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getBlockedUsersSlice(args?: BlockedUsersGetArgs) {
         if (args?.imported) {
             return await this.fetch(ENDPOINTS.BlockedAccountsImported, { cursor: args?.cursor });
         }
@@ -99,37 +274,37 @@ export class TwitterClient {
     }
 
     /**
-     * Get muted accounts* 
-     * @param args Cursor only
-     * @returns Slice of muted accounts
+     * Get users you've muted
+     * 
+     * @param [args] Cursor only
+     * @yields Slice of accounts
+     * @since v0.1.0
      */
-    async getMutedAccounts(args?: CursorOnly) {
+    async* getMutedUsers(args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, this.getMutedUsersSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getMutedUsersSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.MutedAccounts, args);
     }
 
     /**
-     * Gets account settings
+     * Get your account settings
+     * 
      * @returns Settings
+     * @since v0.1.0
      */
     async getSettings() {
         return await this.fetch(ENDPOINTS.account_settings);
     }
 
     /**
-     * Update profile data. Requires all data to be set
+     * Update data on your profile
      * 
-     * Arguments:
-     * 
-     * + `name: string`
-     * + `description: string`
-     * + `location: string`
-     * + `url: string`
-     * + `birthday: Date` - Birthday represented by a `Date` (time ignored)
-     * + `birthYearVisibility: 'private' | 'followers' | 'following' | 'mutuals' | 'public'` - Visibility of birth year
-     * + `birthDayVisibility: 'private' | 'followers' | 'following' | 'mutuals' | 'public'` - Visibility of birth day
-     * 
-     * @param args Arguments
-     * @returns `true` on success
+     * @param args {@link UpdateProfileArgs}
+     * @returns Success status
+     * @since v0.1.0
      */
     async updateProfile(args: UpdateProfileArgs) {
         return await this.fetch(ENDPOINTS.account_update_profile, {
@@ -140,23 +315,36 @@ export class TwitterClient {
             birthdate_year: args.birthday.getFullYear(),
             birthdate_month: args.birthday.getMonth() + 1,
             birthdate_day: args.birthday.getDate(),
-            birthdate_year_visibility: args.birthYearVisibility === 'private' ? 'self' : args.birthYearVisibility === 'mutuals' ? 'mutualfollow' : args.birthYearVisibility,
-            birthdate_visibility: args.birthDayVisibility === 'private' ? 'self' : args.birthDayVisibility === 'mutuals' ? 'mutualfollow' : args.birthDayVisibility
+            birthdate_year_visibility: match(args.birthYearVisibility, [
+                [BirthDateVisibility.Private, 'self'],
+                [BirthDateVisibility.Mutuals, 'mutualfollow'],
+                [BirthDateVisibility.Followers, 'followers'],
+                [BirthDateVisibility.Following, 'following'],
+            ] as const, 'public'),
+            birthdate_visibility: match(args.birthDayVisibility, [
+                [BirthDateVisibility.Private, 'self'],
+                [BirthDateVisibility.Mutuals, 'mutualfollow'],
+                [BirthDateVisibility.Followers, 'followers'],
+                [BirthDateVisibility.Following, 'following'],
+            ] as const, 'public')
         });
     }
 
     /**
-     * Changes avatar to something else
-     * @param mediaId Uploaded media id
-     * @returns `true` on success
+     * Change your avatar to an uploaded media
+     * 
+     * @param mediaId Media id
+     * @returns Success status
      */
     async setAvatar(mediaId: string) {
         return await this.fetch(ENDPOINTS.account_update_profile_image, { media_id: mediaId });
     }
 
     /**
-     * Gets the currently logged-in user based only on their tokens
-     * @returns User
+     * Get user without id or username input
+     * 
+     * @returns Legacy user
+     * @since v0.1.0
      */
     async verifyCredentials() {
         return await this.fetch(ENDPOINTS.account_verify_credentials);
@@ -165,36 +353,34 @@ export class TwitterClient {
 
 
     /**
-     * Gets all Birdwatch notes on a given tweet
+     * Get all Birdwatch notes on a tweet
+     * 
      * @param id Tweet id
-     * @returns All NN and NNN notes on a tweet
+     * @returns Birdwatch notes
+     * @since v0.4.0
      */
     async getBirdwatchNotesOnTweet(id: string) {
         return await this.fetch(ENDPOINTS.BirdwatchFetchNotes, { tweet_id: id });
     }
 
     /**
-     * Gets a Birdwatch contributor based on their alias
-     * @param alias 
+     * Get a Birdwatch contributor based on their alias
+     * 
+     * @param alias Birdwatch user alias
      * @returns Birdwatch user
+     * @since v0.4.0
      */
     async getBirdwatchUser(alias: string) {
         return await this.fetch(ENDPOINTS.BirdwatchFetchBirdwatchProfile, { alias });
     }
 
     /**
-     * Rates a Birdwatch note.
-     * The helpfulness level (Helpful, Somewhat helpful, Not helpful) will be inferred based on the `helpful_tags` and `unhelpful_tags` arrays provided in `args`
+     * Rate a Birdwatch note. The helpfulness level will be inferred automatically
      * 
-     * Arguments:
-     * 
-     * + `tweetId: string` - id of the tweet the note is on
-     * + `helpful_tags?: BirdwatchHelpfulTag[]`
-     * + `unhelpful_tags?: BirdwatchUnhelpfulTag[]`
-     * 
-     * @param noteId 
-     * @param args Arguments
-     * @returns `true` on success
+     * @param noteId Birdwatch note id
+     * @param args {@link BirdwatchRateNoteArgs}
+     * @returns Success status
+     * @since v0.4.0
      */
     async rateBirdwatchNote(noteId: string, args: BirdwatchRateNoteArgs) {
         return await this.fetch(ENDPOINTS.BirdwatchCreateRating, {
@@ -204,16 +390,17 @@ export class TwitterClient {
                 not_helpful_tags: args.unhelpful_tags
             },
             note_id: noteId,
-            rating_source: 'BirdwatchHomeNeedsYourHelp',
-            source_platform: 'BirdwatchWeb',
+            rating_source: args.source === BirdwatchNoteSource.NeedsYourHelp ? 'BirdwatchHomeNeedsYourHelp' : 'BirdwatchForYouTimeline',
             tweet_id: args.tweetId
         });
     }
 
     /**
-     * Removes a Birdwatch note rating
-     * @param noteId 
-     * @returns `true` on success
+     * Unrate a Birdwatch note
+     * 
+     * @param noteId Birdwatch note id
+     * @returns Success status
+     * @since v0.4.0
      */
     async unrateBirdwatchNote(noteId: string) {
         return await this.fetch(ENDPOINTS.BirdwatchDeleteRating, { note_id: noteId });
@@ -222,27 +409,43 @@ export class TwitterClient {
 
 
     /**
-     * Gets bookmarks
-     * @param args Cursor only
-     * @returns Slice of bookmarked tweets
+     * Get bookmarked tweets
+     * 
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getBookmarks(args?: CursorOnly) {
+    async* getBookmarks(args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getBookmarksSlice(args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getBookmarksSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Bookmarks, args);
     }
 
     /**
-     * Searches through bookmarked tweets
-     * @param query 
-     * @param args Cursor only
-     * @returns Slice of bookmarked tweets
+     * Search bookmarked tweets
+     * 
+     * @param query Query
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.6.0
      */
-    async searchBookmarks(query: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: query, ...args });
+    async* searchBookmarks(query: string | QueryBuilder, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.searchBookmarksSlice(query, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    async searchBookmarksSlice(query: string | QueryBuilder, args?: CursorOnly) {
+        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), ...args });
     }
 
     /**
-     * Clears bookmarked status on all tweets
-     * @returns `true` on success
+     * Remove all bookmarks
+     * 
+     * @returns Success status
+     * @since v0.1.0
      */
     async clearBookmarks() {
         return await this.fetch(ENDPOINTS.BookmarksAllDelete);
@@ -251,57 +454,68 @@ export class TwitterClient {
 
 
     /**
-     * Gets a Twitter community by its id
-     * @param id 
+     * Get a community by its id
+     * 
+     * @param id Community id
      * @returns Community
+     * @since v0.3.0
      */
     async getCommunity(id: string) {
         return await this.fetch(ENDPOINTS.CommunityByRestId, { communityId: id });
     }
 
     /**
-     * Gets tweets in a given community
-     * 
-     * Arguments:
-     * 
-     * + `sort?: 'relevant' | 'recent' = 'relevant'` - Sort tweets by
-     * + `cursor?: string`
+     * Get tweets in a given community
      * 
      * @param id Community id
-     * @param args Arguments
-     * @returns Slice of tweets
+     * @param [args] {@link CommunityTweetsGetArgs}
+     * @yields Slice of tweets
+     * @since v0.3.0
      */
-    async getCommunityTweets(id: string, args?: CommunityTimelineGetArgs) {
-        const rankingMode = args?.sort === 'recent'
-            ? 'Recency'
-            : 'Relevance';
+    async* getCommunityTweets(id: string, args?: CommunityTweetsGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getCommunityTweetsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
 
-        return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, ...args });
+    private async getCommunityTweetsSlice(id: string, args?: CommunityTweetsGetArgs) {
+        const rankingMode = args?.orderBy === CommunityTweetsOrder.Latest ? 'Recency' : 'Relevance';
+        return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, cursor: args?.cursor });
     }
 
     /**
-     * Gets tweets containing media in a given community
+     * Get tweets in a given community that contain media
+     * 
      * @param id Community id
-     * @param args Cursor only
-     * @returns Slice of media tweets
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.3.0
      */
-    async getCommunityMedia(id: string, args?: CursorOnly) {
+    async* getCommunityMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getCommunityMediaSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getCommunityMediaSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.CommunityMediaTimeline, { communityId: id, ...args });
     }
 
     /**
-     * Joins a community
+     * Join a community
+     * 
      * @param id Community id
-     * @returns `true` on success
+     * @returns Success status
+     * @since v0.3.0
      */
     async joinCommunity(id: string) {
         return await this.fetch(ENDPOINTS.JoinCommunity, { communityId: id });
     }
 
     /**
-     * Leaves a community
+     * Leave a community
+     * 
      * @param id Community id
-     * @returns `true` on success
+     * @returns Success status
+     * @since v0.3.0
      */
     async leaveCommunity(id: string) {
         return await this.fetch(ENDPOINTS.LeaveCommunity, { communityId: id });
@@ -310,16 +524,14 @@ export class TwitterClient {
 
 
     /**
-     * Gets a Twitter list by its id or slug
-     * 
-     * Arguments:
-     * + `bySlug?: boolean = false` - Use slug instead?
+     * Get a Twitter list by its id or slug
      * 
      * @param id List id or slug
-     * @param args Arguments
-     * @returns List matching the id
+     * @param [args] {@link BySlug}
+     * @returns List
+     * @since v0.1.0
      */
-    async getList(id: string, args?: ListBySlug) {
+    async getList(id: string, args?: BySlug) {
         if (args?.bySlug) {
             return await this.fetch(ENDPOINTS.ListBySlug, { listId: id });
         }
@@ -328,27 +540,39 @@ export class TwitterClient {
     }
 
     /**
-     * Gets tweets by users on a given list
-     * @param id 
-     * @param args Cursor only
-     * @returns Slice of tweets
+     * Get tweets of a list, created by listed users
+     * 
+     * @param id List id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getListTweets(id: string, args?: CursorOnly) {
+    async* getListTweets(id: string, args?: CursorOnly) {
+        for await (const slice of this.getSlice(args, args => this.getListTweetsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getListTweetsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListLatestTweetsTimeline, { listId: id, ...args });
     }
 
     /**
-     * Gets list discovery page
+     * Get list discovery page
+     * 
      * @returns Slice of lists
+     * @since v0.6.0
      */
     async getListDiscovery() {
         return await this.fetch(ENDPOINTS.ListsDiscovery);
     }
 
     /**
-     * Gets lists you're a member of
-     * @param args Cursor only
+     * Get lists you're a member of
+     * 
+     * @todo This should be turned into a generator
+     * @param [args] {@link CursorOnly}
      * @returns Slice of lists
+     * @since v0.6.0
      */
     async listedOn(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListMemberships, args);
@@ -359,65 +583,80 @@ export class TwitterClient {
     }
 
     /**
-     * Gets members of a list
-     * @param id 
-     * @param args Cursor only
-     * @returns Slice of users on list
+     * Get members of a list
+     * 
+     * @param id List id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getListMembers(id: string, args?: CursorOnly) {
+    async* getListMembers(id: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getListMembersSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getListMembersSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListMembers, { listId: id, ...args });
     }
 
     /**
-     * Gets subscribers of a list
-     * @param id 
-     * @param args Cursor only
-     * @returns Slice of users subscribed to the list
+     * Get subscribers of a list
+     * 
+     * @param id List id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getListSubscribers(id: string, args?: CursorOnly) {
+    async* getListSubscribers(id: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getListSubscribersSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getListSubscribersSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListSubscribers, { listId: id, ...args });
     }
 
     /**
-     * Creates a new List
+     * Create a new list
      * 
-     * Arguments:
-     * 
-     * + `name: string`
-     * + `description?: string`
-     * + `private?: boolean = false` - Controls if other users can see this list too
-     * 
-     * @param args Arguments
-     * @returns The created list
+     * @param args {@link ListCreateArgs}
+     * @returns List
+     * @since v0.1.0
      */
     async createList(args: ListCreateArgs) {
-        return await this.fetch(ENDPOINTS.CreateList, { description: args.description || '', isPrivate: !!args.private, ...args });
+        return await this.fetch(ENDPOINTS.CreateList, { name: args.name, description: args.description || '', isPrivate: !!args.private });
     }
 
     /**
-     * Edits an existing owned list
-     * @param id 
-     * @param args Arguments are same as list creation, but required
-     * @returns `true` on success
+     * Edit details of a list
+     * 
+     * @param id List id
+     * @param args {@link ListCreateArgs|Required\<ListCreateArgs\>}
+     * @returns Success status
+     * @since v0.1.0
      */
     async editList(id: string, args: Required<ListCreateArgs>) {
-        return await this.fetch(ENDPOINTS.UpdateList, { listId: id, isPrivate: args.private, ...args });
+        return await this.fetch(ENDPOINTS.UpdateList, { listId: id, name: args.name, description: args.description, isPrivate: args.private });
     }
 
     /**
-     * Deletes an existing owned list
-     * @param id 
-     * @returns `true` on success
+     * Delete a list
+     * 
+     * @param id List id
+     * @returns Success status
+     * @since v0.1.0
      */
     async deleteList(id: string) {
         return await this.fetch(ENDPOINTS.DeleteList, { listId: id });
     }
 
     /**
-     * Sets the banner of an existing owned list
-     * @param listId 
-     * @param mediaId 
-     * @returns `true` on success
+     * Set the banner of a list to a media
+     * 
+     * @param listId List id
+     * @param mediaId Media id
+     * @returns Success status
+     * @since v0.6.0
      */
     async setListBanner(listId: string, mediaId: string) {
         if (mediaId) {
@@ -429,66 +668,89 @@ export class TwitterClient {
 
     /**
      * Adds a user to a list
-     * @param listId 
-     * @param userId 
-     * @returns `true` on success
+     * @param listId List id
+     * @param userId User id
+     * @returns Success status
+     * @since v0.1.0
      */
     async listUser(listId: string, userId: string) {
         return await this.fetch(ENDPOINTS.ListAddMember, { listId, userId });
     }
 
     /**
-     * Removes a user from a list
-     * @param listId 
-     * @param userId 
-     * @returns `true` on success
+     * Remove a user from a list
+     * 
+     * @param listId List id
+     * @param userId User id
+     * @returns Success status
+     * @since v0.1.0
      */
     async unlistUser(listId: string, userId: string) {
         return await this.fetch(ENDPOINTS.ListRemoveMember, { listId, userId });
     }
 
     /**
-     * Subscribes to a list
-     * @param id 
-     * @returns `true` on success
+     * Subscribe to a list
+     * 
+     * @param id List id
+     * @returns Success status
+     * @since v0.1.0
      */
     async subscribeToList(id: string) {
         return await this.fetch(ENDPOINTS.ListSubscribe, { listId: id });
     }
 
     /**
-     * Unsubscribes from a list
-     * @param id 
-     * @returns `true` on success
+     * Unsubscribe from a list
+     * 
+     * @param id List id
+     * @returns Success status
+     * @since v0.1.0
      */
     async unsubscribeFromList(id: string) {
         return await this.fetch(ENDPOINTS.ListUnsubscribe, { listId: id });
     }
 
     /**
-     * Adds a list as a pinned timeline
-     * @param id 
-     * @returns `true` on success
+     * Add a list to your pinned timelines
+     * 
+     * @param id List id
+     * @returns Success status
+     * @since v0.6.0
      */
     async pinList(id: string) {
         return await this.fetch(ENDPOINTS.PinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
     }
 
     /**
-     * Removes a list as a pinned timeline
-     * @param id 
-     * @returns `true` on success
+     * Remove a list from your pinned timelines
+     * 
+     * @param id List id
+     * @since v0.6.0
+     * @returns Success status
      */
     async unpinList(id: string) {
-        return await this.fetch(ENDPOINTS.UnpinTimeline, {
-            pinnedTimelineItem: { id, pinned_timeline_type: 'List' }
-        });
+        return await this.fetch(ENDPOINTS.UnpinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
     }
 
+    /**
+     * Mute a list, preventing it from sending you notifications
+     * 
+     * @param id List id
+     * @returns Success status
+     * @since v0.6.0
+     */
     async muteList(id: string) {
         return await this.fetch(ENDPOINTS.MuteList, { listId: id });
     }
 
+    /**
+     * Unmute a list
+     * 
+     * @param id List id
+     * @returns Success status
+     * @since v0.6.0
+     */
     async unmuteList(id: string) {
         return await this.fetch(ENDPOINTS.UnmuteList, { listId: id });
     }
@@ -496,46 +758,54 @@ export class TwitterClient {
 
 
     /**
-     * Gets notifications
+     * Get notifications
      * 
-     * Arguments:
-     * 
-     * + `type: 'all' | 'verified' | 'mentions'` - Filter notifications?
-     * + `cursor?: string`
-     * 
-     * @param args Arguments
-     * @returns Slice of notifications
+     * @param [args] {@link NotificationGetArgs}
+     * @yields Slice of notifications
+     * @since v0.1.0
      */
-    async getNotifications(args?: NotificationGetArgs) {
-        const type = args?.type === 'mentions'
-            ? 'Mentions'
-        : args?.type === 'verified'
-            ? 'Verified'
-            : 'All';
+    async* getNotifications(args?: NotificationGetArgs): Timeline<Notification> {
+        for await (const slice of this.getSlice(args, this.getNotificationsSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
 
-        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: type, ...args });
+    private async getNotificationsSlice(args?: NotificationGetArgs) {
+        const timelineType = !args?.filter || args.filter === 'None' ? 'All' : args.filter;
+        return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: timelineType, cursor: args?.cursor });
     }
 
     /**
-     * Gets recent tweets from users you allowed notifications from, chronologically
-     * @param args Cursor only
-     * @returns Slice of tweets
+     * Get recent tweets from users you allowed notifications from
+     * 
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getNotifiedTweets(args?: CursorOnly) {
+    async* getNotifiedTweets(args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, this.getNotifiedTweetsSlice)) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getNotifiedTweetsSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.device_follow, args);
     }
 
     /**
-     * Adjust last seen cursor for notifications, which can be used to mark notifications as read
-     * @param cursor 
+     * Mark notifications as read by setting the last seen cursor forward to the top cursor given by the notification timeline
+     * 
+     * @param cursor Top cursor
+     * @returns Cursor
+     * @since v0.6.0
      */
     async lastSeenCursor(cursor: string) {
         return await this.fetch(ENDPOINTS.last_seen_cursor, { cursor });
     }
 
     /**
-     * Gets unread notifications counter split between regular notifications and inbox (dms)
+     * Get amount of unread notifications
+     * 
      * @returns Unread count
+     * @since v0.1.0
      */
     async getUnreadCount() {
         return await this.fetch(ENDPOINTS.badge_count);
@@ -544,52 +814,100 @@ export class TwitterClient {
     
 
     /**
-     * Gets the tweets on your timeline.
-     * Algorithmical timeline gets from the "For you" page;
-     * chronological gets from following, starting from the most recent
+     * Get tweets of a timeline
      * 
-     * Arguments:
-     * 
-     * + `type?: 'algorithmical' | 'chronological' = 'algorithmical'` - Type of timeline to fetch
-     * + `seenTweetIds?: string[] = []` - ids of already seen tweets
-     * + `cursor?: string`
-     * 
-     * @param args Arguments
-     * @returns Slice of timeline tweets
+     * @param [args] {@link TimelineGetArgs}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getTimeline(args?: TimelineGetArgs) {
-        const seenTweetIds = args?.seenTweetIds ?? [];
-        const requestContext = args?.cursor ? undefined : 'launch';
+    getTimeline(args?: TimelineGetArgs): Timeline<TweetKind>;
+    /**
+     * Get tweets of a generic timeline by its id
+     * 
+     * @param id Generic timeline id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
+     */
+    getTimeline(id: string, args?: CursorOnly): Timeline<TweetKind>;
 
-        if (args?.type === 'chronological') {
-            return await this.fetch(ENDPOINTS.HomeLatestTimeline, { seenTweetIds, requestContext, cursor: args.cursor });
+    async* getTimeline(idOrArgs?: string | TimelineGetArgs, args?: CursorOnly): Timeline<TweetKind> {
+        if (typeof idOrArgs === 'string') {
+            for await (const slice of this.getSlice(args, args => this.getTimelineSlice(idOrArgs, args))) yield slice;
+        } else {
+            for await (const slice of this.getSlice(idOrArgs, args => this.getTimelineSlice(args))) yield slice;
         }
 
-        return await this.fetch(ENDPOINTS.HomeTimeline, { seenTweetIds, requestContext, cursor: args?.cursor });
+        return EMPTY_SLICE;
+    }
+
+    private async getTimelineSlice(args?: TimelineGetArgs): Promise<TwitterResponse<Slice<TweetKind>>>;
+    private async getTimelineSlice(id: string, args?: CursorOnly): Promise<TwitterResponse<Slice<TweetKind>>>;
+
+    private async getTimelineSlice(idOrArgs: string | TimelineGetArgs = {}, args?: CursorOnly) {
+        if (typeof idOrArgs === 'string') {
+            return await this.fetch(ENDPOINTS.GenericTimelineById, { timelineId: idOrArgs, cursor: args?.cursor });
+        }
+
+        const seenTweetIds = idOrArgs.seenTweetIds ?? [];
+        const requestContext = idOrArgs.cursor ? undefined : 'launch';
+
+        if (idOrArgs.orderBy === 'Latest') {
+            return await this.fetch(ENDPOINTS.HomeLatestTimeline, { seenTweetIds, requestContext, cursor: idOrArgs.cursor });
+        }
+
+        return await this.fetch(ENDPOINTS.HomeTimeline, { seenTweetIds, requestContext, cursor: idOrArgs.cursor });
     }
 
     /**
-     * Performs a standard Twitter search.
-     * All advanced search features can be used like normal, and `QueryBuilder` can be used for complex searches
+     * Search tweets
      * 
-     * Arguments:
-     * 
-     * + `type?: 'algorithmical' | 'chronological' | 'media' | 'users' | 'lists' = 'algorithmical` - Type of data to search through. `'media'` will have the same effect as putting `filter:media` in the query
-     * + `cursor?: string`
-     * 
-     * @param query Query as string or using QueryBuilder
-     * @param args Arguments
-     * @returns Slice of tweets, users, or lists depending on 
-     * @see `types/QueryBuilder`
+     * @param query Query
+     * @param [args] {@link SearchArgs}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async search(query: string | QueryBuilder, args?: SearchArgs) {
-        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product: 'Top', cursor: args?.cursor });
+    search(query: string | QueryBuilder, args?: SearchArgs & { kind?: 'Relevant' | 'Latest' | 'Media' }): Timeline<TweetKind>;
+    /**
+     * Search users
+     * 
+     * @param query Query
+     * @param [args] {@link SearchArgs}
+     * @yields Slice of tweets
+     * @since v0.1.0
+     */
+    search(query: string | QueryBuilder, args?: SearchArgs & { kind: 'Users' }): Timeline<UserKind>;
+    /**
+     * Search lists
+     * 
+     * @param query Query
+     * @param [args] {@link SearchArgs}
+     * @yields Slice of tweets
+     * @since v0.1.0
+     */
+    search(query: string | QueryBuilder, args?: SearchArgs & { kind: 'Lists' }): Timeline<ListKind>;
+
+    async* search<T extends Type<string>>(query: string | QueryBuilder, args?: SearchArgs): Timeline<T> {
+        for await (const slice of this.getSlice(args, args => this.searchSlice(query, args))) yield slice as TwitterResponse<Slice<T>>;
+        return EMPTY_SLICE;
+    }
+
+    async searchSlice(query: string | QueryBuilder, args?: SearchArgs) {
+        const product = args?.kind === 'Relevant'
+            ? 'Top'
+        : args?.kind === 'Users'
+            ? 'People'
+            : args?.kind || 'Top';
+
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product, cursor: args?.cursor });
     }
 
     /**
-     * Gets matching users and topics to display in the search bar while typing
-     * @param query 
-     * @returns Typeahead
+     * Get search auto-completion users and topics
+     * 
+     * @param query Query
+     * @returns Search typeahead
+     * @since v0.1.0
      */
     async typeahead(query: string) {
         return await this.fetch(ENDPOINTS.search_typeahead, { q: query });
@@ -598,32 +916,104 @@ export class TwitterClient {
 
 
     /**
-     * Creates a new tweet
+     * Creates a new tweet with the specified content. A note tweet will be created if required by text (max 280) or media (max 4) array length, and allowed in options
      * 
-     * Arguments
+     * Additional thread tweets will be created with individual requests, as Twitter doesn't have an official way of handling this
      * 
-     * + `text?: string` - Body of the tweet (up to 280 characters)
-     * + `replyTo: string` - id of another tweet to send this tweet as a reply to
-     * + `mediaIds?: string[]` - Up to 4 media ids to send with the tweet as attached images/videos
-     * + `sensitive?: boolean = false` - Mark tweet as sensitive?
-     * + `replyPermission?: TweetReplyPermission` - Limit replies to a certain group
+     * Note: this endpoint is protected by Twitter and may be unsafe to fetch repeatedly. Read {@link https://github.com/exieneko/twitter-client#how-to-protect-your-account|the README} for more information
      * 
-     * @param args Arguments
-     * @param thread Additional tweets to reply to the root tweet with (may be slow, as Twitter doesn't offer a built-in solution for this, so each request is made individually)
-     * @returns Created tweet
+     * @param args {@link TweetCreateArgs}
+     * @param [thread] Additional tweets
+     * @returns Tweet
+     * @since v0.1.0
      */
-    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<ClientResponse<Tweet | TweetTombstone>> {
-        const mode = args.replyPermission === 'following'
-            ? 'Community'
-        : args.replyPermission === 'verified'
-            ? 'Verified'
-        : args.replyPermission === 'mentioned'
-            ? 'ByInvitation'
-            : undefined;
+    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>>;
 
-        const [e, tweet] = await this.fetch(ENDPOINTS.CreateTweet, {
+    /**
+     * Creates a new tweet with the specified content
+     * 
+     * Note: this endpoint is protected by Twitter and may be unsafe to fetch repeatedly. Read {@link https://github.com/exieneko/twitter-client#how-to-protect-your-account|the README} for more information
+     * 
+     * @param text Tweet text
+     * @returns Tweet
+     * @since v0.1.0
+     */
+    async createTweet(text: string): Promise<TwitterResponse<Tweet>>;
+
+    async createTweet(argsOrText: string | TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>> {
+        const args: TweetCreateArgs = typeof argsOrText === 'string' ? {} : argsOrText;
+        const text = (typeof argsOrText === 'string' ? argsOrText : argsOrText.text) || '';
+
+        if (text.length > TWEET_CHARACTER_LIMIT && this.options.longTweetBehavior === 'Fail') {
+            return {
+                errors: [new TwitterError(TwitterErrorCode.InvalidTweetTextLength, { data: text.length })]
+            };
+        }
+
+        const mode = match(args.replyPermission, [
+            [ReplyPermission.Following, 'Community'],
+            [ReplyPermission.Verified, 'Verified'],
+            [ReplyPermission.Following, 'ByInvitation']
+        ] as const);
+
+        if (text.length > TWEET_CHARACTER_LIMIT && (this.options.longTweetBehavior === 'NoteTweet' || this.options.longTweetBehavior === 'NoteTweetUnchecked')) {
+            return {
+                errors: [new TwitterError(TwitterErrorCode.NotImplemented)]
+            };
+        }
+
+        if (args.mediaIds?.length && args.mediaIds.length > 4) {
+            return {
+                errors: [new TwitterError(TwitterErrorCode.InvalidMediaCount, { data: args.mediaIds.length })]
+            };
+        }
+
+        let cardUri: string | undefined = undefined;
+
+        if (args.card?.kind === 'Poll') {
+            if (args.card.choices.length < 2 || args.card.choices.length > 4) {
+                return {
+                    errors: [new TwitterError(TwitterErrorCode.InvalidPollChoicesCount, { data: args.card.choices.length })]
+                };
+            }
+
+            const hasImage = args.card.choices.some(choice => !!choice.media_id);
+
+            const { errors, data: uri } = await this.fetch(ENDPOINTS.cards_create, {
+                card_data: JSON.stringify({
+                    'twitter:api:api:endpoint': '1',
+                    'twitter:card': hasImage ? `1906814671912599552:poll_choice_images` : `poll${args.card.choices.length}choice_text_only`,
+                    'twitter:long:duration_minutes': Math.floor(args.card.duration / 60),
+                    'twitter:string:choice1_label': args.card!.choices.at(0)!.text,
+                    'twitter:image:choice1_image:src:id': hasImage ? `mis://${args.card!.choices.at(0)!.media_id}` : undefined,
+                    'twitter:string:choice2_label': args.card!.choices.at(1)!.text,
+                    'twitter:image:choice2_image:src:id': hasImage ? `mis://${args.card!.choices.at(1)!.media_id}` : undefined,
+                    'twitter:string:choice3_label': args.card!.choices.at(2)?.text,
+                    'twitter:image:choice3_image:src:id': hasImage ? `mis://${args.card!.choices.at(2)?.media_id}` : undefined,
+                    'twitter:string:choice4_label': args.card!.choices.at(3)?.text,
+                    'twitter:image:choice4_image:src:id': hasImage ? `mis://${args.card!.choices.at(3)?.media_id}` : undefined
+                })
+            });
+
+            if (!uri) {
+                return { errors };
+            }
+
+            cardUri = uri;
+        }
+
+        const { errors, data: tweet } = await this.fetch(ENDPOINTS.CreateTweet, {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
+            card_uri: cardUri,
             conversation_control: mode ? { mode } : undefined,
+            content_disclosure: args.content_disclosures?.is_ai_generated || args.content_disclosures?.is_sponsored ? {
+                advertising_promotion: args.content_disclosures.is_sponsored ? {
+                    is_paid_promotion: !!args.content_disclosures.is_sponsored
+                } : undefined,
+                ai_generated_disclosure: args.content_disclosures.is_ai_generated ? {
+                    has_ai_generated_media: !!args.content_disclosures.is_ai_generated
+                } : undefined
+            } : undefined,
             media: {
                 media_entities: args.mediaIds?.map(id => ({
                     media_id: id,
@@ -631,26 +1021,26 @@ export class TwitterClient {
                 })) || [],
                 possibly_sensitive: !!args.sensitive
             },
-            reply: args.replyTo ? {
+            reply: !!args.replyTo ? {
                 exclude_reply_user_ids: [],
                 in_reply_to_tweet_id: args.replyTo
             } : undefined,
             semantic_annotation_ids: [],
-            tweet_text: args.text || ''
+            tweet_text: text
         });
 
-        if (tweet?.__typename === 'TweetTombstone') {
-            return [e, tweet];
+        if (!tweet) {
+            return { errors };
         }
 
         if (!thread?.length || !tweet?.id) {
-            return [e, tweet];
+            return { errors, data: tweet };
         }
 
         let lastTweetId = tweet.id;
 
         for (const t of thread) {
-            const [, data] = await this.fetch(ENDPOINTS.CreateTweet, {
+            const { data } = await this.fetch(ENDPOINTS.CreateTweet, {
                 batch_compose: !args.replyTo ? 'BatchSubsequent' : undefined,
                 media: {
                     media_entities: t.mediaIds?.map(id => ({
@@ -667,40 +1057,33 @@ export class TwitterClient {
                 tweet_text: t.text || ''
             });
 
-            if (!data || data.__typename === 'TweetTombstone') {
-                return [e, tweet];
+            if (!data) {
+                return { errors, data: tweet };
             }
 
             lastTweetId = data.id;
         }
 
-        return [e, tweet];
+        return { errors, data: tweet };
     }
 
-    /** @deprecated Use the `createTweet` method instead */
-    tweet = this.createTweet;
-
     /**
-     * Deletes an owned tweet
-     * @param id 
-     * @returns `true` on success
+     * Delete an owned tweet
+     * 
+     * @param id Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async deleteTweet(id: string) {
         return await this.fetch(ENDPOINTS.DeleteTweet, { tweet_id: id });
     }
 
     /**
-     * Creates a schedules tweet.
-     * Scheduled tweets can't have custom reply permissions or thread tweets
+     * Schedule a tweet
      * 
-     * Arguments:
-     * 
-     * + `sendAt: Date | number` - Date to publish the tweet at (`number` should use the `getTime` method on `Date`)
-     * + `text?: string` - Body of the tweet (up to 280 characters)
-     * + `mediaIds?: string[]` - Up to 4 media ids to send with the tweet as attached images/videos
-     * 
-     * @param args Arguments
-     * @returns 
+     * @param args {@link ScheduledTweetCreateArgs}
+     * @returns Scheduled tweet id
+     * @since v1.0.0-rc.1
      */
     async createScheduledTweet(args: ScheduledTweetCreateArgs) {
         return await this.fetch(ENDPOINTS.CreateScheduledTweet, {
@@ -714,6 +1097,14 @@ export class TwitterClient {
         });
     }
 
+    /**
+     * Edit a scheduled tweet
+     * 
+     * @param id Scheduled tweet id
+     * @param [args] {@link ScheduledTweetCreateArgs}
+     * @returns Success status
+     * @since v1.0.0-rc.1
+     */
     async editScheduledTweet(id: string, args: ScheduledTweetCreateArgs) {
         return await this.fetch(ENDPOINTS.EditScheduledTweet, {
             execute_at: (typeof args.sendAt === 'number' ? args.sendAt : args.sendAt.getTime()) / 1000,
@@ -732,98 +1123,123 @@ export class TwitterClient {
     }
 
     /**
-     * Gets a tweet and its replies
+     * Get a tweet and its replies as a timeline by its id
      * 
-     * Arguments:
-     * 
-     * + `sort?: 'relevant' | 'recent' | 'likes' = 'relevant'` - Sort replies by?
-     * + `cursor?: string`
-     * 
-     * @param id 
-     * @param args Arguments
-     * @returns Slice of tweets
+     * @param id Tweet id
+     * @param [args] {@link TweetGetArgs}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getTweet(id: string, args?: TweetGetArgs) {
-        const rankingMode = args?.sort === 'recent'
-            ? 'Recency'
-        : args?.sort === 'likes'
-            ? 'Likes'
-            : 'Relevance';
+    async* getTweet(id: string, args?: TweetGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getTweetSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
 
-        return await this.fetch(ENDPOINTS.TweetDetail, { focalTweetId: id, rankingMode, ...args });
+    private async getTweetSlice(id: string, args?: TweetGetArgs) {
+        const rankingMode = match(args?.orderBy, [
+            [TweetOrder.New, 'Recency'],
+            [TweetOrder.Likes, 'Likes']
+        ] as const, 'Relevance');
+
+        return await this.fetch(ENDPOINTS.TweetDetail, { focalTweetId: id, rankingMode, cursor: args?.cursor });
     }
 
     /**
-     * Gets a tweet by its id, without replies
-     * @param id 
+     * Get a tweet by its id. Unlike `getTweet`, this method doesn't return a `Timeline` async generator, only the root tweet
+     * 
+     * @param id Tweet id
      * @returns Tweet
+     * @since v0.6.0
      */
     async getTweetResult(id: string) {
         return await this.fetch(ENDPOINTS.TweetResultByRestId, { tweetId: id });
     }
 
     /**
-     * Gets tweets by their ids, without replies
-     * @param ids 
+     * Get tweets by their ids
+     * 
+     * @param ids Tweet ids
      * @returns Array of tweets
+     * @since v0.6.0
      */
-    async getTweetResults(ids: [string, ...string[]]) {
+    async getTweetResults(ids: string[]) {
         return await this.fetch(ENDPOINTS.TweetResultsByRestIds, { tweetIds: ids });
     }
 
     /**
-     * Gets hidden replies on a tweet
-     * @param tweetId 
-     * @param args Cursor only
-     * @returns Slice of tweets
+     * Get hidden replies on a tweet
+     * 
+     * @param tweetId Tweet id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getHiddenReplies(tweetId: string, args?: CursorOnly) {
+    async* getHiddenReplies(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getHiddenRepliesSlice(tweetId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getHiddenRepliesSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ModeratedTimeline, { rootTweetId: tweetId, ...args });
     }
 
     /**
-     * Gets users who liked a tweet
+     * Get users that liked a tweet by the tweet's id. In ~June 2024, liked tweet were made private, so this method will return an empty array if you aren't the author of the tweet
      * 
-     * In ~June 2024, liked tweet were made private, so this method will return an empty array if the tweet wasn't made by you
-     * 
-     * @param tweetId 
-     * @param args Cursor only
-     * @returns Slice of users
+     * @param tweetId Tweet id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getLikes(tweetId: string, args?: CursorOnly) {
+    async* getLikes(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getLikesSlice(tweetId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getLikesSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Favoriters, { tweetId: tweetId, ...args });
     }
 
     /**
-     * Gets users who retweeted a tweet
-     * @param tweetId 
-     * @param args Cursor only
-     * @returns Slice of users
+     * Get users that retweeted a tweet by the tweet's id
+     * 
+     * @param tweetId Tweet id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getRetweets(tweetId: string, args?: CursorOnly) {
+    async* getRetweets(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getRetweetsSlice(tweetId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getRetweetsSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Retweeters, { tweetId: tweetId, ...args });
     }
 
     /**
-     * Gets quote tweets to a tweet
+     * Get quote tweets to a tweet by the original tweet's id
      * 
-     * Equivalent to searching for query 
-     * 
-     * @param tweetId 
-     * @param args Cursor only
-     * @returns Slice of tweets
+     * @param tweetId Original tweet's id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getQuoteTweets(tweetId: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as ClientResponse<Entry<TimelineTweet>[]>;
+    async* getQuoteTweets(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getQuoteTweetsSlice(tweetId, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
-    /** @deprecated typo, use `getQuotedTweets` instead */
-    getQuotedTweets = this.getQuoteTweets;
+    private async getQuoteTweetsSlice(tweetId: string, args?: CursorOnly) {
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as TwitterResponse<Slice<TweetKind>>;
+    }
 
     /**
      * Bookmark a tweet
-     * @param tweetId 
-     * @returns `true` on success
+     * 
+     * @param tweetId Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async bookmark(tweetId: string) {
         return await this.fetch(ENDPOINTS.CreateBookmark, { tweet_id: tweetId });
@@ -831,8 +1247,10 @@ export class TwitterClient {
 
     /**
      * Unbookmark a tweet
-     * @param tweetId 
-     * @returns `true` on success
+     * 
+     * @param tweetId Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async unbookmark(tweetId: string) {
         return await this.fetch(ENDPOINTS.DeleteBookmark, { tweet_id: tweetId });
@@ -840,8 +1258,10 @@ export class TwitterClient {
 
     /**
      * Like a tweet
-     * @param tweetId 
-     * @returns `true` on success
+     * 
+     * @param tweetId Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async like(tweetId: string) {
         return await this.fetch(ENDPOINTS.FavoriteTweet, { tweet_id: tweetId });
@@ -849,8 +1269,10 @@ export class TwitterClient {
 
     /**
      * Unlike a tweet
-     * @param tweetId 
-     * @returns `true` on success
+     * 
+     * @param tweetId Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async unlike(tweetId: string) {
         return await this.fetch(ENDPOINTS.UnfavoriteTweet, { tweet_id: tweetId });
@@ -858,8 +1280,10 @@ export class TwitterClient {
 
     /**
      * Retweet a tweet
-     * @param tweetId 
-     * @returns `true` on success
+     * 
+     * @param tweetId Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async retweet(tweetId: string) {
         return await this.fetch(ENDPOINTS.CreateRetweet, { tweet_id: tweetId });
@@ -867,17 +1291,21 @@ export class TwitterClient {
 
     /**
      * Unretweet a tweet
-     * @param tweetId 
-     * @returns `true` on success
+     * 
+     * @param tweetId Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async unretweet(tweetId: string) {
         return await this.fetch(ENDPOINTS.DeleteRetweet, { source_tweet_id: tweetId });
     }
 
     /**
-     * Hide a reply on a tweet. It will still be visible in hidden replies
-     * @param id 
-     * @returns `true` on success
+     * Hide a reply on a tweet you created. It will still be visible in hidden replies
+     * 
+     * @param id Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async hideTweet(id: string) {
         return await this.fetch(ENDPOINTS.ModerateTweet, { tweetId: id });
@@ -885,17 +1313,21 @@ export class TwitterClient {
 
     /**
      * Unhide a hidden reply
-     * @param id 
-     * @returns `true` on success
+     * 
+     * @param id Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async unhideTweet(id: string) {
         return await this.fetch(ENDPOINTS.UnmoderateTweet, { tweetId: id });
     }
 
     /**
-     * Set a tweet as your pinned tweet
-     * @param id 
-     * @returns `true` on success
+     * Set a tweet you created as your pinned tweet
+     * 
+     * @param id Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async pinTweet(id: string) {
         return await this.fetch(ENDPOINTS.PinTweet, { tweet_id: id });
@@ -903,55 +1335,86 @@ export class TwitterClient {
 
     /**
      * Remove your pinned tweet
+     * 
      * @param id Your current pinned tweet id
-     * @returns `true` on success
+     * @returns Success status
+     * @since v0.1.0
      */
     async unpinTweet(id: string) {
         return await this.fetch(ENDPOINTS.UnpinTweet, { tweet_id: id });
     }
 
     /**
-     * Changes who can reply to an owned tweet
-     * @param tweetId 
-     * @param permission Reply permission, or `undefined` to allow everyone to reply
-     * @returns `true` on success
+     * Vote on a poll
+     * 
+     * @param args {@link TweetVoteArgs}
+     * @returns Success status
+     * @since v0.1.0
      */
-    async changeReplyPermission(tweetId: string, permission?: TweetReplyPermission) {
-        if (!permission || permission === 'none') {
+    async vote(args: TweetVoteArgs): Promise<TwitterResponse<boolean>> {
+        if (args.choice < 1 || args.choice > 4) {
+            return {
+                errors: [new TwitterError(TwitterErrorCode.InvalidVoteIndex, { data: args.choice })]
+            };
+        }
+
+        return await this.fetch(ENDPOINTS.capi_passthrough_1, {
+            'twitter:long:original_tweet_id': args.tweetId,
+            'twitter:string:card_uri': args.cardUri,
+            'twitter:string:response_card_name': args.cardName,
+            'twitter:string:selected_choice': args.choice
+        });
+    }
+
+    /**
+     * Change who can reply to an owned tweet
+     * 
+     * @param tweetId Tweet id
+     * @param [permission] Reply permission. `undefined` will remove the permission, allowing everyone to reply
+     * @returns Success status
+     * @since v0.2.0
+     */
+    async changeReplyPermission(tweetId: string, permission?: ReplyPermission) {
+        if (!permission || permission === ReplyPermission.Everyone) {
             return await this.fetch(ENDPOINTS.ConversationControlDelete, { tweet_id: tweetId });
         }
 
-        const mode = permission === 'following'
-            ? 'Community'
-        : permission === 'verified'
-            ? 'Verified'
-            : 'ByInvitation';
+        const mode = match(permission, [
+            [ReplyPermission.Following, 'Community'],
+            [ReplyPermission.Verified, 'Verified']
+        ] as const, 'ByInvitation');
 
         return await this.fetch(ENDPOINTS.ConversationControlChange, { tweet_id: tweetId, mode });
     }
 
     /**
-     * Removes you from a conversation and turn "\@username" links to your profile into regular text
-     * @param id Tweet id
-     * @returns `true` on success
+     * Remove yourself from a conversation that includes you, changing user mention links that lead to your profile to plain text
+     * 
+     * @param id Root tweet id
+     * @returns Success status
+     * @since v0.6.0
      */
     async unmention(id: string) {
         return await this.fetch(ENDPOINTS.UnmentionUserFromConversation, { tweet_id: id });
     }
 
     /**
-     * Mutes a tweet, preventing you from getting notifications relating to it
-     * @param id 
-     * @returns `true` on success
+     * Mute a tweet, preventing you from getting notifications relating to it
+     * 
+     * @param id Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async muteTweet(id: string) {
         return await this.fetch(ENDPOINTS.mutes_conversations_create, { tweet_id: id });
     }
 
     /**
-     * Unmutes a tweet
-     * @param id 
-     * @returns `true` on success
+     * Unmute a tweet
+     * 
+     * @param id Tweet id
+     * @returns Success status
+     * @since v0.1.0
      */
     async unmuteTweet(id: string) {
         return await this.fetch(ENDPOINTS.mutes_conversations_destroy, { tweet_id: id });
@@ -960,27 +1423,39 @@ export class TwitterClient {
 
 
     /**
-     * Gets a user by their id or \@username
+     * Get a user by their id, or username if specified
      * 
-     * @param id id or \@username
-     * @param args By username?
+     * @param id User id or username
+     * @param [args] {@link ByUsername}
      * @returns User
+     * @since v0.1.0
      */
     async getUser(id: string, args?: ByUsername) {
-        if (args?.byUsername) {
-            return await this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id });
+        const { errors, data: user } = await (args?.byUsername
+            ? this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id })
+            : this.fetch(ENDPOINTS.UserByRestId, { userId: id })
+        );
+        
+        if (errors.length > 0) {
+            return { errors, data: user };
         }
 
-        return await this.fetch(ENDPOINTS.UserByRestId, { userId: id });
+        if (user?.__typename === 'User' && this.self?.id === user.id) {
+            this.self = user;
+        }
+
+        return { errors, data: user };
     }
 
     /**
-     * Gets multiple users by their id or \@username
-     * @param ids ids or \@usernames
-     * @param args By username?
+     * Get multiple users by their ids, or usernames if specified
+     * 
+     * @param ids User ids or usernames
+     * @param [args] {@link ByUsername}
      * @returns Users
+     * @since v0.1.0
      */
-    async getUsers(ids: [string, ...string[]], args?: ByUsername) {
+    async getUsers(ids: string[], args?: ByUsername) {
         if (args?.byUsername) {
             return await this.fetch(ENDPOINTS.UsersByScreenNames, { screen_names: ids });
         }
@@ -989,201 +1464,282 @@ export class TwitterClient {
     }
 
     /**
-     * Gets tweets from a user chronologically
+     * Get tweets from a user chronologically
+     * 
      * @param id User id
-     * @param args Cursor only
-     * @returns Slice of user tweets
+     * @param [args] {@link UserTweetsGetArgs}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getUserTweets(id: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.UserTweets, { userId: id, ...args });
+    async* getUserTweets(id: string, args?: UserTweetsGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserTweetsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getUserTweetsSlice(id: string, args?: UserTweetsGetArgs) {
+        if (args?.replies) {
+            return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, cursor: args.cursor });
+        }
+
+        return await this.fetch(ENDPOINTS.UserTweets, { userId: id, cursor: args?.cursor });
     }
 
     /**
-     * Gets tweets and replies from a user chronologically
+     * Get media tweets from a user chronologically
+     * 
      * @param id User id
-     * @param args Cursor only
-     * @returns Slice of user tweets
+     * @param [args] Cursor only
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getUserReplies(id: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, ...args });
+    async* getUserMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserMediaSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
     }
 
-    /**
-     * Gets media tweets from a user chronologically
-     * @param id User id
-     * @param args Cursor only
-     * @returns Slice of user media tweets
-     */
-    async getUserMedia(id: string, args?: CursorOnly) {
+    private async getUserMediaSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserMedia, { userId: id, ...args });
     }
 
     /**
-     * Gets liked tweets of a user chronologically (ordered by the time when each tweet was liked)
-     * 
-     * In ~June 2024, liked tweet were made private, so this method will return an empty array if used on any user other than the current one
+     * Get liked tweets of a user chronologically (ordered by the time when each tweet was liked instead of when the tweets were created)
      * 
      * @param id User id
-     * @param args Cursor only
-     * @returns Slice of tweets
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getUserLikes(id: string, args?: CursorOnly) {
+    async* getUserLikes(id: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserLikesSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getUserLikesSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Likes, { userId: id, ...args });
     }
 
     /**
-     * Gets highlighted tweets from a user. This feature is only available to verified users
+     * Get highlighted tweets from a user. Highlighting tweets is a feature only available to verified users
+     * 
      * @param id User id
-     * @param args Cursor only
-     * @returns Slice of tweets
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of tweets
+     * @since v0.1.0
      */
-    async getUserHighlightedTweets(id: string, args?: CursorOnly) {
+    async* getUserHighlightedTweets(id: string, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserHighlightedTweetsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getUserHighlightedTweetsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserHighlightsTweets, { userId: id, ...args });
     }
 
     /**
-     * Gets followed users of a user
-     * @param userId 
-     * @param args Cursor only
-     * @returns Slice of users
+     * Get followed users of a user
+     * 
+     * @param userId User id 
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getFollowing(userId: string, args?: CursorOnly) {
+    async* getFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowingSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getFollowingSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Following, { userId: userId, ...args });
     }
 
     /**
-     * Gets followers of a user
-     * @param userId 
-     * @param args Cursor only
-     * @returns Slice of users
+     * Get followers of a user
+     * 
+     * @param userId User id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getFollowers(userId: string, args?: CursorOnly) {
+    async* getFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowersSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getFollowersSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Followers, { userId: userId, ...args });
     }
 
     /**
-     * Gets followers of a user that you also follow
-     * @param userId 
-     * @param args Cursor only
-     * @returns Slice of users
+     * Get followers of a user that you also follow
+     * 
+     * @param userId User id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getFollowersYouKnow(userId: string, args?: CursorOnly) {
+    async* getFollowersYouKnow(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowersYouKnowSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getFollowersYouKnowSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.FollowersYouKnow, { userId: userId, ...args });
     }
 
     /**
-     * Gets verified followers of a user
-     * @param userId 
-     * @param args Cursor only
-     * @returns Slice of users
+     * Get verified followers of a user
+     * 
+     * @param userId User id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getVerifiedFollowers(userId: string, args?: CursorOnly) {
+    async* getVerifiedFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getVerifiedFollowersSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getVerifiedFollowersSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.BlueVerifiedFollowers, { userId: userId, ...args });
     }
 
     /**
-     * Gets super followed users of a user
+     * Get super followed users of a user. Note that super follows can be set to private
      * 
-     * Super follows can be private, so this method may not work consistently
-     * 
-     * @param userId 
-     * @param args Cursor only
-     * @returns Slice of users
+     * @param userId User id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getSuperFollowing(userId: string, args?: CursorOnly) {
+    async* getSuperFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getSuperFollowingSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getSuperFollowingSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserCreatorSubscriptions, { userId: userId, ...args });
     }
 
     /**
-     * Gets affiliates of a business account
-     * @param userId Business account user id
-     * @param args Cursor only
-     * @returns Slice of users
+     * Get affiliates of a business account by the business account's id
+     * 
+     * @param userId User id
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of users
+     * @since v0.1.0
      */
-    async getAffiliates(userId: string, args?: CursorOnly) {
+    async* getAffiliates(userId: string, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getAffiliatesSlice(userId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getAffiliatesSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserBusinessProfileTeamTimeline, { userId: userId, teamName: 'NotAssigned', ...args });
     }
 
     /**
-     * Gets lists created by a user
+     * Get lists created by a user
+     * 
      * @param id User id
-     * @param args Cursor only
-     * @returns Slice of lists
+     * @param [args] {@link CursorOnly}
+     * @yields Slice of lists
+     * @since v0.1.0
      */
-    async getUserLists(id: string, args?: CursorOnly) {
+    async* getUserLists(id: string, args?: CursorOnly): Timeline<ListKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserListsSlice(id, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    private async getUserListsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.CombinedLists, { userId: id, ...args });
     }
 
     /**
-     * Follows a user
-     * @param id 
-     * @param args By username?
-     * @returns `true` on success
+     * Follow a user
+     * 
+     * @param id User id
+     * @param [args] {@link ByUsername}
+     * @returns Success status
+     * @since v0.1.0
      */
     async followUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
-     * Unfollows a user
-     * @param id 
-     * @param args By username?
-     * @returns `true` on success
+     * Unfollow a user
+     * 
+     * @param id User id
+     * @param [args] {@link ByUsername}
+     * @returns Success status
+     * @since v0.1.0
      */
     async unfollowUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
-     * Enables retweets from a followed user to show up on your timeline
-     * @param userId 
-     * @returns `true` on success
+     * Allow retweets from a followed user to show up on your timeline
+     * 
+     * @param userId User id
+     * @returns Success status
+     * @since v0.2.0
      */
     async enableRetweets(userId: string) {
         return await this.fetch(ENDPOINTS.friendships_update, { id: userId, retweets: true });
     }
 
     /**
-     * Disables retweets from a followed user from showing up on your timeline
-     * @param userId 
-     * @returns `true` on success
+     * Forbid retweets from a followed user to show up on your timeline
+     * 
+     * @param userId User id
+     * @returns Success status
+     * @since v0.2.0
      */
     async disableRetweets(userId: string) {
         return await this.fetch(ENDPOINTS.friendships_update, { id: userId, retweets: false });
     }
 
     /**
-     * Enables receiveing tweet notifications from a user
-     * @param userId 
-     * @returns `true` on success
+     * Enable receiveing tweet notifications from a user
+     * 
+     * @param userId User id
+     * @returns Success status
+     * @since v0.2.0
      */
     async enableNotifications(userId: string) {
         return await this.fetch(ENDPOINTS.friendships_update, { id: userId, device: true });
     }
 
     /**
-     * Disables receiveing tweet notifications from a user
-     * @param userId 
-     * @returns `true` on success
+     * Disable receiveing tweet notifications from a user
+     * 
+     * @param userId User id
+     * @returns Success status
+     * @since v0.2.0
      */
     async disableNotifications(userId: string) {
         return await this.fetch(ENDPOINTS.friendships_update, { id: userId, device: false });
     }
 
     /**
-     * Gets incoming follow requests
-     * @param args Cursor only
+     * Get incoming follow requests
+     * 
+     * @param [args] {@link CursorOnly}
      * @returns User ids
+     * @since v0.1.0
      */
-    async getFollowRequests(args: CursorOnly) {
+    async getFollowRequests(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.friendships_incoming, { cursor: Number(args?.cursor || '-1') });
     }
 
     /**
      * Cancel an outgoing follow request to a user
-     * @param userId 
-     * @param args By username?
-     * @returns `true` on success
+     * 
+     * @param userId User id
+     * @param [args] {@link ByUsername}
+     * @returns Success status
+     * @since v0.1.0
      */
     async cancelFollowRequest(userId: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_cancel, args?.byUsername ? { screen_name: userId } : { user_id: userId });
@@ -1191,9 +1747,11 @@ export class TwitterClient {
 
     /**
      * Accept an incoming follow request from a user
-     * @param userId 
-     * @param args By username?
-     * @returns `true` on success
+     * 
+     * @param userId User id
+     * @param [args] {@link ByUsername}
+     * @returns Success status
+     * @since v0.1.0
      */
     async acceptFollowRequest(userId: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_accept, args?.byUsername ? { screen_name: userId } : { user_id: userId });
@@ -1201,213 +1759,153 @@ export class TwitterClient {
 
     /**
      * Decline an incoming follow request from a user
-     * @param userId 
-     * @param args By username?
-     * @returns `true` on success
+     * 
+     * @param userId User id
+     * @param [args] {@link byUsername}
+     * @returns Success status
+     * @since v0.1.0
      */
     async declineFollowRequest(userId: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.friendships_deny, args?.byUsername ? { screen_name: userId } : { user_id: userId });
     }
 
     /**
-     * Blocks a user
-     * @param id 
-     * @param args By username?
-     * @returns `true` on success
+     * Block a user
+     * 
+     * @param id User id
+     * @param [args] {@link CursorOnly}
+     * @returns Success status
+     * @since v0.1.0
      */
     async blockUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.blocks_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
-     * Unblocks a user
-     * @param id 
-     * @param args By username?
-     * @returns `true` on success
+     * Unblock a user
+     * 
+     * **Note**: this method is under additional protections and may return a 404 error for some users
+     * 
+     * @param id User id
+     * @param [args] {@link CursorOnly}
+     * @returns Success status
+     * @since v0.1.0
      */
     async unblockUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.blocks_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
-     * Mutes a user
-     * @param id 
-     * @param args By username?
-     * @returns `true` on success
+     * Remove a user from following you
+     * 
+     * @param id User id
+     * @returns Success status
+     * @since v1.0.0-rc.1
+     */
+    async softblockUser(id: string) {
+        return await this.fetch(ENDPOINTS.RemoveFollower, { target_user_id: id });
+    }
+
+    /**
+     * Mute a user
+     * 
+     * @param id User id
+     * @param [args] {@link ByUsername}
+     * @returns Success status
+     * @since v0.1.0
      */
     async muteUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.mutes_users_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
-     * Unmutes a user
-     * @param id 
-     * @param args By username?
-     * @returns `true` on success
+     * Unmute a user
+     * 
+     * @param id User id
+     * @param [args] {@link byUsername}
+     * @returns Success status
+     * @since v0.1.0
      */
     async unmuteUser(id: string, args?: ByUsername) {
         return await this.fetch(ENDPOINTS.mutes_users_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
+    /**
+     * Upload an image or video file to Twitter by sending the file's data in several request, in small chunks
+     * 
+     * @param media The file's data as an `ArrayBuffer`
+     * @param args {@link MediaUploadArgs}
+     * @param callback Callback function executed after each chunk is uploaded
+     * @returns Media
+     * @since v0.6.0
+     */
+    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<TwitterResponse<Media>> {
+        const append = async (id: string, data: ArrayBuffer, index: number, contentType: string) => {
+            let formData = new FormData();
+            formData.append('media', new Blob([data], { type: contentType }));
 
+            // media upload appends use the request function directly because this.fetch isn't set up to accept FormData bodies
+            return await request<typeof ENDPOINTS.media_upload.append, never>(ENDPOINTS.media_upload.append, { media_id: id, segment_index: index }, this.options, this.#tokens, this.#proxyAgent, this.self?.id, undefined, formData);
+        };
 
-
-    private async uploadInit(args: { bytes: number, contentType: string }): Promise<ClientResponse<MediaUploadInit>> {
-        const body = new URLSearchParams({
-            command: 'INIT',
-            total_bytes: args.bytes.toString(),
+        const { errors, data: init } = await this.fetch(ENDPOINTS.media_upload.init, {
+            total_bytes: media.byteLength.toString(),
             media_type: args.contentType,
             media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
         });
 
-        const response = await fetch('https://upload.x.com/1.1/media/upload.json', {
-            method: 'post',
-            headers: this.headers(PUBLIC_TOKEN, 'v1.1'),
-            body
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            return [[], data as MediaUploadInit];
+        if (errors.length) {
+            return { errors };
         }
 
-        return [[{
-            code: -1,
-            message: await response.text()
-        }]];
-    }
+        const chunkSize = args.segmentSizeOverride || UPLOAD_SEGMENT_SIZE;
+        const chunksNeeded = Math.ceil(media.byteLength / chunkSize);
 
-    private async uploadAppend(id: string, args: { data: ArrayBuffer, index: number, contentType: string }) {
-        const body = new URLSearchParams({
-            command: 'APPEND',
-            media_id: id,
-            segment_index: args.index.toString()
-        }).toString();
+        const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
 
-        let formData = new FormData();
-        formData.append('media', new Blob([args.data], { type: args.contentType }));
+        for (const [index, chunk] of chunks.entries()) {
+            const [e, response] = await append(init!.media_id_string, chunk, index, args.contentType);
 
-        return await fetch(`https://upload.x.com/1.1/media/upload.json?${body}`, {
-            method: 'post',
-            headers: this.headers(PUBLIC_TOKEN, 'fd'),
-            body: formData
-        });
-    }
-
-    private async uploadFinalize(id: string): Promise<ClientResponse<Media>> {
-        const response = await fetch(`https://upload.x.com/1.1/media/upload.json?command=FINALIZE&media_id=${id}`, {
-            method: 'post',
-            headers: this.headers(PUBLIC_TOKEN, 'v1.1')
-        });
-
-        try {
-            if (!response.ok) {
-                const { errors } = await response.json();
-                return [errors ?? []];
+            if (e instanceof Error) {
+                return {
+                    errors: [new TwitterError(e)]
+                };
+            } else if (!response?.ok) {
+                return {
+                    errors: [new TwitterError(0)]
+                };
             }
 
-            const data = await response.json();
-            return [[], mediaUpload(data)];
-        } catch (error) {
-            return [[{
-                code: -1,
-                message: await response.text()
-            }]];
+            callback?.(chunk, index, chunksNeeded);
         }
-    }
 
-    /**
-     * Sends several requests to upload a media file
-     * 
-     * Arguments
-     * 
-     * + `contentType: string` - Mime type of the uploaded media
-     * + `altText?: string` - If set, calls `this.addAltText` to immediately add ALT text to the media
-     * + `segmentSizeOverride?: number` - Overrides the default segments size
-     * 
-     * @param media The file as `ArrayBuffer`
-     * @param args Arguments
-     * @param callback Function called after each chunk is uploaded
-     * @returns Information about the uploaded file
-     */
-    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<ClientResponse<Media>> {
-        try {
-            const [errors, init] = await this.uploadInit({
-                bytes: media.byteLength,
-                contentType: args.contentType
-            });
+        const final = await this.fetch(ENDPOINTS.media_upload.finalize, { media_id: init!.media_id_string });
 
-            if (errors.length) {
-                return [errors];
-            }
-
-            const chunkSize = args.segmentSizeOverride || 1_084_576;
-            const chunksNeeded = Math.ceil(media.byteLength / chunkSize);
-
-            const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
-
-            for (const [index, chunk] of chunks.entries()) {
-                const response = await this.uploadAppend(init!.media_id_string, { data: chunk, index, contentType: args.contentType });
-
-                if (!response.ok) {
-                    const { errors } = await response.json();
-
-                    if (!!errors) {
-                        return [errors];
-                    }
-
-                    throw response.statusText;
-                }
-
-                callback?.(chunk, index, chunksNeeded);
-            }
-
-            const final = await this.uploadFinalize(init!.media_id_string);
-
-            if (!!final.at(1) && !!args.altText) {
-                this.addAltText(init!.media_id_string, args.altText);
-            }
-
-            return final;
-        } catch (error) {
-            return [[{
-                code: -1,
-                message: String(error)
-            }]];
+        if (!!final.data && !!args.altText) {
+            this.addAltText(init!.media_id_string, args.altText);
         }
+
+        return final;
     }
 
     /**
      * Check the current status of an uploaded media file
-     * @param {string} id Media id
-     * @returns {Promise<ClientResponse<Media>>} Information about the uploaded file
+     * 
+     * @param id Media id
+     * @returns Media
+     * @since v0.6.0
      */
-    async mediaStatus(id: string): Promise<ClientResponse<Media>> {
-        const response = await fetch(`https://upload.x.com/1.1/media/upload.json?command=STATUS&media_id=${id}`, {
-            headers: this.headers(PUBLIC_TOKEN, 'v1.1')
-        });
-
-        try {
-            if (!response.ok) {
-                const { errors } = await response.json();
-                return [errors ?? []];
-            }
-
-            const data = await response.json();
-            return [[], mediaUpload(data)];
-        } catch (error) {
-            return [[{
-                code: -1,
-                message: await response.text()
-            }]];
-        }
+    async mediaStatus(id: string) {
+        return await this.fetch(ENDPOINTS.media_upload.status, { media_id: id });
     }
 
     /**
-     * Adds ALT text to an uploaded media
-     * @param id 
-     * @param text 
-     * @returns `true` on success
+     * Add ALT text to an uploaded media
+     * 
+     * @param id Media id
+     * @param text ALT text
+     * @returns Success status
+     * @since v0.6.0
      */
     async addAltText(id: string, text: string) {
         return await this.fetch(ENDPOINTS.media_metadata_create, {

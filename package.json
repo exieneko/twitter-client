@@ -23,15 +23,13 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./formatter": {
-      "import": "./dist/formatter/index.js"
-    },
     "./types": {
       "types": "./dist/types/index.d.ts"
     }
   },
   "scripts": {
-    "build": "pnpm exec tsc"
+    "build": "tsc",
+    "test": "pnpm build && node tests/index.test.js"
   },
   "license": "MIT",
   "keywords": [
@@ -40,6 +38,13 @@
   ],
   "packageManager": "pnpm@10.12.4",
   "devDependencies": {
-    "typescript": "^5.8.3"
+    "@types/node": "^25.1.0",
+    "dotenv": "^17.4.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "node-color-log": "^13.0.3",
+    "undici": "^7.19.2",
+    "x-client-transaction-id": "^0.2.3"
   }
 }
