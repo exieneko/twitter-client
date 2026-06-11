@@ -11,6 +11,7 @@
  * assert(query === '("this" OR "that") -butNotThis from:exieneko');
  * 
  * @class
+ * @deprecated replaced by `Query` interface
  * @since v0.7.0
  */
 export class QueryBuilder {

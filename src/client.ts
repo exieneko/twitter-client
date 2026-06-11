@@ -7,6 +7,7 @@ import { TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
 import { AsyncConstructor, type Endpoint, type Params, type Type } from './types/internal.js';
 import { err, log, match, warn } from './utils/index.js';
+import { parseQuery, type Query } from './utils/query.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 import { request } from './utils/request.js';
 
@@ -432,13 +433,13 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.6.0
      */
-    async* searchBookmarks(query: string | QueryBuilder, args?: CursorOnly): Timeline<TweetKind> {
+    async* searchBookmarks(query: string | Query | QueryBuilder, args?: CursorOnly): Timeline<TweetKind> {
         for await (const slice of this.getSlice(args, args => this.searchBookmarksSlice(query, args))) yield slice;
         return EMPTY_SLICE;
     }
 
-    async searchBookmarksSlice(query: string | QueryBuilder, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), ...args });
+    async searchBookmarksSlice(query: string | Query | QueryBuilder, args?: CursorOnly) {
+        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: parseQuery(query), ...args });
     }
 
     /**
@@ -867,7 +868,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    search(query: string | QueryBuilder, args?: SearchArgs & { kind?: 'Relevant' | 'Latest' | 'Media' }): Timeline<TweetKind>;
+    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind?: 'Relevant' | 'Latest' | 'Media' }): Timeline<TweetKind>;
     /**
      * Search users
      * 
@@ -876,7 +877,7 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    search(query: string | QueryBuilder, args?: SearchArgs & { kind: 'Users' }): Timeline<UserKind>;
+    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind: 'Users' }): Timeline<UserKind>;
     /**
      * Search lists
      * 
@@ -885,21 +886,21 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    search(query: string | QueryBuilder, args?: SearchArgs & { kind: 'Lists' }): Timeline<ListKind>;
+    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind: 'Lists' }): Timeline<ListKind>;
 
-    async* search<T extends Type<string>>(query: string | QueryBuilder, args?: SearchArgs): Timeline<T> {
+    async* search<T extends Type<string>>(query: string | Query | QueryBuilder, args?: SearchArgs): Timeline<T> {
         for await (const slice of this.getSlice(args, args => this.searchSlice(query, args))) yield slice as TwitterResponse<Slice<T>>;
         return EMPTY_SLICE;
     }
 
-    async searchSlice(query: string | QueryBuilder, args?: SearchArgs) {
+    async searchSlice(query: string | Query | QueryBuilder, args?: SearchArgs) {
         const product = args?.kind === 'Relevant'
             ? 'Top'
         : args?.kind === 'Users'
             ? 'People'
             : args?.kind || 'Top';
 
-        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: typeof query === 'string' ? query : query.toString(), querySource: 'typed_query', product, cursor: args?.cursor });
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: parseQuery(query), querySource: 'typed_query', product, cursor: args?.cursor });
     }
 
     /**
