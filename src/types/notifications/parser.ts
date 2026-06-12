@@ -48,8 +48,8 @@ export function notification(value: any, notificationKind: string): Notification
     return {
         __typename: 'Notification',
         id: value.id || tweet?.id,
-        created_at: new Date(value.timestamp_ms).toISOString(),
-        object_id: objectId,
+        createdAt: new Date(value.timestamp_ms).toISOString(),
+        objectId: objectId,
         text: match(kind, [
             [NotificationKind.AddedToList, NotificationKind.ListSubscribedTo, value.rich_message?.text?.match(/List\s(.*?)$/)?.at(1)],
             [[NotificationKind.BirdwatchNoteNeedsHelp, NotificationKind.BirdwatchNoteRatedHelpful, NotificationKind.BirdwatchNoteRatedNotHelpful, NotificationKind.BirdwatchNoteRatedDeleted], value.template?.additional_context?.text],

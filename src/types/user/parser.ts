@@ -21,62 +21,62 @@ export function user(value: any): UserKind {
         return {
             __typename: 'User',
             id: value.rest_id,
-            affiliates_count: value.business_account?.affiliates_count || 0,
-            affiliate_label: !!value.affiliates_highlighted_label?.label?.badge?.url && value.affiliates_highlighted_label.label.userLabelType !== 'AutomatedLabel' ? {
+            affiliatesCount: value.business_account?.affiliates_count || 0,
+            affiliateLabel: !!value.affiliates_highlighted_label?.label?.badge?.url && value.affiliates_highlighted_label.label.userLabelType !== 'AutomatedLabel' ? {
                 title: value.affiliates_highlighted_label.label.description,
                 owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 2)[1],
-                image_url: value.affiliates_highlighted_label.label.badge.url
+                imageUrl: value.affiliates_highlighted_label.label.badge.url
             } : undefined,
-            avatar_url: value.avatar.image_url.replace('normal', '400x400'),
-            banner_url: value.legacy.profile_banner_url,
+            avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
+            bannerUrl: value.legacy.profile_banner_url,
             birthday: value.legacy_extended_profile?.birthdate ? {
                 day: value.legacy_extended_profile.birthdate.day,
                 month: value.legacy_extended_profile.birthdate.month,
                 year: value.legacy_extended_profile.birthdate.year
             } : undefined,
             blocked: !!value.legacy.blocking,
-            blocked_by: !!value.legacy.blocked_by,
-            can_dm: !!value.dm_permissions.can_dm,
-            can_media_tag: !!value.media_permissions.can_media_tag,
-            can_super_follow: !!value.super_follow_eligible,
-            created_at: new Date(value.core.created_at).toISOString(),
+            blockedBy: !!value.legacy.blocked_by,
+            canDm: !!value.dm_permissions.can_dm,
+            canMediaTag: !!value.media_permissions.can_media_tag,
+            canSuperFollow: !!value.super_follow_eligible,
+            createdAt: new Date(value.core.created_at).toISOString(),
             description: ((value.profile_bio?.description ?? value.legacy.description ?? '') as string).replace(
                 /\bhttps:\/\/t\.co\/[a-zA-Z0-9]+/,
                 sub => value.legacy.entities.description?.urls?.find((x: any) => x.url === sub)?.expanded_url.replace(/\/$/, '') || sub
             ),
-            fan_account_kind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None' ? undefined : value.parody_commentary_fan_label as FanAccountKind,
-            followers_count: value.legacy.followers_count,
-            following_count: value.legacy.friends_count,
+            fanAccountKind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None' ? undefined : value.parody_commentary_fan_label as FanAccountKind,
+            followersCount: value.legacy.followers_count,
+            followingCount: value.legacy.friends_count,
             followed: !!value.relationship_perspectives.following,
-            follow_requested: !!value.legacy.follow_request_sent,
-            followed_by: !!value.relationship_perspectives.followed_by,
-            is_automated: value.affiliates_highlighted_label?.label?.userLabelType === 'AutomatedLabel',
-            is_translatable: !!value.is_profile_translatable,
+            followRequested: !!value.legacy.follow_request_sent,
+            followedBy: !!value.relationship_perspectives.followed_by,
+            isAutomated: value.affiliates_highlighted_label?.label?.userLabelType === 'AutomatedLabel',
+            isTranslatable: !!value.is_profile_translatable,
             job: value.professional?.category?.at(0)?.name,
             location: !!value.location.location ? value.location.location : undefined,
             muted: !!value.relationship_perspectives.muting,
             name: value.core.name,
-            pinned_tweet_id: value.legacy.pinned_tweet_ids_str.at(0),
+            pinnedTweetId: value.legacy.pinned_tweet_ids_str.at(0),
             protected: !!value.privacy.protected,
-            super_following_count: value.creator_subscriptions_count || 0,
-            super_following_hidden: !!value.has_hidden_subscriptions_on_profile,
-            tweets_count: value.legacy.statuses_count,
-            media_count: value.legacy.media_count,
-            likes_count: value.legacy.favourites_count,
-            listed_count: value.legacy.listed_count,
-            highlighted_tweets_count: Number(value.highlights_info?.highlighted_tweets || '0'),
+            superFollowingCount: value.creator_subscriptions_count || 0,
+            superFollowingHidden: !!value.has_hidden_subscriptions_on_profile,
+            tweetsCount: value.legacy.statuses_count,
+            mediaCount: value.legacy.media_count,
+            likesCount: value.legacy.favourites_count,
+            listedCount: value.legacy.listed_count,
+            highlightedTweetsCount: Number(value.highlights_info?.highlighted_tweets || '0'),
             username: value.core.screen_name,
             url: value.legacy.entities.url?.urls?.at?.(0)?.expanded_url?.replace(/^http:\/\//, 'https://')?.replace(/\/$/, ''),
             verification: {
                 kind: verificationKind,
-                is_verified: verified,
-                verified_since: verified
+                isVerified: verified,
+                verifiedSince: verified
                     ? new Date(Number(value.verification_info?.reason?.verified_since_msec || '0')).toISOString()
                     : undefined,
-                verified_with_id: !!value.verification_info?.is_identity_verified
+                verifiedWithId: !!value.verification_info?.is_identity_verified
             },
-            want_retweets: !!value.legacy.want_retweets,
-            want_notifications: !!value.legacy.notifications
+            wantRetweets: !!value.legacy.want_retweets,
+            wantNotifications: !!value.legacy.notifications
         };
     }
 
@@ -91,43 +91,43 @@ export function userLegacy(value: any): User {
     return {
         __typename: 'User',
         id: value.id_str,
-        affiliates_count: 0,
-        avatar_url: value.profile_image_url_https.replace('normal', '400x400'),
-        banner_url: value.profile_banner_url || undefined,
+        affiliatesCount: 0,
+        avatarUrl: value.profile_image_url_https.replace('normal', '400x400'),
+        bannerUrl: value.profile_banner_url || undefined,
         blocked: !!value.blocking,
-        blocked_by: !!value.blocked_by,
-        can_dm: !!value.can_dm,
-        can_media_tag: !!value.can_media_tag,
-        can_super_follow: false,
-        created_at: new Date(value.created_at).toISOString(),
+        blockedBy: !!value.blocked_by,
+        canDm: !!value.can_dm,
+        canMediaTag: !!value.can_media_tag,
+        canSuperFollow: false,
+        createdAt: new Date(value.created_at).toISOString(),
         description: value.description || '',
-        followers_count: value.followers_count || 0,
-        following_count: value.friends_count || 0,
+        followersCount: value.followers_count || 0,
+        followingCount: value.friends_count || 0,
         followed: !!value.following,
-        follow_requested: !!value.follow_request_sent,
-        followed_by: !!value.followed_by,
-        is_automated: false,
-        is_translatable: false,
+        followRequested: !!value.follow_request_sent,
+        followedBy: !!value.followed_by,
+        isAutomated: false,
+        isTranslatable: false,
         location: value.location || undefined,
         muted: !!value.muting,
         name: value.name,
         protected: !!value.protected,
-        super_following_count: 0,
-        super_following_hidden: false,
-        tweets_count: value.statuses_count || 0,
-        media_count: value.media_count || 0,
-        likes_count: value.favorite_count || 0,
-        listed_count: value.listed_count || 0,
-        highlighted_tweets_count: 0,
+        superFollowingCount: 0,
+        superFollowingHidden: false,
+        tweetsCount: value.statuses_count || 0,
+        mediaCount: value.media_count || 0,
+        likesCount: value.favorite_count || 0,
+        listedCount: value.listed_count || 0,
+        highlightedTweetsCount: 0,
         username: value.screen_name,
         url: undefined,
         verification: {
             kind: !!value.ext_is_blue_verified ? 'Blue' : 'Unverified',
-            is_verified: !!value.ext_is_blue_verified,
-            verified_with_id: false
+            isVerified: !!value.ext_is_blue_verified,
+            verifiedWithId: false
         },
-        want_retweets: !!value.want_retweets,
-        want_notifications: !!value.notification
+        wantRetweets: !!value.want_retweets,
+        wantNotifications: !!value.notification
     }
 }
 
@@ -135,23 +135,23 @@ export function aboutUser(value: any): AboutUser {
     return {
         __typename: 'AboutUser',
         id: value.rest_id,
-        avatar_url: value.avatar.image_url.replace('normal', '400x400'),
-        based_in: value.about_profile?.account_based_in,
-        created_at: new Date(value.core.created_at).toISOString(),
+        avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
+        basedIn: value.about_profile?.account_based_in,
+        createdAt: new Date(value.core.created_at).toISOString(),
         name: value.core.name,
         protected: !!value.privacy?.protected,
         verification: {
             verified: !!value.is_blue_verified,
-            verified_since: !!value.verification_info?.reason?.verified_since_msec
+            verifiedSince: !!value.verification_info?.reason?.verified_since_msec
                 ? new Date(Number(value.verification_info.reason.verified_since_msec)).toISOString()
                 : undefined,
-            verified_with_id: !!value.verification_info?.is_identity_verified
+            verifiedWithId: !!value.verification_info?.is_identity_verified
         },
         vpn: !!value.about_profile?.location_accurate,
         usernames: {
-            changed_count: Number(value.username_changes?.count || '0'),
+            changedCount: Number(value.username_changes?.count || '0'),
             current: value.core.screen_name,
-            updated_at: !!value.username_changes?.last_changed_at
+            updatedAt: !!value.username_changes?.last_changed_at
                 ? new Date(Number(value.username_changes.last_changed_at)).toISOString()
                 : undefined
         }

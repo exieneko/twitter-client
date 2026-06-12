@@ -32,9 +32,9 @@ export function trend(value: any): Trend {
     return {
         __typename: 'Trend',
         context: value.trend_metadata?.domain_context,
-        grouped_trends: value.grouped_trends?.map((trend: any) => trend.name) || [],
+        groupedTrends: value.grouped_trends?.map((trend: any) => trend.name) || [],
         name: value.name,
-        tweets_count: undefined
+        tweetsCount: undefined
     };
 }
 

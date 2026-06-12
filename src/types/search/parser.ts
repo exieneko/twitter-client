@@ -3,9 +3,9 @@ import * as p from '../parsers.js';
 
 export function typeahead(value: any): Typeahead {
     return {
-        results_count: value.num_results,
+        resultsCount: value.num_results,
         topics: (value.topics || []).map((topic: any) => topic.topic),
-        user_ids: (value.users || []).map((user: any) => user.id_str),
+        userIds: (value.users || []).map((user: any) => user.id_str),
         query: value.query
     };
 }

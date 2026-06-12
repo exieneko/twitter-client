@@ -68,75 +68,75 @@ export function tweet(value: any): Tweet | Retweet | TweetTombstone {
         __typename: 'Tweet',
         id: t.rest_id,
         author: p.user(t.core.user_results.result) as User,
-        birdwatch_note: t.birdwatch_pivot?.note?.rest_id ? {
+        birdwatchNote: t.birdwatch_pivot?.note?.rest_id ? {
             id: t.birdwatch_pivot.note.rest_id,
             text: (t.birdwatch_pivot.subtitle.entities as { fromIndex: number, toIndex: number, ref: { url: string } }[])
                 .toSorted((a, b) => b.fromIndex - a.fromIndex)
                 .reduce((acc, e) => acc.slice(0, e.fromIndex) + e.ref.url + acc.slice(e.toIndex), t.birdwatch_pivot.subtitle.text),
             language: t.birdwatch_pivot.note.language || 'en',
-            is_translatable: !!t.birdwatch_pivot.note.is_community_note_translatable,
-            is_public: t.birdwatch_pivot.visualStyle === 'Default' || t.birdwatch_pivot.title.includes('added context')
+            isTranslatable: !!t.birdwatch_pivot.note.is_community_note_translatable,
+            isPublic: t.birdwatch_pivot.visualStyle === 'Default' || t.birdwatch_pivot.title.includes('added context')
         } : undefined,
         bookmarked: !!t.legacy.bookmarked,
-        bookmarks_count: t.legacy.bookmark_count || 0,
+        bookmarksCount: t.legacy.bookmark_count || 0,
         card: card(t.card?.legacy),
         community: !!t.author_community_relationship?.community_results?.result ? p.community(t.author_community_relationship.community_results.result) : undefined,
-        created_at: new Date(t.legacy.created_at).toISOString(),
-        content_disclosures: {
-            is_ai_generated: !!t.content_disclosure?.ai_generated_disclosure?.has_ai_generated_media,
-            is_sponsored: !!t.content_disclosure?.advertising_disclosure?.is_paid_promotion
+        createdAt: new Date(t.legacy.created_at).toISOString(),
+        contentDisclosures: {
+            isAiGenerated: !!t.content_disclosure?.ai_generated_disclosure?.has_ai_generated_media,
+            isSponsored: !!t.content_disclosure?.advertising_disclosure?.is_paid_promotion
         },
         editing: {
-            is_allowed: !!editControl?.is_edit_eligible,
-            allowed_until: new Date(Number(editControl?.editable_until_msecs) || 0).toISOString(),
-            remaining_count: Number(editControl?.edits_remaining || '0'),
-            tweet_ids: editControl?.edit_tweet_ids
+            isAllowed: !!editControl?.is_edit_eligible,
+            allowedUntil: new Date(Number(editControl?.editable_until_msecs) || 0).toISOString(),
+            remainingCount: Number(editControl?.edits_remaining || '0'),
+            tweetIds: editControl?.edit_tweet_ids
         },
-        is_expandable: !!t.note_tweet?.is_expandable,
-        is_translatable: !!t.is_translatable,
-        is_visibility_restricted: value.tweetInterstitial?.__typename === 'ContextualTweetInterstitial',
-        has_birdwatch_note: !!t.has_birdwatch_notes,
-        has_grok_chat_embed: !!t.grok_share_attachment,
-        has_quoted_tweet: !!t.legacy.is_quote_status,
+        isExpandable: !!t.note_tweet?.is_expandable,
+        isTranslatable: !!t.is_translatable,
+        isVisibilityRestricted: value.tweetInterstitial?.__typename === 'ContextualTweetInterstitial',
+        hasBirdwatchNote: !!t.has_birdwatch_notes,
+        hasGrokChatEmbed: !!t.grok_share_attachment,
+        hasQuotedTweet: !!t.legacy.is_quote_status,
         language: t.legacy.lang,
         liked: !!t.legacy.favorited,
-        likes_count: t.legacy.favorite_count || 0,
+        likesCount: t.legacy.favorite_count || 0,
         media: tweetMedia,
         source: t.source.match(/>(.*?)</)?.at(1) || t.source,
-        quote_tweets_count: t.legacy.quote_count || 0,
-        quoted_tweet: t.quoted_status_result?.result
+        quoteTweetsCount: t.legacy.quote_count || 0,
+        quotedTweet: t.quoted_status_result?.result
             ? tweet(t.quoted_status_result?.result) as Tweet
             : undefined,
-        quoted_tweet_id: t.legacy.quoted_status_id_str,
-        replies_count: t.legacy.reply_count || 0,
-        reply_permission: match(t.legacy.conversation_control?.policy as string | undefined, [
+        quotedTweetId: t.legacy.quoted_status_id_str,
+        repliesCount: t.legacy.reply_count || 0,
+        replyPermission: match(t.legacy.conversation_control?.policy as string | undefined, [
             ['Community', ReplyPermission.Following],
             ['Verified', ReplyPermission.Verified],
             ['ByInvitation', ReplyPermission.Mentioned]
         ], ReplyPermission.Everyone),
-        replying_to: t.legacy.in_reply_to_screen_name ? {
-            tweet_id: t.legacy.in_reply_to_status_id_str,
+        replyingTo: t.legacy.in_reply_to_screen_name ? {
+            tweetId: t.legacy.in_reply_to_status_id_str,
             username: t.legacy.in_reply_to_screen_name
         } : undefined,
         retweeted: !!t.legacy.retweeted,
-        retweets_count: t.legacy.retweet_count || 0,
+        retweetsCount: t.legacy.retweet_count || 0,
         text: !!t.legacy.entities.media?.length
             ? getText(t).replace(/https:\/\/t\.co\/.+$/, '').trimEnd()
             : getText(t),
-        views_count: t.views.count ? Number(t.views.count) : undefined
+        viewsCount: t.views.count ? Number(t.views.count) : undefined
     };
 }
 
 export function media(value: any): TweetMedia {
     const common = {
         id: value.id_str,
-        alt_text: value.ext_alt_text || undefined,
+        altText: value.ext_alt_text || undefined,
         availability: match(value.ext_media_availability?.reason, [
             [undefined, TweetMediaAvailability.Available],
             ['DMCAed', TweetMediaAvailability.Copyright],
             ['Geoblocked', TweetMediaAvailability.GeoBlocked],
         ], TweetMediaAvailability.Other),
-        is_ai_generated: !!value.media_results?.result?.grok_image_annotation,
+        isAiGenerated: !!value.media_results?.result?.grok_image_annotation,
         size: {
             width: value.original_info.width,
             height: value.original_info.height
@@ -148,9 +148,9 @@ export function media(value: any): TweetMedia {
 
         return {
             __typename: value.type === 'video' ? 'Video' : 'Gif',
-            aspect_ratio: value.video_info?.aspect_ratio ?? [1, 1],
+            aspectRatio: value.video_info?.aspect_ratio ?? [1, 1],
             duration: value.video_info?.duration_millis || 0,
-            thumbnail_url: value.media_url_https,
+            thumbnailUrl: value.media_url_https,
             url: variants.at(-1)?.url!,
             variants,
             ...common
@@ -174,43 +174,43 @@ export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTw
         id: tweet.id_str,
         author: p.userLegacy(author),
         bookmarked: !!tweet.bookmarked,
-        bookmarks_count: tweet.bookmark_count || 0,
-        created_at: new Date(tweet.created_at).toISOString(),
-        content_disclosures: {
-            is_ai_generated: false,
-            is_sponsored: false
+        bookmarksCount: tweet.bookmark_count || 0,
+        createdAt: new Date(tweet.created_at).toISOString(),
+        contentDisclosures: {
+            isAiGenerated: false,
+            isSponsored: false
         },
         editing: {
-            is_allowed: false,
-            remaining_count: 0,
-            tweet_ids: [tweet.id_str]
+            isAllowed: false,
+            remainingCount: 0,
+            tweetIds: [tweet.id_str]
         },
-        is_expandable: false,
-        is_translatable: !!tweet.translatable,
-        is_visibility_restricted: false,
-        has_birdwatch_note: !!tweet.has_birdwatch_notes,
-        has_grok_chat_embed: false,
-        has_quoted_tweet: !!tweet.is_quote_status,
+        isExpandable: false,
+        isTranslatable: !!tweet.translatable,
+        isVisibilityRestricted: false,
+        hasBirdwatchNote: !!tweet.has_birdwatch_notes,
+        hasGrokChatEmbed: false,
+        hasQuotedTweet: !!tweet.is_quote_status,
         language: tweet.lang,
         liked: !!tweet.favorited,
-        likes_count: tweet.favorite_count || 0,
+        likesCount: tweet.favorite_count || 0,
         media: tweetMedia,
         source: tweet.source,
-        quote_tweets_count: tweet.quote_count || 0,
-        quoted_tweet: quotedTweet && quotedTweetAuthor ? tweetLegacy(quotedTweet, quotedTweetAuthor) : undefined,
-        quoted_tweet_id: tweet.quoted_status_id_str || undefined,
-        replies_count: tweet.reply_count || 0,
-        reply_permission: match(tweet.conversation_control?.policy as string | undefined, [
+        quoteTweetsCount: tweet.quote_count || 0,
+        quotedTweet: quotedTweet && quotedTweetAuthor ? tweetLegacy(quotedTweet, quotedTweetAuthor) : undefined,
+        quotedTweetId: tweet.quoted_status_id_str || undefined,
+        repliesCount: tweet.reply_count || 0,
+        replyPermission: match(tweet.conversation_control?.policy as string | undefined, [
             ['Community', ReplyPermission.Following],
             ['Verified', ReplyPermission.Verified],
             ['ByInvitation', ReplyPermission.Mentioned]
         ], ReplyPermission.Everyone),
-        replying_to: {
-            tweet_id: tweet.in_reply_to_status_id_str || undefined,
+        replyingTo: {
+            tweetId: tweet.in_reply_to_status_id_str || undefined,
             username: tweet.in_reply_to_screen_name || undefined
         },
         retweeted: !!tweet.retweeted,
-        retweets_count: tweet.retweet_count || 0,
+        retweetsCount: tweet.retweet_count || 0,
         text: tweet.full_text
     }
 }
@@ -241,7 +241,7 @@ export function entry(value: any): Entry<TweetKind | Cursor> | undefined {
             id: value.entryId,
             content: {
                 __typename: 'Conversation',
-                all_tweet_ids: value.content.metadata?.conversationMetadata?.allTweetIds || [],
+                allTweetIds: value.content.metadata?.conversationMetadata?.allTweetIds || [],
                 items: value.content.items.map((item: any) => item.item.itemContent.__typename === 'TimelineTimelineCursor'
                     ? p.cursor(item.item.itemContent)
                     : (tweet(item.item.itemContent.tweet_results?.result) as Tweet | TweetTombstone)
@@ -294,7 +294,7 @@ export function draftTweet(value: any): DraftTweet {
     return {
         id: value.rest_id,
         text: value.tweet_create_request?.status,
-        media_ids: value.tweet_create_request?.media_ids,
+        mediaIds: value.tweet_create_request?.media_ids,
         thread: (value.tweet_create_request?.thread_tweets || []).map((x: any) => ({
             text: x.status,
             media_ids: x.media_ids
@@ -305,9 +305,9 @@ export function draftTweet(value: any): DraftTweet {
 export function scheduledTweet(value: any): ScheduledTweet {
     return {
         id: value.rest_id,
-        send_at: new Date(value.sceduling_info?.execute_at).toISOString(),
+        sendAt: new Date(value.sceduling_info?.execute_at).toISOString(),
         text: value.tweet_create_request?.status,
-        media_ids: value.tweet_create_request?.media_ids,
+        mediaIds: value.tweet_create_request?.media_ids,
         thread: (value.tweet_create_request?.thread_tweets || []).map((x: any) => ({
             text: x.status,
             media_ids: x.media_ids
@@ -346,10 +346,10 @@ export function card(value: any): CardKind | undefined {
         return {
             __typename: 'Broadcast',
             author: p.user(value.user_refs_results?.at(0)?.result) as User,
-            has_ended: get(bv, 'broadcast_state')?.string_value?.toUpperCase() === 'ENDED',
+            hasEnded: get(bv, 'broadcast_state')?.string_value?.toUpperCase() === 'ENDED',
             id: get(bv, 'broadcast_id')?.string_value!,
-            media_id: get(bv, 'broadcast_media_id')?.string_value!,
-            media_key: get(bv, 'broadcast_media_key')?.string_value!,
+            mediaId: get(bv, 'broadcast_media_id')?.string_value!,
+            mediaKey: get(bv, 'broadcast_media_key')?.string_value!,
             thumbnail: get(bv, 'broadcast_thumbnail_original')?.image_value,
             title: get(bv, 'title')?.string_value!,
             width: Number(get(bv, 'broadcast_width')?.string_value || '0'),
@@ -374,8 +374,8 @@ export function card(value: any): CardKind | undefined {
                 };
             }),
             duration: Number(get(bv, 'duration_minutes')?.string_value || '0') * 60,
-            ends_at: new Date(get(bv, 'end_datetime_utc')?.string_value || 0).toISOString(),
-            total_votes_count: totalVotes,
+            endsAt: new Date(get(bv, 'end_datetime_utc')?.string_value || 0).toISOString(),
+            totalVotesCount: totalVotes,
             ...common
         };
     }
@@ -397,10 +397,10 @@ export function card(value: any): CardKind | undefined {
 export function mediaUpload(value: any): Media {
     return {
         id: value.media_id_string,
-        media_key: value.media_key,
+        mediaKey: value.media_key,
         bytes: value.size || 0,
-        content_type: value.image?.image_type || value.video?.video_type || 'image/gif',
-        expires_in: value.expires_after_secs || 0,
+        contentType: value.image?.image_type || value.video?.video_type || 'image/gif',
+        expiresIn: value.expires_after_secs || 0,
         width: value.image?.w,
         height: value.image?.h,
         processing: 'processing_info' in value ? {

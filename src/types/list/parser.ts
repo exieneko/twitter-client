@@ -9,18 +9,18 @@ export function list(value: any): ListKind {
     return {
         __typename: 'List',
         id: value.id_str,
-        banner_url: value.custom_banner_media.media_info.original_img_id,
-        created_at: new Date(value.created_at).toISOString(),
+        bannerUrl: value.custom_banner_media.media_info.original_img_id,
+        createdAt: new Date(value.created_at).toISOString(),
         creator: p.user(value.user_results?.result) as User,
         description: value.description || '',
-        is_listed: !!value.is_member,
-        listed_count: value.member_count || 0,
+        isListed: !!value.is_member,
+        listedCount: value.member_count || 0,
         muted: !!value.muting,
         name: value.name,
-        is_pinned: !!value.pinning,
-        is_public: value.mode === 'Public',
-        is_subscribed: !!value.following,
-        subscribers_count: value.subscriber_count || 0
+        isPinned: !!value.pinning,
+        isPublic: value.mode === 'Public',
+        isSubscribed: !!value.following,
+        subscribersCount: value.subscriber_count || 0
     };
 }
 

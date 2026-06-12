@@ -99,9 +99,9 @@ export interface BirdwatchRateNoteArgs {
     /** Tweet id containing the note */
     tweetId: string,
     /** Tags showing why this note should be displayed */
-    helpful_tags?: BirdwatchHelpfulTag[],
+    helpfulTags?: BirdwatchHelpfulTag[],
     /** Tags showing why this note should not be displayed */
-    unhelpful_tags?: BirdwatchUnhelpfulTag[],
+    unhelpfulTags?: BirdwatchUnhelpfulTag[],
     source?: BirdwatchNoteSource
 }
 
@@ -239,11 +239,11 @@ export interface TweetCreateArgs {
         duration: number,
         choices: {
             text: string,
-            media_id?: string
+            mediaId?: string
         }[]
     },
     /** Tweet content disclosures */
-    content_disclosures?: Partial<Tweet['content_disclosures']>,
+    contentDisclosures?: Partial<Tweet['contentDisclosures']>,
     /** Tweet id to reply to */
     replyTo?: string,
     /** Media ids to attach to the tweet. Tweets with over 4 medias can only be sent as a note tweet */

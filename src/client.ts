@@ -26,7 +26,7 @@ import { request } from './utils/request.js';
  * @returns Current slice of `T`
  * @since v1.0.0-rc.1
  */
-export async function slice<T extends { __typename: string }>(timeline: Timeline<T>): Promise<TwitterResponse<Slice<T>>> {
+export async function slice<T extends Type>(timeline: Timeline<T>): Promise<TwitterResponse<Slice<T>>> {
     const { value } = await timeline.next();
     await timeline.return(EMPTY_SLICE);
     return value;
@@ -386,9 +386,9 @@ export class TwitterClient {
     async rateBirdwatchNote(noteId: string, args: BirdwatchRateNoteArgs) {
         return await this.fetch(ENDPOINTS.BirdwatchCreateRating, {
             data_v2: {
-                helpfulness_level: args.helpful_tags?.length && args.unhelpful_tags?.length ? 'SomewhatHelpful' : args.unhelpful_tags?.length ? 'NotHelpful' : 'Helpful',
-                helpful_tags: args.helpful_tags,
-                not_helpful_tags: args.unhelpful_tags
+                helpfulness_level: args.helpfulTags?.length && args.unhelpfulTags?.length ? 'SomewhatHelpful' : args.unhelpfulTags?.length ? 'NotHelpful' : 'Helpful',
+                helpful_tags: args.helpfulTags,
+                not_helpful_tags: args.unhelpfulTags
             },
             note_id: noteId,
             rating_source: args.source === BirdwatchNoteSource.NeedsYourHelp ? 'BirdwatchHomeNeedsYourHelp' : 'BirdwatchForYouTimeline',
@@ -978,7 +978,7 @@ export class TwitterClient {
                 };
             }
 
-            const hasImage = args.card.choices.some(choice => !!choice.media_id);
+            const hasImage = args.card.choices.some(choice => !!choice.mediaId);
 
             const { errors, data: uri } = await this.fetch(ENDPOINTS.cards_create, {
                 card_data: JSON.stringify({
@@ -986,13 +986,13 @@ export class TwitterClient {
                     'twitter:card': hasImage ? `1906814671912599552:poll_choice_images` : `poll${args.card.choices.length}choice_text_only`,
                     'twitter:long:duration_minutes': Math.floor(args.card.duration / 60),
                     'twitter:string:choice1_label': args.card!.choices.at(0)!.text,
-                    'twitter:image:choice1_image:src:id': hasImage ? `mis://${args.card!.choices.at(0)!.media_id}` : undefined,
+                    'twitter:image:choice1_image:src:id': hasImage ? `mis://${args.card!.choices.at(0)!.mediaId}` : undefined,
                     'twitter:string:choice2_label': args.card!.choices.at(1)!.text,
-                    'twitter:image:choice2_image:src:id': hasImage ? `mis://${args.card!.choices.at(1)!.media_id}` : undefined,
+                    'twitter:image:choice2_image:src:id': hasImage ? `mis://${args.card!.choices.at(1)!.mediaId}` : undefined,
                     'twitter:string:choice3_label': args.card!.choices.at(2)?.text,
-                    'twitter:image:choice3_image:src:id': hasImage ? `mis://${args.card!.choices.at(2)?.media_id}` : undefined,
+                    'twitter:image:choice3_image:src:id': hasImage ? `mis://${args.card!.choices.at(2)?.mediaId}` : undefined,
                     'twitter:string:choice4_label': args.card!.choices.at(3)?.text,
-                    'twitter:image:choice4_image:src:id': hasImage ? `mis://${args.card!.choices.at(3)?.media_id}` : undefined
+                    'twitter:image:choice4_image:src:id': hasImage ? `mis://${args.card!.choices.at(3)?.mediaId}` : undefined
                 })
             });
 
@@ -1007,12 +1007,12 @@ export class TwitterClient {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
             card_uri: cardUri,
             conversation_control: mode ? { mode } : undefined,
-            content_disclosure: args.content_disclosures?.is_ai_generated || args.content_disclosures?.is_sponsored ? {
-                advertising_promotion: args.content_disclosures.is_sponsored ? {
-                    is_paid_promotion: !!args.content_disclosures.is_sponsored
+            content_disclosure: args.contentDisclosures?.isAiGenerated || args.contentDisclosures?.isSponsored ? {
+                advertising_promotion: args.contentDisclosures.isSponsored ? {
+                    is_paid_promotion: !!args.contentDisclosures.isSponsored
                 } : undefined,
-                ai_generated_disclosure: args.content_disclosures.is_ai_generated ? {
-                    has_ai_generated_media: !!args.content_disclosures.is_ai_generated
+                ai_generated_disclosure: args.contentDisclosures.isAiGenerated ? {
+                    has_ai_generated_media: !!args.contentDisclosures.isAiGenerated
                 } : undefined
             } : undefined,
             media: {

@@ -7,25 +7,25 @@ import type { Enum, Type } from '../internal.js';
 export interface Community extends Type<'Community'> {
     id: string,
     /** URL for the community's banner and preview image */
-    banner_url?: string,
+    bannerUrl?: string,
     /** `true` if you can join this community without an invite */
-    can_join: boolean,
+    canJoin: boolean,
     /** `true` if  you can invite others to this community */
-    can_invite: boolean,
-    created_at: string,
+    canInvite: boolean,
+    createdAt: string,
     creator: User,
     description: string,
     /** `true` if you're a member or moderator of the community */
-    is_member: boolean,
+    isMember: boolean,
     /** Amount of members in this community */
-    members_count: number,
+    membersCount: number,
     /** Amount of moderators in this community */
-    moderators_count: number,
+    moderatorsCount: number,
     name: string,
     /** `true` if the community is marked as NSFW */
-    is_nsfw: boolean,
+    isNsfw: boolean,
     /** `true` if the community is pinned on your timelines */
-    is_pinned: boolean,
+    isPinned: boolean,
     /** Your role in the community */
     role: CommunityRole,
     /** Community rules */

@@ -6,9 +6,9 @@ import type { Enum, Type } from '../internal.js';
  */
 export interface Notification extends Type<'Notification'> {
     id: string,
-    created_at: string,
+    createdAt: string,
     /** Id of the primary object in a notification, like a tweet or Birdwatch note */
-    object_id?: string,
+    objectId?: string,
     /** Possible text content of this notification. May not be applicable for all notification types. In the case of Birdwatch notifications, the text contains a preview for the note */
     text?: string,
     kind: NotificationKind,

@@ -6,7 +6,6 @@ import type { TwitterFormatter } from '../fmt/index.js';
 export type Enum<T> = T[keyof T];
 
 export interface Type<K extends string = string> {
-    /** Unique identifier for types used by GraphQL */
     __typename: K
 }
 

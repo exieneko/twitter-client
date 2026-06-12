@@ -7,34 +7,34 @@ export interface BirdwatchNote extends Type<'BirdwatchNote'> {
     id: string,
     author: BirdwatchUser,
     /** `true` if the note is added due to the media content of the tweet */
-    by_media: boolean,
+    byMedia: boolean,
     /** `true` if the note is added due to a url contained in the tweet */
-    by_url: boolean,
-    created_at: string,
+    byUrl: boolean,
+    createdAt: string,
     /** `true` if the note contains links to trustworthy sources */
-    has_trustworthy_sources: boolean,
+    hasTrustworthySources: boolean,
     lang: string,
     /** Amount of tweets with matching media that will also be Birdwatch noted */
-    media_matches_count: number,
+    mediaMatchesCount: number,
     /** Note's current display status */
     status: BirdwatchNoteStatus,
     /** Tags assigned to the note by the author */
     tags: ({
         __typename: 'MisleadingTweet',
         /** The note's claims of why the tweet needs a Birdwatch note */
-        tweet_misleading_tags: BirdwatchTweetMisleadingTag[]
+        tweetMisleadingTags: BirdwatchTweetMisleadingTag[]
     } | {
         __typename: 'NoNoteNeeded',
         /** The note's claims of why no notes are needed on this tweet */
-        tweet_not_misleading_tags: BirdwatchTweetNotMisleadingTag[]
+        tweetNotMisleadingTags: BirdwatchTweetNotMisleadingTag[]
     }) & {
         /** Tags applied to the note that shows its helpfulness, applied by raters */
-        note_helpful_tags: BirdwatchHelpfulTag[],
+        noteHelpfulTags: BirdwatchHelpfulTag[],
         /** Tags applied to the note that shows its unhelpfulness, applied by raters */
-        note_unhelpful_tags: BirdwatchUnhelpfulTag[]
+        noteUnhelpfulTags: BirdwatchUnhelpfulTag[]
     },
     text: string,
-    tweet_id: string
+    tweetId: string
 }
 
 /**
@@ -42,11 +42,11 @@ export interface BirdwatchNote extends Type<'BirdwatchNote'> {
  */
 export interface BirdwatchNotesOnTweet {
     /** `true` if you can write a note on this tweet */
-    can_write_note: boolean,
+    canWriteNote: boolean,
     /** Proposed Birdwatch notes */
-    pending_notes: BirdwatchNote[],
+    pendingNotes: BirdwatchNote[],
     /** "No note needed" notes */
-    not_needed_notes: BirdwatchNote[]
+    notNeededNotes: BirdwatchNote[]
 }
 
 
@@ -57,7 +57,7 @@ export interface BirdwatchNotesOnTweet {
 export interface BirdwatchUser extends Type<'BirdwatchUser'> {
     alias: string,
     /** `true` if the user is an AI model */
-    is_ai: boolean,
+    isAi: boolean,
     /** Note ratings submitted by this user */
     ratings: {
         /** Amount of rated notes that helped the note reach a non-pending status */
@@ -65,20 +65,20 @@ export interface BirdwatchUser extends Type<'BirdwatchUser'> {
         /** Amount of rated notes that went against the final reached status */
         unsuccessful: HelpfulnessCount,
         /** Amount of rated notes that are awaiting more ratings */
-        pending_count: number,
-        updated_at: string
+        pendingCount: number,
+        updatedAt: string
     },
     /** Notes submitted by this user */
     notes: HelpfulnessCount & {
         /** Amount of notes that are awaiting more ratings */
-        pending_count: number,
-        updated_at: string
+        pendingCount: number,
+        updatedAt: string
     }
 }
 
 interface HelpfulnessCount {
-    helpful_count: number,
-    unhelpful_count: number
+    helpfulCount: number,
+    unhelpfulCount: number
 }
 
 

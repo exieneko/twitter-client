@@ -2,8 +2,8 @@
  * Live search typeahead
  */
 export interface Typeahead {
-    results_count: number,
+    resultsCount: number,
     topics: string[],
-    user_ids: string[],
+    userIds: string[],
     query: string
 }
