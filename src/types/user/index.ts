@@ -4,7 +4,7 @@ import type { Enum, Type } from '../internal.js';
  * User
  */
 export interface User extends Type<'User'> {
-    id: string,
+    id: bigint,
     /** Amount of affiliates the user has */
     affiliatesCount: number,
     /** User's affiliate label if they're associated with a business account */
@@ -55,7 +55,7 @@ export interface User extends Type<'User'> {
     muted: boolean,
     name: string,
     /** `id` of the user's pinned tweet, `undefined` if it doesn't exist */
-    pinnedTweetId?: string,
+    pinnedTweetId?: bigint,
     /** `true` if the user's tweets can only be viewed by users that follow them */
     protected: boolean,
     /** Amount of other users the user is super-following */
@@ -136,7 +136,7 @@ export type UserKind = User | UnavailableUser;
  * Additional information about a user
  */
 export interface AboutUser extends Type<'AboutUser'> {
-    id: string,
+    id: bigint,
     /** URL for the user's profile picture */
     avatarUrl: string,
     /** Country the user is based in */

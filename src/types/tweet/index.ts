@@ -7,11 +7,11 @@ import type { Enum, Type } from '../internal.js';
  * @see {@link Conversation}
  */
 export interface Tweet extends Type<'Tweet'> {
-    id: string,
+    id: bigint,
     author: User,
     /** Birdwatch note on this tweet */
     birdwatchNote?: {
-        id: string,
+        id: bigint,
         /** The full text of the note */
         text: string,
         language: string,
@@ -38,7 +38,7 @@ export interface Tweet extends Type<'Tweet'> {
         allowedUntil?: string,
         remainingCount: number,
         /** The current id of this tweet and ids of all previous edits */
-        tweetIds: string[]
+        tweetIds: bigint[]
     },
     /** `true` if the tweet is so long that the full text is not displayed normally. `text` will still contain all text */
     isExpandable: boolean,
@@ -64,7 +64,7 @@ export interface Tweet extends Type<'Tweet'> {
     /** The quoted tweet, if it exists. May be `undefined` even if `has_quoted_tweet` is `true` and `quoted_tweet_id` is a `string`, to avoid too many recursions. Due to issues on Twitter's end, sometimes the tweet is not sent in the response data, so this property may be `undefined` for no reason */
     quotedTweet?: Tweet,
     /** Id of the quoted tweet, if it exists */
-    quotedTweetId?: string,
+    quotedTweetId?: bigint,
     /** Amount of users that replied to the tweet */
     repliesCount: number,
     /** Reply permission controlling who can reply to this tweet */
@@ -73,7 +73,7 @@ export interface Tweet extends Type<'Tweet'> {
         /** Username of the user this tweet is in reply to */
         username: string,
         /** Id of the tweet this tweet is in reply to */
-        tweetId: string
+        tweetId: bigint
     },
     retweeted: boolean,
     /** Amount of users that retweeted the tweet */
@@ -87,7 +87,7 @@ export interface Tweet extends Type<'Tweet'> {
 
 
 export interface TweetImage extends Type<'Image'> {
-    id: string,
+    id: bigint,
     /** Alt text set on the media by the author of the tweet */
     altText?: string,
     availability: TweetMediaAvailability,
@@ -142,7 +142,7 @@ export type TweetMedia = TweetImage | TweetGif | TweetVideo;
  * Retweet that contains the retweeted tweet within
  */
 export interface Retweet extends Type<'Retweet'> {
-    id: string,
+    id: bigint,
     tweet: Tweet,
     user: User
 }
@@ -153,7 +153,7 @@ export interface Retweet extends Type<'Retweet'> {
  * Conversation that can contain multiple tweets
  */
 export interface Conversation extends Type<'Conversation'> {
-    allTweetIds: string[],
+    allTweetIds: bigint[],
     items: (Tweet | TweetTombstone | Cursor)[]
 }
 
@@ -218,7 +218,7 @@ export type TweetKind = Tweet | Retweet | Conversation | TweetTombstone;
 
 
 export interface DraftTweet {
-    id: string,
+    id: bigint,
     text: string,
     mediaIds: string[],
     thread: {
@@ -244,7 +244,7 @@ export interface MediaUploadInit {
  * Data about an uploaded media file
  */
 export interface Media {
-    id: string,
+    id: bigint,
     mediaKey: string,
     /** Size of the media in bytes */
     bytes: number,
@@ -318,13 +318,13 @@ export interface PollChoice {
  * Stream broadcast in a tweet
  */
 export interface BroadcastCard extends Card, Type<'Broadcast'> {
-    id: string,
+    id: bigint,
     /** Author of the embedded broadcast */
     author: User,
     /** `true` if the broadcast has ended */
     hasEnded: boolean,
     /** Id of the broadcast video media */
-    mediaId: string,
+    mediaId: bigint,
     mediaKey: string,
     thumbnail?: CardImage,
     title: string,

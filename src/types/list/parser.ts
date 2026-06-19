@@ -8,7 +8,7 @@ export function list(value: any): ListKind {
 
     return {
         __typename: 'List',
-        id: value.id_str,
+        id: BigInt(value.id_str),
         bannerUrl: value.custom_banner_media.media_info.original_img_id,
         createdAt: new Date(value.created_at).toISOString(),
         creator: p.user(value.user_results?.result) as User,

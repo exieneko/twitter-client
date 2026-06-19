@@ -4,7 +4,7 @@ import type { Enum, Type } from '../internal.js';
  * Single Birdwatch note
  */
 export interface BirdwatchNote extends Type<'BirdwatchNote'> {
-    id: string,
+    id: bigint,
     author: BirdwatchUser,
     /** `true` if the note is added due to the media content of the tweet */
     byMedia: boolean,

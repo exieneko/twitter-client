@@ -5,7 +5,7 @@ import type { Type } from '../internal.js';
  * A Twitter list. Lists contain users whose tweets can be viewed on the list's timeline
  */
 export interface List extends Type<'List'> {
-    id: string,
+    id: bigint,
     bannerUrl?: string,
     createdAt: string,
     creator: User,

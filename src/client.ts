@@ -337,8 +337,8 @@ export class TwitterClient {
      * @param mediaId Media id
      * @returns Success status
      */
-    async setAvatar(mediaId: string) {
-        return await this.fetch(ENDPOINTS.account_update_profile_image, { media_id: mediaId });
+    async setAvatar(mediaId: string | bigint) {
+        return await this.fetch(ENDPOINTS.account_update_profile_image, { media_id: mediaId.toString() });
     }
 
     /**
@@ -360,8 +360,8 @@ export class TwitterClient {
      * @returns Birdwatch notes
      * @since v0.4.0
      */
-    async getBirdwatchNotesOnTweet(id: string) {
-        return await this.fetch(ENDPOINTS.BirdwatchFetchNotes, { tweet_id: id });
+    async getBirdwatchNotesOnTweet(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.BirdwatchFetchNotes, { tweet_id: id.toString() });
     }
 
     /**
@@ -371,8 +371,8 @@ export class TwitterClient {
      * @returns Birdwatch user
      * @since v0.4.0
      */
-    async getBirdwatchUser(alias: string) {
-        return await this.fetch(ENDPOINTS.BirdwatchFetchBirdwatchProfile, { alias });
+    async getBirdwatchUser(alias: string | bigint) {
+        return await this.fetch(ENDPOINTS.BirdwatchFetchBirdwatchProfile, { alias: alias.toString() });
     }
 
     /**
@@ -383,16 +383,16 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.4.0
      */
-    async rateBirdwatchNote(noteId: string, args: BirdwatchRateNoteArgs) {
+    async rateBirdwatchNote(noteId: string | bigint, args: BirdwatchRateNoteArgs) {
         return await this.fetch(ENDPOINTS.BirdwatchCreateRating, {
             data_v2: {
                 helpfulness_level: args.helpfulTags?.length && args.unhelpfulTags?.length ? 'SomewhatHelpful' : args.unhelpfulTags?.length ? 'NotHelpful' : 'Helpful',
                 helpful_tags: args.helpfulTags,
                 not_helpful_tags: args.unhelpfulTags
             },
-            note_id: noteId,
+            note_id: noteId.toString(),
             rating_source: args.source === BirdwatchNoteSource.NeedsYourHelp ? 'BirdwatchHomeNeedsYourHelp' : 'BirdwatchForYouTimeline',
-            tweet_id: args.tweetId
+            tweet_id: args.tweetId.toString()
         });
     }
 
@@ -403,8 +403,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.4.0
      */
-    async unrateBirdwatchNote(noteId: string) {
-        return await this.fetch(ENDPOINTS.BirdwatchDeleteRating, { note_id: noteId });
+    async unrateBirdwatchNote(noteId: string | bigint) {
+        return await this.fetch(ENDPOINTS.BirdwatchDeleteRating, { note_id: noteId.toString() });
     }
 
 
@@ -461,8 +461,8 @@ export class TwitterClient {
      * @returns Community
      * @since v0.3.0
      */
-    async getCommunity(id: string) {
-        return await this.fetch(ENDPOINTS.CommunityByRestId, { communityId: id });
+    async getCommunity(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.CommunityByRestId, { communityId: id.toString() });
     }
 
     /**
@@ -473,8 +473,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.3.0
      */
-    async* getCommunityTweets(id: string, args?: CommunityTweetsGetArgs): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getCommunityTweetsSlice(id, args))) yield slice;
+    async* getCommunityTweets(id: string | bigint, args?: CommunityTweetsGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getCommunityTweetsSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -491,8 +491,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.3.0
      */
-    async* getCommunityMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getCommunityMediaSlice(id, args))) yield slice;
+    async* getCommunityMedia(id: string | bigint, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getCommunityMediaSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -507,8 +507,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.3.0
      */
-    async joinCommunity(id: string) {
-        return await this.fetch(ENDPOINTS.JoinCommunity, { communityId: id });
+    async joinCommunity(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.JoinCommunity, { communityId: id.toString() });
     }
 
     /**
@@ -518,8 +518,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.3.0
      */
-    async leaveCommunity(id: string) {
-        return await this.fetch(ENDPOINTS.LeaveCommunity, { communityId: id });
+    async leaveCommunity(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.LeaveCommunity, { communityId: id.toString() });
     }
 
 
@@ -532,12 +532,14 @@ export class TwitterClient {
      * @returns List
      * @since v0.1.0
      */
-    async getList(id: string, args?: BySlug) {
+    async getList(id: string | bigint, args?: BySlug) {
+        const listId = id.toString();
+
         if (args?.bySlug) {
-            return await this.fetch(ENDPOINTS.ListBySlug, { listId: id });
+            return await this.fetch(ENDPOINTS.ListBySlug, { listId });
         }
 
-        return await this.fetch(ENDPOINTS.ListByRestId, { listId: id });
+        return await this.fetch(ENDPOINTS.ListByRestId, { listId });
     }
 
     /**
@@ -548,8 +550,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    async* getListTweets(id: string, args?: CursorOnly) {
-        for await (const slice of this.getSlice(args, args => this.getListTweetsSlice(id, args))) yield slice;
+    async* getListTweets(id: string | bigint, args?: CursorOnly) {
+        for await (const slice of this.getSlice(args, args => this.getListTweetsSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -579,8 +581,8 @@ export class TwitterClient {
         return await this.fetch(ENDPOINTS.ListMemberships, args);
     }
 
-    async getOwnedLists(userId: string, otherUserId: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.ListOwnerships, { userId, isListMemberTargetUserId: otherUserId, ...args });
+    async getOwnedLists(userId: string | bigint, otherUserId: string | bigint, args?: CursorOnly) {
+        return await this.fetch(ENDPOINTS.ListOwnerships, { userId: userId.toString(), isListMemberTargetUserId: otherUserId.toString(), ...args });
     }
 
     /**
@@ -591,8 +593,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getListMembers(id: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getListMembersSlice(id, args))) yield slice;
+    async* getListMembers(id: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getListMembersSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -608,8 +610,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getListSubscribers(id: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getListSubscribersSlice(id, args))) yield slice;
+    async* getListSubscribers(id: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getListSubscribersSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -636,8 +638,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async editList(id: string, args: Required<ListCreateArgs>) {
-        return await this.fetch(ENDPOINTS.UpdateList, { listId: id, name: args.name, description: args.description, isPrivate: args.private });
+    async editList(id: string | bigint, args: Required<ListCreateArgs>) {
+        return await this.fetch(ENDPOINTS.UpdateList, { listId: id.toString(), name: args.name, description: args.description, isPrivate: args.private });
     }
 
     /**
@@ -647,8 +649,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async deleteList(id: string) {
-        return await this.fetch(ENDPOINTS.DeleteList, { listId: id });
+    async deleteList(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.DeleteList, { listId: id.toString() });
     }
 
     /**
@@ -659,12 +661,12 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    async setListBanner(listId: string, mediaId: string) {
-        if (mediaId) {
-            return await this.fetch(ENDPOINTS.EditListBanner, { listId, mediaId });
+    async setListBanner(listId: string | bigint, mediaId?: string | bigint) {
+        if (!mediaId) {
+            return await this.fetch(ENDPOINTS.DeleteListBanner, { listId: listId.toString() });
         }
 
-        return await this.fetch(ENDPOINTS.DeleteListBanner, { listId });
+        return await this.fetch(ENDPOINTS.EditListBanner, { listId: listId.toString(), mediaId: mediaId.toString() });
     }
 
     /**
@@ -674,8 +676,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async listUser(listId: string, userId: string) {
-        return await this.fetch(ENDPOINTS.ListAddMember, { listId, userId });
+    async listUser(listId: string | bigint, userId: string | bigint) {
+        return await this.fetch(ENDPOINTS.ListAddMember, { listId: listId.toString(), userId: userId.toString() });
     }
 
     /**
@@ -686,8 +688,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unlistUser(listId: string, userId: string) {
-        return await this.fetch(ENDPOINTS.ListRemoveMember, { listId, userId });
+    async unlistUser(listId: string | bigint, userId: string | bigint) {
+        return await this.fetch(ENDPOINTS.ListRemoveMember, { listId: listId.toString(), userId: userId.toString() });
     }
 
     /**
@@ -697,8 +699,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async subscribeToList(id: string) {
-        return await this.fetch(ENDPOINTS.ListSubscribe, { listId: id });
+    async subscribeToList(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.ListSubscribe, { listId: id.toString() });
     }
 
     /**
@@ -708,8 +710,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unsubscribeFromList(id: string) {
-        return await this.fetch(ENDPOINTS.ListUnsubscribe, { listId: id });
+    async unsubscribeFromList(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.ListUnsubscribe, { listId: id.toString() });
     }
 
     /**
@@ -719,8 +721,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    async pinList(id: string) {
-        return await this.fetch(ENDPOINTS.PinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
+    async pinList(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.PinTimeline, { pinnedTimelineItem: { id: id.toString(), pinned_timeline_type: 'List' } });
     }
 
     /**
@@ -730,8 +732,8 @@ export class TwitterClient {
      * @since v0.6.0
      * @returns Success status
      */
-    async unpinList(id: string) {
-        return await this.fetch(ENDPOINTS.UnpinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
+    async unpinList(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.UnpinTimeline, { pinnedTimelineItem: { id: id.toString(), pinned_timeline_type: 'List' } });
     }
 
     /**
@@ -741,8 +743,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    async muteList(id: string) {
-        return await this.fetch(ENDPOINTS.MuteList, { listId: id });
+    async muteList(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.MuteList, { listId: id.toString() });
     }
 
     /**
@@ -752,8 +754,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    async unmuteList(id: string) {
-        return await this.fetch(ENDPOINTS.UnmuteList, { listId: id });
+    async unmuteList(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.UnmuteList, { listId: id.toString() });
     }
 
 
@@ -830,11 +832,11 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    getTimeline(id: string, args?: CursorOnly): Timeline<TweetKind>;
+    getTimeline(id: string | bigint, args?: CursorOnly): Timeline<TweetKind>;
 
-    async* getTimeline(idOrArgs?: string | TimelineGetArgs, args?: CursorOnly): Timeline<TweetKind> {
-        if (typeof idOrArgs === 'string') {
-            for await (const slice of this.getSlice(args, args => this.getTimelineSlice(idOrArgs, args))) yield slice;
+    async* getTimeline(idOrArgs?: string | bigint | TimelineGetArgs, args?: CursorOnly): Timeline<TweetKind> {
+        if (typeof idOrArgs === 'string' || typeof idOrArgs === 'bigint') {
+            for await (const slice of this.getSlice(args, args => this.getTimelineSlice(idOrArgs.toString(), args))) yield slice;
         } else {
             for await (const slice of this.getSlice(idOrArgs, args => this.getTimelineSlice(args))) yield slice;
         }
@@ -843,14 +845,14 @@ export class TwitterClient {
     }
 
     private async getTimelineSlice(args?: TimelineGetArgs): Promise<TwitterResponse<Slice<TweetKind>>>;
-    private async getTimelineSlice(id: string, args?: CursorOnly): Promise<TwitterResponse<Slice<TweetKind>>>;
+    private async getTimelineSlice(id: string | bigint, args?: CursorOnly): Promise<TwitterResponse<Slice<TweetKind>>>;
 
-    private async getTimelineSlice(idOrArgs: string | TimelineGetArgs = {}, args?: CursorOnly) {
-        if (typeof idOrArgs === 'string') {
-            return await this.fetch(ENDPOINTS.GenericTimelineById, { timelineId: idOrArgs, cursor: args?.cursor });
+    private async getTimelineSlice(idOrArgs: string | bigint | TimelineGetArgs = {}, args?: CursorOnly) {
+        if (typeof idOrArgs === 'string' || typeof idOrArgs === 'bigint') {
+            return await this.fetch(ENDPOINTS.GenericTimelineById, { timelineId: idOrArgs.toString(), cursor: args?.cursor });
         }
 
-        const seenTweetIds = idOrArgs.seenTweetIds ?? [];
+        const seenTweetIds = idOrArgs.seenTweetIds?.map(String) ?? [];
         const requestContext = idOrArgs.cursor ? undefined : 'launch';
 
         if (idOrArgs.orderBy === 'Latest') {
@@ -1017,14 +1019,14 @@ export class TwitterClient {
             } : undefined,
             media: {
                 media_entities: args.mediaIds?.map(id => ({
-                    media_id: id,
+                    media_id: id.toString(),
                     tagged_users: []
                 })) || [],
                 possibly_sensitive: !!args.sensitive
             },
             reply: !!args.replyTo ? {
                 exclude_reply_user_ids: [],
-                in_reply_to_tweet_id: args.replyTo
+                in_reply_to_tweet_id: args.replyTo.toString()
             } : undefined,
             semantic_annotation_ids: [],
             tweet_text: text
@@ -1038,14 +1040,14 @@ export class TwitterClient {
             return { errors, data: tweet };
         }
 
-        let lastTweetId = tweet.id;
+        let lastTweetId = tweet.id.toString();
 
         for (const t of thread) {
             const { data } = await this.fetch(ENDPOINTS.CreateTweet, {
                 batch_compose: !args.replyTo ? 'BatchSubsequent' : undefined,
                 media: {
                     media_entities: t.mediaIds?.map(id => ({
-                        media_id: id,
+                        media_id: id.toString(),
                         tagged_users: []
                     })) || [],
                     possibly_sensitive: !!args.sensitive
@@ -1062,7 +1064,7 @@ export class TwitterClient {
                 return { errors, data: tweet };
             }
 
-            lastTweetId = data.id;
+            lastTweetId = data.id.toString();
         }
 
         return { errors, data: tweet };
@@ -1075,8 +1077,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async deleteTweet(id: string) {
-        return await this.fetch(ENDPOINTS.DeleteTweet, { tweet_id: id });
+    async deleteTweet(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.DeleteTweet, { tweet_id: id.toString() });
     }
 
     /**
@@ -1093,7 +1095,7 @@ export class TwitterClient {
                 auto_populate_reply_metadata: false,
                 exclude_reply_user_ids: [],
                 status: args.text || '',
-                media_ids: args.mediaIds || []
+                media_ids: args.mediaIds?.map(id => id.toString()) || []
             }
         });
     }
@@ -1106,16 +1108,16 @@ export class TwitterClient {
      * @returns Success status
      * @since v1.0.0-rc.1
      */
-    async editScheduledTweet(id: string, args: ScheduledTweetCreateArgs) {
+    async editScheduledTweet(id: string | bigint, args: ScheduledTweetCreateArgs) {
         return await this.fetch(ENDPOINTS.EditScheduledTweet, {
             execute_at: (typeof args.sendAt === 'number' ? args.sendAt : args.sendAt.getTime()) / 1000,
             post_tweet_request: {
                 auto_populate_reply_metadata: false,
                 exclude_reply_user_ids: [],
-                media_ids: args.mediaIds || [],
+                media_ids: args.mediaIds?.map(id => id.toString()) || [],
                 status: args.text || ''
             },
-            scheduled_tweet_id: id
+            scheduled_tweet_id: id.toString()
         });
     }
 
@@ -1131,8 +1133,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    async* getTweet(id: string, args?: TweetGetArgs): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getTweetSlice(id, args))) yield slice;
+    async* getTweet(id: string | bigint, args?: TweetGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getTweetSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1152,8 +1154,8 @@ export class TwitterClient {
      * @returns Tweet
      * @since v0.6.0
      */
-    async getTweetResult(id: string) {
-        return await this.fetch(ENDPOINTS.TweetResultByRestId, { tweetId: id });
+    async getTweetResult(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.TweetResultByRestId, { tweetId: id.toString() });
     }
 
     /**
@@ -1163,8 +1165,8 @@ export class TwitterClient {
      * @returns Array of tweets
      * @since v0.6.0
      */
-    async getTweetResults(ids: string[]) {
-        return await this.fetch(ENDPOINTS.TweetResultsByRestIds, { tweetIds: ids });
+    async getTweetResults(ids: (string | bigint)[]) {
+        return await this.fetch(ENDPOINTS.TweetResultsByRestIds, { tweetIds: ids.map(id => id.toString()) });
     }
 
     /**
@@ -1175,8 +1177,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    async* getHiddenReplies(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getHiddenRepliesSlice(tweetId, args))) yield slice;
+    async* getHiddenReplies(tweetId: string | bigint, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getHiddenRepliesSlice(tweetId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1192,8 +1194,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getLikes(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getLikesSlice(tweetId, args))) yield slice;
+    async* getLikes(tweetId: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getLikesSlice(tweetId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1209,8 +1211,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getRetweets(tweetId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getRetweetsSlice(tweetId, args))) yield slice;
+    async* getRetweets(tweetId: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getRetweetsSlice(tweetId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1226,8 +1228,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    async* getQuoteTweets(tweetId: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getQuoteTweetsSlice(tweetId, args))) yield slice;
+    async* getQuoteTweets(tweetId: string | bigint, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getQuoteTweetsSlice(tweetId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1242,8 +1244,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async bookmark(tweetId: string) {
-        return await this.fetch(ENDPOINTS.CreateBookmark, { tweet_id: tweetId });
+    async bookmark(tweetId: string | bigint) {
+        return await this.fetch(ENDPOINTS.CreateBookmark, { tweet_id: tweetId.toString() });
     }
 
     /**
@@ -1264,8 +1266,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async like(tweetId: string) {
-        return await this.fetch(ENDPOINTS.FavoriteTweet, { tweet_id: tweetId });
+    async like(tweetId: string | bigint) {
+        return await this.fetch(ENDPOINTS.FavoriteTweet, { tweet_id: tweetId.toString() });
     }
 
     /**
@@ -1275,8 +1277,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unlike(tweetId: string) {
-        return await this.fetch(ENDPOINTS.UnfavoriteTweet, { tweet_id: tweetId });
+    async unlike(tweetId: string | bigint) {
+        return await this.fetch(ENDPOINTS.UnfavoriteTweet, { tweet_id: tweetId.toString() });
     }
 
     /**
@@ -1286,8 +1288,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async retweet(tweetId: string) {
-        return await this.fetch(ENDPOINTS.CreateRetweet, { tweet_id: tweetId });
+    async retweet(tweetId: string | bigint) {
+        return await this.fetch(ENDPOINTS.CreateRetweet, { tweet_id: tweetId.toString() });
     }
 
     /**
@@ -1297,8 +1299,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unretweet(tweetId: string) {
-        return await this.fetch(ENDPOINTS.DeleteRetweet, { source_tweet_id: tweetId });
+    async unretweet(tweetId: string | bigint) {
+        return await this.fetch(ENDPOINTS.DeleteRetweet, { source_tweet_id: tweetId.toString() });
     }
 
     /**
@@ -1308,8 +1310,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async hideTweet(id: string) {
-        return await this.fetch(ENDPOINTS.ModerateTweet, { tweetId: id });
+    async hideTweet(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.ModerateTweet, { tweetId: id.toString() });
     }
 
     /**
@@ -1319,8 +1321,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unhideTweet(id: string) {
-        return await this.fetch(ENDPOINTS.UnmoderateTweet, { tweetId: id });
+    async unhideTweet(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.UnmoderateTweet, { tweetId: id.toString() });
     }
 
     /**
@@ -1330,8 +1332,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async pinTweet(id: string) {
-        return await this.fetch(ENDPOINTS.PinTweet, { tweet_id: id });
+    async pinTweet(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.PinTweet, { tweet_id: id.toString() });
     }
 
     /**
@@ -1341,8 +1343,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unpinTweet(id: string) {
-        return await this.fetch(ENDPOINTS.UnpinTweet, { tweet_id: id });
+    async unpinTweet(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.UnpinTweet, { tweet_id: id.toString() });
     }
 
     /**
@@ -1360,7 +1362,7 @@ export class TwitterClient {
         }
 
         return await this.fetch(ENDPOINTS.capi_passthrough_1, {
-            'twitter:long:original_tweet_id': args.tweetId,
+            'twitter:long:original_tweet_id': args.tweetId.toString(),
             'twitter:string:card_uri': args.cardUri,
             'twitter:string:response_card_name': args.cardName,
             'twitter:string:selected_choice': args.choice
@@ -1375,9 +1377,9 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    async changeReplyPermission(tweetId: string, permission?: ReplyPermission) {
+    async changeReplyPermission(tweetId: string | bigint, permission?: ReplyPermission) {
         if (!permission || permission === ReplyPermission.Everyone) {
-            return await this.fetch(ENDPOINTS.ConversationControlDelete, { tweet_id: tweetId });
+            return await this.fetch(ENDPOINTS.ConversationControlDelete, { tweet_id: tweetId.toString() });
         }
 
         const mode = match(permission, [
@@ -1385,7 +1387,7 @@ export class TwitterClient {
             [ReplyPermission.Verified, 'Verified']
         ] as const, 'ByInvitation');
 
-        return await this.fetch(ENDPOINTS.ConversationControlChange, { tweet_id: tweetId, mode });
+        return await this.fetch(ENDPOINTS.ConversationControlChange, { tweet_id: tweetId.toString(), mode });
     }
 
     /**
@@ -1395,8 +1397,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    async unmention(id: string) {
-        return await this.fetch(ENDPOINTS.UnmentionUserFromConversation, { tweet_id: id });
+    async unmention(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.UnmentionUserFromConversation, { tweet_id: id.toString() });
     }
 
     /**
@@ -1406,8 +1408,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async muteTweet(id: string) {
-        return await this.fetch(ENDPOINTS.mutes_conversations_create, { tweet_id: id });
+    async muteTweet(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.mutes_conversations_create, { tweet_id: id.toString() });
     }
 
     /**
@@ -1417,51 +1419,51 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unmuteTweet(id: string) {
-        return await this.fetch(ENDPOINTS.mutes_conversations_destroy, { tweet_id: id });
+    async unmuteTweet(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.mutes_conversations_destroy, { tweet_id: id.toString() });
     }
 
 
 
     /**
-     * Get a user by their id, or username if specified
+     * Get a user by their id, or username if specified. `typeof id` can't be `bigint` if `args.byUsername` is `true`
      * 
      * @param id User id or username
      * @param [args] {@link ByUsername}
      * @returns User
      * @since v0.1.0
      */
-    async getUser(id: string, args?: ByUsername) {
-        const { errors, data: user } = await (args?.byUsername
-            ? this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id })
-            : this.fetch(ENDPOINTS.UserByRestId, { userId: id })
+    async getUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        const result = await (args?.byUsername
+            ? this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id.toString() })
+            : this.fetch(ENDPOINTS.UserByRestId, { userId: id.toString() })
         );
         
-        if (errors.length > 0) {
-            return { errors, data: user };
+        if (result.errors.length > 0) {
+            return result;
         }
 
-        if (user?.__typename === 'User' && this.self?.id === user.id) {
-            this.self = user;
+        if (result.data?.__typename === 'User' && this.self?.id === result.data.id) {
+            this.self = result.data;
         }
 
-        return { errors, data: user };
+        return result;
     }
 
     /**
-     * Get multiple users by their ids, or usernames if specified
+     * Get multiple users by their ids, or usernames if specified. `typeof ids` can't be `bigint[]` if `args.byUsername` is `true`
      * 
      * @param ids User ids or usernames
      * @param [args] {@link ByUsername}
      * @returns Users
      * @since v0.1.0
      */
-    async getUsers(ids: string[], args?: ByUsername) {
+    async getUsers<T extends ByUsername>(ids: T['byUsername'] extends true ? string[] : (string | bigint)[], args?: ByUsername) {
         if (args?.byUsername) {
-            return await this.fetch(ENDPOINTS.UsersByScreenNames, { screen_names: ids });
+            return await this.fetch(ENDPOINTS.UsersByScreenNames, { screen_names: ids.map(id => id.toString()) });
         }
 
-        return await this.fetch(ENDPOINTS.UsersByRestIds, { userIds: ids });
+        return await this.fetch(ENDPOINTS.UsersByRestIds, { userIds: ids.map(id => id.toString()) });
     }
 
     /**
@@ -1472,8 +1474,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    async* getUserTweets(id: string, args?: UserTweetsGetArgs): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserTweetsSlice(id, args))) yield slice;
+    async* getUserTweets(id: string | bigint, args?: UserTweetsGetArgs): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserTweetsSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1493,8 +1495,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    async* getUserMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserMediaSlice(id, args))) yield slice;
+    async* getUserMedia(id: string | bigint, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserMediaSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1510,8 +1512,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    async* getUserLikes(id: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserLikesSlice(id, args))) yield slice;
+    async* getUserLikes(id: string | bigint, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserLikesSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1527,8 +1529,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    async* getUserHighlightedTweets(id: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserHighlightedTweetsSlice(id, args))) yield slice;
+    async* getUserHighlightedTweets(id: string | bigint, args?: CursorOnly): Timeline<TweetKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserHighlightedTweetsSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1544,8 +1546,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getFollowingSlice(userId, args))) yield slice;
+    async* getFollowing(userId: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowingSlice(userId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1561,8 +1563,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getFollowersSlice(userId, args))) yield slice;
+    async* getFollowers(userId: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowersSlice(userId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1578,8 +1580,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getFollowersYouKnow(userId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getFollowersYouKnowSlice(userId, args))) yield slice;
+    async* getFollowersYouKnow(userId: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getFollowersYouKnowSlice(userId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1595,8 +1597,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getVerifiedFollowers(userId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getVerifiedFollowersSlice(userId, args))) yield slice;
+    async* getVerifiedFollowers(userId: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getVerifiedFollowersSlice(userId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1612,8 +1614,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getSuperFollowing(userId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getSuperFollowingSlice(userId, args))) yield slice;
+    async* getSuperFollowing(userId: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getSuperFollowingSlice(userId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1629,8 +1631,8 @@ export class TwitterClient {
      * @yields Slice of users
      * @since v0.1.0
      */
-    async* getAffiliates(userId: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getAffiliatesSlice(userId, args))) yield slice;
+    async* getAffiliates(userId: string | bigint, args?: CursorOnly): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.getAffiliatesSlice(userId.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1646,8 +1648,8 @@ export class TwitterClient {
      * @yields Slice of lists
      * @since v0.1.0
      */
-    async* getUserLists(id: string, args?: CursorOnly): Timeline<ListKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserListsSlice(id, args))) yield slice;
+    async* getUserLists(id: string | bigint, args?: CursorOnly): Timeline<ListKind> {
+        for await (const slice of this.getSlice(args, args => this.getUserListsSlice(id.toString(), args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1663,8 +1665,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async followUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.friendships_create, args?.byUsername ? { screen_name: id } : { user_id: id });
+    async followUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.friendships_create, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
     }
 
     /**
@@ -1675,8 +1677,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unfollowUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.friendships_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
+    async unfollowUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.friendships_destroy, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
     }
 
     /**
@@ -1686,8 +1688,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    async enableRetweets(userId: string) {
-        return await this.fetch(ENDPOINTS.friendships_update, { id: userId, retweets: true });
+    async enableRetweets(userId: string | bigint) {
+        return await this.fetch(ENDPOINTS.friendships_update, { id: userId.toString(), retweets: true });
     }
 
     /**
@@ -1697,8 +1699,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    async disableRetweets(userId: string) {
-        return await this.fetch(ENDPOINTS.friendships_update, { id: userId, retweets: false });
+    async disableRetweets(userId: string | bigint) {
+        return await this.fetch(ENDPOINTS.friendships_update, { id: userId.toString(), retweets: false });
     }
 
     /**
@@ -1708,8 +1710,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    async enableNotifications(userId: string) {
-        return await this.fetch(ENDPOINTS.friendships_update, { id: userId, device: true });
+    async enableNotifications(userId: string | bigint) {
+        return await this.fetch(ENDPOINTS.friendships_update, { id: userId.toString(), device: true });
     }
 
     /**
@@ -1719,8 +1721,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.2.0
      */
-    async disableNotifications(userId: string) {
-        return await this.fetch(ENDPOINTS.friendships_update, { id: userId, device: false });
+    async disableNotifications(userId: string | bigint) {
+        return await this.fetch(ENDPOINTS.friendships_update, { id: userId.toString(), device: false });
     }
 
     /**
@@ -1742,8 +1744,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async cancelFollowRequest(userId: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.friendships_cancel, args?.byUsername ? { screen_name: userId } : { user_id: userId });
+    async cancelFollowRequest<T extends ByUsername>(userId: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.friendships_cancel, args?.byUsername ? { screen_name: userId.toString() } : { user_id: userId.toString() });
     }
 
     /**
@@ -1754,8 +1756,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async acceptFollowRequest(userId: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.friendships_accept, args?.byUsername ? { screen_name: userId } : { user_id: userId });
+    async acceptFollowRequest<T extends ByUsername>(userId: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.friendships_accept, args?.byUsername ? { screen_name: userId.toString() } : { user_id: userId.toString() });
     }
 
     /**
@@ -1766,8 +1768,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async declineFollowRequest(userId: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.friendships_deny, args?.byUsername ? { screen_name: userId } : { user_id: userId });
+    async declineFollowRequest<T extends ByUsername>(userId: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.friendships_deny, args?.byUsername ? { screen_name: userId.toString() } : { user_id: userId.toString() });
     }
 
     /**
@@ -1778,8 +1780,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async blockUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.blocks_create, args?.byUsername ? { screen_name: id } : { user_id: id });
+    async blockUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.blocks_create, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
     }
 
     /**
@@ -1792,8 +1794,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unblockUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.blocks_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
+    async unblockUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.blocks_destroy, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
     }
 
     /**
@@ -1803,8 +1805,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v1.0.0-rc.1
      */
-    async softblockUser(id: string) {
-        return await this.fetch(ENDPOINTS.RemoveFollower, { target_user_id: id });
+    async softblockUser(id: string | bigint) {
+        return await this.fetch(ENDPOINTS.RemoveFollower, { target_user_id: id.toString() });
     }
 
     /**
@@ -1815,8 +1817,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async muteUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.mutes_users_create, args?.byUsername ? { screen_name: id } : { user_id: id });
+    async muteUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.mutes_users_create, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
     }
 
     /**
@@ -1827,8 +1829,8 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.1.0
      */
-    async unmuteUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.mutes_users_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
+    async unmuteUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return await this.fetch(ENDPOINTS.mutes_users_destroy, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
     }
 
     /**
@@ -1840,7 +1842,7 @@ export class TwitterClient {
      * @returns Media
      * @since v0.6.0
      */
-    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void): Promise<TwitterResponse<Media>> {
+    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => any): Promise<TwitterResponse<Media>> {
         const append = async (id: string, data: ArrayBuffer, index: number, contentType: string) => {
             let formData = new FormData();
             formData.append('media', new Blob([data], { type: contentType }));

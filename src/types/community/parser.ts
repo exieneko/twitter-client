@@ -9,7 +9,7 @@ export function community(value: any): CommunityKind {
 
     return {
         __typename: 'Community',
-        id: value.id_str,
+        id: BigInt(value.id_str),
         bannerUrl: value.custom_banner_media?.media_info?.original_img_url,
         canJoin: value.join_policy === 'Open',
         canInvite: value.invites_policy === 'MemberInvitesAllowed' && !value.invites_result?.__typename.includes('Unavailable'),
@@ -26,9 +26,9 @@ export function community(value: any): CommunityKind {
             ['NonMember', CommunityRole.Guest],
             ['Member', CommunityRole.Member],
             ['Moderator', CommunityRole.Moderator],
-        ], CommunityRole.Owner)!,
-        rules: value.rules?.map((rule: any) => ({
-            id: rule.rest_id,
+        ], CommunityRole.Owner),
+        rules: (value.rules || []).map((rule: any) => ({
+            id: BigInt(rule.rest_id),
             description: rule.description,
             name: rule.name
         })),

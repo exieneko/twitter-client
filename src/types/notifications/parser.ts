@@ -47,7 +47,7 @@ export function notification(value: any, notificationKind: string): Notification
 
     return {
         __typename: 'Notification',
-        id: value.id || tweet?.id,
+        id: BigInt(value.id || tweet?.id),
         createdAt: new Date(value.timestamp_ms).toISOString(),
         objectId: objectId,
         text: match(kind, [

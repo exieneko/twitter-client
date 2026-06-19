@@ -5,7 +5,7 @@ import type { Enum, Type } from '../internal.js';
  * A Twitter community
  */
 export interface Community extends Type<'Community'> {
-    id: string,
+    id: bigint,
     /** URL for the community's banner and preview image */
     bannerUrl?: string,
     /** `true` if you can join this community without an invite */
@@ -30,7 +30,7 @@ export interface Community extends Type<'Community'> {
     role: CommunityRole,
     /** Community rules */
     rules: {
-        id: string,
+        id: bigint,
         description?: string,
         name: string
     }[],

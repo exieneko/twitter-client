@@ -5,7 +5,7 @@ import type { Enum, Type } from '../internal.js';
  * A Twitter notification
  */
 export interface Notification extends Type<'Notification'> {
-    id: string,
+    id: bigint,
     createdAt: string,
     /** Id of the primary object in a notification, like a tweet or Birdwatch note */
     objectId?: string,

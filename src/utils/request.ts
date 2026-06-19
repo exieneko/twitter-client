@@ -6,7 +6,7 @@ import { GLOBAL_HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, PUBLIC_TOKEN } from '../co
 import type { TwitterOptions, TwitterTokens } from '../types/index.js';
 import { EndpointKind, type Endpoint, type Params } from '../types/internal.js';
 
-export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: Params<EP> | undefined, options: TwitterOptions, tokens: TwitterTokens, proxyAgent?: ProxyAgent, userId?: string, transactionId?: string, body?: BodyInit): Promise<[T | E, Response?]> {
+export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: Params<EP> | undefined, options: TwitterOptions, tokens: TwitterTokens, proxyAgent?: ProxyAgent, userId?: bigint, transactionId?: string, body?: BodyInit): Promise<[T | E, Response?]> {
     const start = hrtime.bigint();
 
     const headers: Record<string, string> = {

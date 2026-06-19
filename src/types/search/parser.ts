@@ -5,7 +5,7 @@ export function typeahead(value: any): Typeahead {
     return {
         resultsCount: value.num_results,
         topics: (value.topics || []).map((topic: any) => topic.topic),
-        userIds: (value.users || []).map((user: any) => user.id_str),
+        userIds: (value.users || []).map((user: any) => BigInt(user.id_str)),
         query: value.query
     };
 }

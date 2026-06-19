@@ -48,7 +48,7 @@ export function tweet(value: any): Tweet | Retweet | TweetTombstone {
     if (t.legacy.retweeted_status_result?.result) {
         return {
             __typename: 'Retweet',
-            id: t.rest_id,
+            id: BigInt(t.rest_id),
             tweet: tweet(t.legacy.retweeted_status_result.result) as Tweet,
             user: p.user(t.core.user_results.result) as User
         };
@@ -66,10 +66,10 @@ export function tweet(value: any): Tweet | Retweet | TweetTombstone {
 
     return {
         __typename: 'Tweet',
-        id: t.rest_id,
+        id: BigInt(t.rest_id),
         author: p.user(t.core.user_results.result) as User,
         birdwatchNote: t.birdwatch_pivot?.note?.rest_id ? {
-            id: t.birdwatch_pivot.note.rest_id,
+            id: BigInt(t.birdwatch_pivot.note.rest_id),
             text: (t.birdwatch_pivot.subtitle.entities as { fromIndex: number, toIndex: number, ref: { url: string } }[])
                 .toSorted((a, b) => b.fromIndex - a.fromIndex)
                 .reduce((acc, e) => acc.slice(0, e.fromIndex) + e.ref.url + acc.slice(e.toIndex), t.birdwatch_pivot.subtitle.text),
@@ -90,7 +90,7 @@ export function tweet(value: any): Tweet | Retweet | TweetTombstone {
             isAllowed: !!editControl?.is_edit_eligible,
             allowedUntil: new Date(Number(editControl?.editable_until_msecs) || 0).toISOString(),
             remainingCount: Number(editControl?.edits_remaining || '0'),
-            tweetIds: editControl?.edit_tweet_ids
+            tweetIds: (editControl?.edit_tweet_ids || []).map(BigInt)
         },
         isExpandable: !!t.note_tweet?.is_expandable,
         isTranslatable: !!t.is_translatable,
@@ -107,15 +107,17 @@ export function tweet(value: any): Tweet | Retweet | TweetTombstone {
         quotedTweet: t.quoted_status_result?.result
             ? tweet(t.quoted_status_result?.result) as Tweet
             : undefined,
-        quotedTweetId: t.legacy.quoted_status_id_str,
+        quotedTweetId: t.legacy.quoted_status_id_str
+            ? BigInt(t.legacy.quoted_status_id_str)
+            : undefined,
         repliesCount: t.legacy.reply_count || 0,
         replyPermission: match(t.legacy.conversation_control?.policy as string | undefined, [
             ['Community', ReplyPermission.Following],
             ['Verified', ReplyPermission.Verified],
             ['ByInvitation', ReplyPermission.Mentioned]
         ], ReplyPermission.Everyone),
-        replyingTo: t.legacy.in_reply_to_screen_name ? {
-            tweetId: t.legacy.in_reply_to_status_id_str,
+        replyingTo: t.legacy.in_reply_to_status_id_str ? {
+            tweetId: BigInt(t.legacy.in_reply_to_status_id_str),
             username: t.legacy.in_reply_to_screen_name
         } : undefined,
         retweeted: !!t.legacy.retweeted,
@@ -129,7 +131,7 @@ export function tweet(value: any): Tweet | Retweet | TweetTombstone {
 
 export function media(value: any): TweetMedia {
     const common = {
-        id: value.id_str,
+        id: BigInt(value.id_str),
         altText: value.ext_alt_text || undefined,
         availability: match(value.ext_media_availability?.reason, [
             [undefined, TweetMediaAvailability.Available],
@@ -171,7 +173,7 @@ export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTw
 
     return {
         __typename: 'Tweet',
-        id: tweet.id_str,
+        id: BigInt(tweet.id_str),
         author: p.userLegacy(author),
         bookmarked: !!tweet.bookmarked,
         bookmarksCount: tweet.bookmark_count || 0,
@@ -183,7 +185,7 @@ export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTw
         editing: {
             isAllowed: false,
             remainingCount: 0,
-            tweetIds: [tweet.id_str]
+            tweetIds: [BigInt(tweet.id_str)]
         },
         isExpandable: false,
         isTranslatable: !!tweet.translatable,
@@ -205,10 +207,10 @@ export function tweetLegacy(tweet: any, author: any, quotedTweet?: any, quotedTw
             ['Verified', ReplyPermission.Verified],
             ['ByInvitation', ReplyPermission.Mentioned]
         ], ReplyPermission.Everyone),
-        replyingTo: {
-            tweetId: tweet.in_reply_to_status_id_str || undefined,
-            username: tweet.in_reply_to_screen_name || undefined
-        },
+        replyingTo: !!tweet.in_reply_to_status_id_str ? {
+            tweetId: BigInt(tweet.in_reply_to_status_id_str),
+            username: tweet.in_reply_to_screen_name
+        } : undefined,
         retweeted: !!tweet.retweeted,
         retweetsCount: tweet.retweet_count || 0,
         text: tweet.full_text
@@ -292,26 +294,26 @@ export function mediaEntries(instructions: any, gridModule?: { content: object, 
 
 export function draftTweet(value: any): DraftTweet {
     return {
-        id: value.rest_id,
+        id: BigInt(value.rest_id),
         text: value.tweet_create_request?.status,
-        mediaIds: value.tweet_create_request?.media_ids,
+        mediaIds: (value.tweet_create_request?.media_ids || []).map(BigInt),
         thread: (value.tweet_create_request?.thread_tweets || []).map((x: any) => ({
             text: x.status,
-            media_ids: x.media_ids
-        }))
+            mediaIds: (x.media_ids || []).map(BigInt)
+        } satisfies DraftTweet['thread'][number]))
     };
 }
 
 export function scheduledTweet(value: any): ScheduledTweet {
     return {
-        id: value.rest_id,
+        id: BigInt(value.rest_id),
         sendAt: new Date(value.sceduling_info?.execute_at).toISOString(),
         text: value.tweet_create_request?.status,
-        mediaIds: value.tweet_create_request?.media_ids,
+        mediaIds: (value.tweet_create_request?.media_ids || []).map(BigInt),
         thread: (value.tweet_create_request?.thread_tweets || []).map((x: any) => ({
             text: x.status,
-            media_ids: x.media_ids
-        }))
+            mediaIds: (x.media_ids || []).map(BigInt)
+        } satisfies ScheduledTweet['thread'][number]))
     };
 }
 
@@ -330,9 +332,9 @@ export function card(value: any): CardKind | undefined {
     const choiceCount = Number(get(bv, 'choice_count')?.string_value || '0');
 
     const common = {
-        card_name: value.name,
-        card_url: value.url
-    };
+        cardName: value.name,
+        cardUrl: value.url
+    } satisfies Partial<CardKind>;
 
     if (value.name.includes(':audiospace')) {
         return {
@@ -347,8 +349,8 @@ export function card(value: any): CardKind | undefined {
             __typename: 'Broadcast',
             author: p.user(value.user_refs_results?.at(0)?.result) as User,
             hasEnded: get(bv, 'broadcast_state')?.string_value?.toUpperCase() === 'ENDED',
-            id: get(bv, 'broadcast_id')?.string_value!,
-            mediaId: get(bv, 'broadcast_media_id')?.string_value!,
+            id: BigInt(get(bv, 'broadcast_id')?.string_value!),
+            mediaId: BigInt(get(bv, 'broadcast_media_id')?.string_value!),
             mediaKey: get(bv, 'broadcast_media_key')?.string_value!,
             thumbnail: get(bv, 'broadcast_thumbnail_original')?.image_value,
             title: get(bv, 'title')?.string_value!,
@@ -370,7 +372,7 @@ export function card(value: any): CardKind | undefined {
                 return {
                     text: get(bv, `choice${i + 1}_label`)?.string_value || '',
                     image: get(bv, `choice${i + 1}_image`)?.image_value,
-                    votes_count: votes
+                    votesCount: votes
                 };
             }),
             duration: Number(get(bv, 'duration_minutes')?.string_value || '0') * 60,
@@ -396,7 +398,7 @@ export function card(value: any): CardKind | undefined {
 
 export function mediaUpload(value: any): Media {
     return {
-        id: value.media_id_string,
+        id: BigInt(value.media_id_string),
         mediaKey: value.media_key,
         bytes: value.size || 0,
         contentType: value.image?.image_type || value.video?.video_type || 'image/gif',

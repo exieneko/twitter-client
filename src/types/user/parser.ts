@@ -20,7 +20,7 @@ export function user(value: any): UserKind {
 
         return {
             __typename: 'User',
-            id: value.rest_id,
+            id: BigInt(value.rest_id),
             affiliatesCount: value.business_account?.affiliates_count || 0,
             affiliateLabel: !!value.affiliates_highlighted_label?.label?.badge?.url && value.affiliates_highlighted_label.label.userLabelType !== 'AutomatedLabel' ? {
                 title: value.affiliates_highlighted_label.label.description,
@@ -56,7 +56,9 @@ export function user(value: any): UserKind {
             location: !!value.location.location ? value.location.location : undefined,
             muted: !!value.relationship_perspectives.muting,
             name: value.core.name,
-            pinnedTweetId: value.legacy.pinned_tweet_ids_str.at(0),
+            pinnedTweetId: value.legacy.pinned_tweet_ids_str.length > 0
+                ? BigInt(value.legacy.pinned_tweet_ids_str[0])
+                : undefined,
             protected: !!value.privacy.protected,
             superFollowingCount: value.creator_subscriptions_count || 0,
             superFollowingHidden: !!value.has_hidden_subscriptions_on_profile,
@@ -90,7 +92,7 @@ export function user(value: any): UserKind {
 export function userLegacy(value: any): User {
     return {
         __typename: 'User',
-        id: value.id_str,
+        id: BigInt(value.id_str),
         affiliatesCount: 0,
         avatarUrl: value.profile_image_url_https.replace('normal', '400x400'),
         bannerUrl: value.profile_banner_url || undefined,
@@ -134,7 +136,7 @@ export function userLegacy(value: any): User {
 export function aboutUser(value: any): AboutUser {
     return {
         __typename: 'AboutUser',
-        id: value.rest_id,
+        id: BigInt(value.rest_id),
         avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
         basedIn: value.about_profile?.account_based_in,
         createdAt: new Date(value.core.created_at).toISOString(),

@@ -4,6 +4,6 @@
 export interface Typeahead {
     resultsCount: number,
     topics: string[],
-    userIds: string[],
+    userIds: bigint[],
     query: string
 }

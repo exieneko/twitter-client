@@ -33,7 +33,7 @@ export function birdwatchUser(value: any, isAi: boolean): BirdwatchUser {
 export function birdwatchNote(value: any): BirdwatchNote {
     return {
         __typename: 'BirdwatchNote',
-        id: value.rest_id,
+        id: BigInt(value.rest_id),
         author: birdwatchUser(value.birdwatch_profile, !!value.is_api_author),
         byMedia: !!value.is_media_note,
         byUrl: !!value.is_url_note,

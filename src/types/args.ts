@@ -97,7 +97,7 @@ export type BirdwatchNoteSource = Enum<typeof BirdwatchNoteSource>;
  */
 export interface BirdwatchRateNoteArgs {
     /** Tweet id containing the note */
-    tweetId: string,
+    tweetId: string | bigint,
     /** Tags showing why this note should be displayed */
     helpfulTags?: BirdwatchHelpfulTag[],
     /** Tags showing why this note should not be displayed */
@@ -210,7 +210,7 @@ export type TimelineKind = Enum<typeof TimelineKind>;
  */
 export interface TimelineGetArgs extends CursorOnly, OrderBy<TimelineKind> {
     /** Tweet ids of already seen tweets */
-    seenTweetIds?: string[]
+    seenTweetIds?: (string | bigint)[]
 }
 
 /**
@@ -218,7 +218,7 @@ export interface TimelineGetArgs extends CursorOnly, OrderBy<TimelineKind> {
  */
 export interface TweetVoteArgs {
     /** Tweet id the poll is on */
-    tweetId: string,
+    tweetId: string | bigint,
     /** Card uri of the poll */
     cardUri: string,
     /** Card name */
@@ -239,15 +239,15 @@ export interface TweetCreateArgs {
         duration: number,
         choices: {
             text: string,
-            mediaId?: string
+            mediaId?: string | bigint
         }[]
     },
     /** Tweet content disclosures */
     contentDisclosures?: Partial<Tweet['contentDisclosures']>,
     /** Tweet id to reply to */
-    replyTo?: string,
+    replyTo?: string | bigint,
     /** Media ids to attach to the tweet. Tweets with over 4 medias can only be sent as a note tweet */
-    mediaIds?: string[],
+    mediaIds?: (string | bigint)[],
     /** Mark this tweet as sensitive? */
     sensitive?: boolean,
     /** Control who can reply to this tweet */
@@ -261,7 +261,7 @@ export interface ThreadTweetArgs {
     /** Content of the tweet. Up to 280 characters */
     text?: string,
     /** Up to 4 media ids to attach to the tweet */
-    mediaIds?: string[]
+    mediaIds?: (string | bigint)[]
 }
 
 /**
