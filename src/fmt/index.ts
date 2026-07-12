@@ -1,6 +1,7 @@
 import type { TwitterClient } from '../client.js';
 import { TwitterError } from '../types/index.js';
-import type { AsyncConstructor } from '../types/internal.js';
+import type { Type } from '../types/internal/index.js';
+import type { Model } from '../types/internal/model.js';
 import { err, warn } from '../utils/index.js';
 
 export class TwitterFormatter {
@@ -14,15 +15,13 @@ export class TwitterFormatter {
 
 
 
-    async next<This, Fn extends AsyncConstructor<This, any>>(fn: Fn, value: Parameters<Fn>[1]): Promise<This>;
-    async next<This, Fn extends AsyncConstructor<This, any, Record<string, any>>>(fn: Fn, value: Parameters<Fn>[1], opts: Parameters<Fn>[2]): Promise<This>;
-
-    async next<This, Fn extends AsyncConstructor<This, any, Record<string, any> | null>>(fn: Fn, value: Parameters<Fn>[1], opts?: Parameters<Fn>[2]): Promise<This> {
+    async next<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>>(model: M, value: Parameters<M['new']>[1], ...rest: [Parameters<M['new']>[2]] extends [null | undefined] ? [] : [opts: Parameters<M['new']>[2]]): Promise<This> {
         this.depth++;
+        const opts = rest[0];
 
         try {
             // @ts-ignore
-            const result = await fn(this, value, opts);
+            const result = await model.new(this, await value, opts);
             this.depth--;
             return result;
         } catch (error: any) {
@@ -37,7 +36,7 @@ export class TwitterFormatter {
             this.depth--;
 
             if (this.depth < 0) {
-                warn(this, `Formatter \`depth\` went below 0 (${this.depth})`);
+                warn(this, `Formatter depth went below 0 (${this.depth})`);
             }
 
             try {
@@ -46,5 +45,25 @@ export class TwitterFormatter {
                 return { __typename: 'Error' } as This;
             }
         }
+    }
+
+    async nextIf<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>>(model: M, value: Parameters<M['new']>[1], ...rest: [Parameters<M['new']>[2]] extends [null | undefined] ? [] : [opts: Parameters<M['new']>[2]]): Promise<This | undefined> {
+        if (typeof value === 'undefined' || value === null) {
+            return;
+        }
+
+        // @ts-ignore
+        return await this.next(model, value, rest[0]);
+    }
+
+    entries(instructions: { type?: string, entries?: any[] }[]): any[] {
+        const pin = instructions.find(instruction => instruction.type === 'TimelinePinEntry') as { type: 'TimelinePinEntry', entry: any } | undefined;
+        const entries = instructions.find(instruction => instruction.type === 'TimelineAddEntries')?.entries || [];
+
+        if (pin) {
+            return [pin.entry, ...entries];
+        }
+
+        return entries;
     }
 }

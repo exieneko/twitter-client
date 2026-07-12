@@ -1,26 +1,7 @@
-import type { TwitterClient } from '../client.js';
-import { PUBLIC_TOKEN } from '../consts.js';
-import type { Flags } from '../flags.js';
-import type { TwitterFormatter } from '../fmt/index.js';
-
-export type Enum<T> = T[keyof T];
-
-export interface Type<K extends string = string> {
-    __typename: K
-}
-
-export type AsyncConstructor<This, T = any, O extends Record<string, any> | null = null> = O extends null
-    ? (fmt: TwitterFormatter, value: T) => Promise<This>
-    : (fmt: TwitterFormatter, value: T, opts: O) => Promise<This>;
-
-
-
-export interface Account {
-    id: number,
-    client: TwitterClient,
-    // TODO: make this read the rate limit header instead of just increasing the count for every action
-    uses: number
-}
+import type { AsyncConstructor, Enum, Type } from './index.js';
+import { PUBLIC_TOKEN } from '../../consts.js';
+import type { Flags } from '../../flags.js';
+import type { TwitterFormatter } from '../../fmt/index.js';
 
 export class Endpoint<T = any, P extends object = {}, V extends object = {}> {
     url: string;
@@ -31,7 +12,7 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> {
     requiresTransactionId: boolean;
     _params: P;
 
-    constructor(opts: { url: string, method: 'get' | 'post', variables?: V, features?: Flags, token?: string, requiresTransactionId?: boolean }, public format: AsyncConstructor<T>) {
+    constructor(opts: { url: string, method: 'get' | 'post', variables?: V, features?: Flags, token?: string, requiresTransactionId?: boolean }, public fmt: T extends Type ? AsyncConstructor<T> : (fmt: TwitterFormatter, value: Record<string, any>) => T) {
         this.url = opts.url;
         this.method = opts.method;
         this.variables = opts.variables;
@@ -79,13 +60,3 @@ export type EndpointKind = Enum<typeof EndpointKind>;
 export interface EndpointGroup {
     [key: string]: Endpoint
 }
-
-
-
-type OptionalUndefined<T extends object | undefined> = {
-    [K in keyof T as undefined extends T[K] ? K : never]?: T[K];
-} & {
-    [K in keyof T as undefined extends T[K] ? never : K]: T[K];
-};
-
-export type Params<T extends { _params?: object }> = OptionalUndefined<T['_params']>;

@@ -1,5 +1,5 @@
+import type { Enum } from './internal/index.js';
 import { match } from '../utils/index.js';
-import type { Enum } from './internal.js';
 
 /**
  * Primary identifier of Twitter errors
@@ -19,6 +19,7 @@ export const TwitterErrorCode = {
     Unknown: 0,
     /** Feature is not implemented */
     NotImplemented: 1001,
+    IncorrectAssertion: 1002,
     /** Tweet exceeds 280 characters and options to proceed are turned off */
     InvalidTweetTextLength: 1010,
     /** Tweet media array length exceeds 4 */
@@ -34,6 +35,7 @@ export type TwitterErrorCode = Enum<typeof TwitterErrorCode>;
 export const TwitterErrorKind = {
     Validation: 'Validation',
     Permissions: 'Permissions',
+    TypeError: 'TypeError',
     Other: 'Other',
     Unknown: 'Unknown'
 } as const;
@@ -74,14 +76,15 @@ export class TwitterError extends Error {
             // create object from code only
             let [kind, message]: [TwitterErrorKind, string] = match(value, [
                 [TwitterErrorCode.NotImplemented, [TwitterErrorKind.Other, 'This functionality is not implemented yet']],
-                [TwitterErrorCode.InvalidTweetTextLength, [TwitterErrorKind.Validation, 'Tweet exceeded limit of 280 characters']],
-                [TwitterErrorCode.InvalidMediaCount, [TwitterErrorKind.Validation, 'Tweet exceeded limit of 4 media attachments']],
-                [TwitterErrorCode.InvalidPollChoicesCount, [TwitterErrorKind.Validation, 'Polls must have 2-4 choices']],
-                [TwitterErrorCode.InvalidVoteIndex, [TwitterErrorKind.Validation, 'Polls must have 2-4 choices']],
+                [TwitterErrorCode.IncorrectAssertion, [TwitterErrorKind.TypeError, 'Type assertion of {0} to {1} failed']],
+                [TwitterErrorCode.InvalidTweetTextLength, [TwitterErrorKind.Validation, 'Tweet exceeded limit of 280 characters (found: {0})']],
+                [TwitterErrorCode.InvalidMediaCount, [TwitterErrorKind.Validation, 'Tweet exceeded limit of 4 media attachments (found: {0})']],
+                [TwitterErrorCode.InvalidPollChoicesCount, [TwitterErrorKind.Validation, 'Polls must have 2-4 choices (found: {0})']],
+                [TwitterErrorCode.InvalidVoteIndex, [TwitterErrorKind.Validation, 'Polls must have 2-4 choices (found: {0})']],
             ], [TwitterErrorKind.Unknown, TwitterError.DEFAULT_MESSAGE]);
 
             if (options?.data) {
-                message += ` (found: ${options.data})`;
+                message = message.replace(/\{(\d+)\}/g, (_, g1) => options.data!.at(Number(g1)));
             }
 
             const name = Object.entries(TwitterErrorCode).find(([, v]) => v === value)?.[0];
@@ -147,7 +150,7 @@ export class TwitterError extends Error {
 
 export interface TwitterErrorOptions extends ErrorOptions {
     /** Additional optional data shown in some error messages */
-    data?: string | number | boolean,
+    data?: any[],
     stack?: string,
     path?: string[]
 }

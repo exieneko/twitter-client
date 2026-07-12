@@ -1,8 +1,8 @@
 import logger from 'node-color-log';
 import { TwitterClient } from '../client.js';
-import { type Endpoint, EndpointKind } from '../types/internal.js';
 import { TwitterFormatter } from '../fmt/index.js';
-import { TwitterOptions } from '../types/index.js';
+import { TwitterError, TwitterErrorCode, TwitterOptions } from '../types/index.js';
+import type { Type } from '../types/internal/index.js';
 
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][]): V | undefined;
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][], or: V | (() => V)): V;
@@ -27,6 +27,18 @@ export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (
     }
 
     return or;
+}
+
+
+
+export function assert<T extends U, U extends Type>(value: U, desiredType: U['__typename'] | U['__typename'][]): T {
+    if (typeof desiredType === 'string' ? value.__typename !== desiredType : !desiredType.includes(value.__typename)) {
+        throw new TwitterError(TwitterErrorCode.IncorrectAssertion, {
+            data: [value.__typename, desiredType]
+        });
+    }
+
+    return value as T;
 }
 
 

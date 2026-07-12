@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import type { AboutUser, BirdwatchHelpfulTag, BirdwatchNotesOnTweet, BirdwatchUnhelpfulTag, BirdwatchUser, CommunityKind, DraftTweet, List, ListKind, Media, MediaUploadInit, Notification, ScheduledTweet, Settings, Slice, Trend, Tweet, TweetKind, TweetTombstone, TwitterResponse, Typeahead, UnreadCount, User, UserKind } from './types/index.js';
-import { Endpoint, type EndpointGroup } from './types/internal.js';
+import { Endpoint, type EndpointGroup } from './types/internal/index.js';
 import * as parsers from './types/parsers.js';
 import { gql, v11 } from './utils/index.js';
 

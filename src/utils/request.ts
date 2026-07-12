@@ -4,9 +4,9 @@ import { hrtime } from 'process';
 import { err, log, toSearchParams, warn } from './index.js';
 import { GLOBAL_HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, PUBLIC_TOKEN } from '../consts.js';
 import type { TwitterOptions, TwitterTokens } from '../types/index.js';
-import { EndpointKind, type Endpoint, type Params } from '../types/internal.js';
+import { EndpointKind, type Endpoint, type EndpointParams } from '../types/internal/index.js';
 
-export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: Params<EP> | undefined, options: TwitterOptions, tokens: TwitterTokens, proxyAgent?: ProxyAgent, userId?: bigint, transactionId?: string, body?: BodyInit): Promise<[T | E, Response?]> {
+export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: EndpointParams<EP> | undefined, options: TwitterOptions, tokens: TwitterTokens, proxyAgent?: ProxyAgent, userId?: bigint, transactionId?: string, body?: BodyInit): Promise<[T | E, Response?]> {
     const start = hrtime.bigint();
 
     const headers: Record<string, string> = {
@@ -80,7 +80,7 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
     }
 }
 
-async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: Params<EP> | undefined, headers: Record<string, string>, proxyAgent?: ProxyAgent) {
+async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: EndpointParams<EP> | undefined, headers: Record<string, string>, proxyAgent?: ProxyAgent) {
     const variables = { ...endpoint.variables, ...params };
 
     try {
@@ -99,7 +99,7 @@ async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string,
     }
 }
 
-async function sendRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: Params<EP> | undefined, headers: Record<string, any>, proxyAgent?: ProxyAgent, mediaFormData?: BodyInit) {
+async function sendRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: EndpointParams<EP> | undefined, headers: Record<string, any>, proxyAgent?: ProxyAgent, mediaFormData?: BodyInit) {
     const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
 
     try {

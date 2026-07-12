@@ -1,6 +1,6 @@
 import { TwitterClient } from './client.js';
 import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TwitterTokens, TweetGetArgs, UserTweetsGetArgs } from './types/index.js';
-import type { Account } from './types/internal.js';
+import type { Account } from './types/internal/index.js';
 
 /**
  * Asyncronous client utilizing `TwitterClient` instances to make requests to the Twitter browser API using several users

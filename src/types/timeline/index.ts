@@ -1,10 +1,10 @@
-import type { TwitterResponse } from './index.js';
-import type { Enum, Type } from './internal.js';
+import type { Slice, TwitterResponse } from '../index.js';
+import type { Enum, Model, Type } from '../internal/index.js';
 
 /**
  * Entry in a timeline containing the item
  */
-export interface Entry<T extends Type<string>> {
+export interface Entry<T extends Type> {
     id: string,
     content: T
 }
@@ -18,22 +18,6 @@ export interface TimelineSegment {
 }
 
 /**
- * Slice of a timeline
- */
-export interface Slice<T extends Type<string>> {
-    name?: string,
-    segments?: TimelineSegment[],
-    /** Timeline entries in this slice */
-    entries: Entry<T | Cursor>[],
-    /** Cloned top and bottom cursor values in `entries` */
-    cursors: {
-        previous?: string,
-        next?: string
-    }
-}
-
-
-/**
  * `AsyncGenerator` yielding a slice of `T`, where `T` is always an item inside of a timeline entry. Will return an empty slice when done
  * 
  * @example
@@ -45,7 +29,7 @@ export interface Slice<T extends Type<string>> {
  * 
  * @see {@link TwitterResponse}
  */
-export type Timeline<T extends Type<string>> = AsyncGenerator<TwitterResponse<Slice<T>>, TwitterResponse<Slice<T>>, unknown>;
+export type Timeline<T extends Type> = AsyncGenerator<TwitterResponse<Slice<T>>, TwitterResponse<Slice<T>>, unknown>;
 
 
 
@@ -56,6 +40,21 @@ export interface Cursor extends Type<'Cursor'> {
     direction: CursorDirection,
     value: string
 }
+export const Cursor: Model<Cursor> = {
+    async new(_, value) {
+        return {
+            __typename: 'Cursor',
+            direction: value.cursorType === 'Top'
+                ? CursorDirection.Previous
+            : value.cursorType === 'ShowMore'
+                ? CursorDirection.ShowMore
+            : value.cursorType === 'ShowMoreThreads'
+                ? CursorDirection.ShowSpam
+                : CursorDirection.Next,
+            value: value.value
+        };
+    }
+};
 
 /**
  * Cursor type showing what fetching the next slice of the timeline with the cursor will do

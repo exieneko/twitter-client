@@ -1,18 +1,24 @@
 import type { TwitterError } from './error.js';
-import type { Enum } from './internal.js';
+import type { Enum } from './internal/index.js';
 
-export * from './account/index.js';
-export * from './birdwatch/index.js';
-export * from './community/index.js';
-export * from './discover/index.js';
-export * from './list/index.js';
-export * from './notifications/index.js';
-export * from './search/index.js';
-export * from './tweet/index.js';
-export * from './user/index.js';
 export * from './args.js';
 export * from './error.js';
-export * from './timeline.js';
+
+export * from './account.js';
+export * from './birdwatch.js';
+export * from './community.js';
+export * from './discover.js';
+export * from './list.js';
+export * from './timeline/index.js';
+export * from './timeline/slice.js';
+export * from './tweet/index.js';
+export * from './tweet/card.js';
+export * from './tweet/media.js';
+export * from './notifications.js';
+export * from './search.js';
+export * from './user.js';
+
+export * as InternalTypes from './internal/index.js';
 
 /**
  * Response object returned by all methods on `TwitterClient`. Contains an `errors` array and optional `data` if the request was successful

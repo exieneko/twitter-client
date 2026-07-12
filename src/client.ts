@@ -5,7 +5,7 @@ import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
-import { AsyncConstructor, type Endpoint, type Params, type Type } from './types/internal.js';
+import { AsyncConstructor, type Endpoint, type EndpointParams, type Type } from './types/internal/index.js';
 import { err, log, match, warn } from './utils/index.js';
 import { parseQuery, type Query } from './utils/query.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
@@ -157,7 +157,7 @@ export class TwitterClient {
      * @returns Expected awaited return type of the target endpoint's `format` method
      * @see {@link Endpoint}
      */
-    private async fetch<EP extends Endpoint, In = Parameters<EP['format']>[1], Out = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: Params<EP>): Promise<TwitterResponse<Out>> {
+    private async fetch<EP extends Endpoint, In = Parameters<EP['fmt']>[1], Out = Awaited<ReturnType<EP['fmt']>>>(endpoint: EP, params?: EndpointParams<EP>): Promise<TwitterResponse<Out>> {
         // TODO: re-add timing functions, logs, etc
 
         const [json] = await request<EP, In>(
@@ -166,7 +166,7 @@ export class TwitterClient {
             this.options,
             this.#tokens,
             this.#proxyAgent,
-            this.self?.id,
+            this.self?.id.toString(),
             await this.getTransactionId(endpoint)
         );
 
@@ -189,7 +189,7 @@ export class TwitterClient {
         const fmt = new TwitterFormatter(this);
 
         try {
-            const result = await fmt.next<Out, AsyncConstructor<Out, NonNullable<In>>>(endpoint.format, json);
+            const result = await fmt.next<Out, AsyncConstructor<Out, NonNullable<In>>>(endpoint.fmt, json);
 
             return {
                 data: result,
