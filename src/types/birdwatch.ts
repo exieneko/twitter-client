@@ -1,4 +1,4 @@
-import type { Enum, Model, Type } from './internal/index.js';
+import type { Default, Enum, Model, Type } from './internal/index.js';
 import { match } from '../utils/index.js';
 
 /**
@@ -73,7 +73,7 @@ export const BirdwatchNote: Model<BirdwatchNote> = {
 /**
  * All notes on a tweet, both ones in support of showing under the tweet, and ones arguing that a note isn't needed
  */
-export interface BirdwatchNotesOnTweet {
+export interface TweetBirdwatchNotes extends Type<'TweetBirdwatchNotes'> {
     /** `true` if you can write a note on this tweet */
     canWriteNote: boolean,
     /** Proposed Birdwatch notes */
@@ -81,6 +81,24 @@ export interface BirdwatchNotesOnTweet {
     /** "No note needed" notes */
     notNeededNotes: BirdwatchNote[]
 }
+export const TweetBirdwatchNotes: Model<TweetBirdwatchNotes> & Default<TweetBirdwatchNotes> = {
+    async new(fmt, value) {
+        return {
+            __typename: 'TweetBirdwatchNotes',
+            canWriteNote: !!value.can_user_write_notes_on_post_author,
+            pendingNotes: await Promise.all((value.misleading_birdwatch_notes?.notes as any[] || []).map(note => fmt.next(BirdwatchNote, note))),
+            notNeededNotes: await Promise.all((value.not_misleading_birdwatch_notes?.notes as any[] || []).map(note => fmt.next(BirdwatchNote, note)))
+        };
+    },
+    default() {
+        return {
+            __typename: 'TweetBirdwatchNotes',
+            canWriteNote: false,
+            pendingNotes: [],
+            notNeededNotes: []
+        };
+    }
+};
 
 
 
@@ -108,12 +126,12 @@ export interface BirdwatchUser extends Type<'BirdwatchUser'> {
         updatedAt: string
     }
 }
-export const BirdwatchUser: Model<BirdwatchUser, null, { isAi: boolean }> = {
+export const BirdwatchUser: Model<BirdwatchUser, null, { isAi?: boolean }> = {
     async new(_, value, opts) {
         return {
             __typename: 'BirdwatchUser',
             alias: value.alias,
-            isAi: !!value.is_api_contributor || opts.isAi,
+            isAi: !!value.is_api_contributor || !!opts.isAi,
             ratings: {
                 successful: {
                     helpfulCount: value.ratings_count?.successful?.helpful_count || 0,

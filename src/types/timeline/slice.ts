@@ -16,12 +16,12 @@ export interface Slice<T extends Type> extends Type<'Slice'> {
     }
 }
 export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, any> }> & WithMethods<[
-    ['discover', TweetKind | Trend, { body: Record<string, any> }],
-    ['list', ListKind, { type: 'Default' | 'Discovery' }],
+    ['discover', TweetKind | Trend, { root: Record<string, any> }],
+    ['lists', ListKind, { type: 'Default' | 'Discovery' }],
     ['notifications', Notification],
     ['search', TweetKind | UserKind | ListKind, { searchItemType: 'Tweet' | 'User' | 'List' }],
     ['trends', Trend],
-    ['tweets', TweetKind, { type: 'Default' } | { type: 'Birdwatch', body: Record<string, any> } | { type: 'Media', gridModule?: { content: object, key: string } } | { type: 'DeviceFollow', globalObjects: Record<string, any> }],
+    ['tweets', TweetKind, { type: 'Default' } | { type: 'Birdwatch', root: Record<string, any> } | { type: 'Media', gridModule?: { content: object, key: string } } | { type: 'DeviceFollow', globalObjects: Record<string, any> }],
     ['users', UserKind]
 ]> & Default<Slice<any>> = {
     async new(_, value, opts) {
@@ -56,9 +56,9 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
                 } satisfies Entry<TweetKind | Trend>))
         );
 
-        return await fmt.next(this, entries, { body: opts.body });
+        return await fmt.next(this, entries, { body: opts.root });
     },
-    async list(fmt, value, opts) {
+    async lists(fmt, value, opts) {
         let entries: Entry<ListKind | Cursor>[];
 
         if (opts.type === 'Discovery') {
@@ -223,7 +223,7 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
             .all(entries)
             .then(arr => arr.filter(entry => !!entry));
 
-        return await fmt.next(this, result, opts.type === 'Birdwatch' ? { body: opts.body } : {});
+        return await fmt.next(this, result, opts.type === 'Birdwatch' ? { body: opts.root } : {});
     },
     async users(fmt, value) {
         const entries = await Promise.all(

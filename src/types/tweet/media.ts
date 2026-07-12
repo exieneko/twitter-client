@@ -106,19 +106,6 @@ export const TweetGif: Wrapped<TweetMedia, Model<TweetGif>> = {
 };
 
 /**
- * Availability status of a media
- * 
- * @enum
- */
-export const TweetMediaAvailability = {
-    Available: 'Available',
-    Copyright: 'Copyright',
-    GeoBlocked: 'GeoBlocked',
-    Other: 'Other'
-} as const;
-export type TweetMediaAvailability = Enum<typeof TweetMediaAvailability>;
-
-/**
  * Tweet media
  */
 export type TweetMedia = TweetImage | TweetGif | TweetVideo;
@@ -146,7 +133,7 @@ export interface MediaUploadInit {
 /**
  * Data about an uploaded media file
  */
-export interface Media {
+export interface MediaData extends Type<'MediaData'> {
     id: bigint,
     mediaKey: string,
     /** Size of the media in bytes */
@@ -161,12 +148,48 @@ export interface Media {
     height?: number,
     /** Information about how Twitter handled the uploaded media */
     processing?: {
-        /**
-         * `succeeded` means the media has been uploaded  
-         * `failed` means the media has been rejected  
-         * `pending` means a separate STATUS request needs to be made to get missing information
-         */
-        state: 'succeeded' | 'failed' | 'pending',
+        state: MediaState,
         progress?: number
     }
 }
+export const MediaData: Model<MediaData> = {
+    async new(fmt, value) {
+        return {
+            __typename: 'MediaData',
+            id: BigInt(value.media_id_string),
+            mediaKey: value.media_key,
+            bytes: value.size || 0,
+            contentType: value.image?.image_type || value.video?.video_type || 'image/gif',
+            expiresIn: value.expires_after_secs || 0,
+            width: value.image?.w || 1,
+            height: value.image?.h || 1,
+            processing: value.processing_info ? {
+                state: match(value.processing_info.state, [
+                    ['succeeded', MediaState.Success],
+                    ['failed', MediaState.Failure]
+                ], MediaState.Pending),
+                progress: value.processing_info?.progress_percent || 0
+            } : undefined
+        };
+    }
+};
+
+/**
+ * Availability status of a media
+ * 
+ * @enum
+ */
+export const TweetMediaAvailability = {
+    Available: 'Available',
+    Copyright: 'Copyright',
+    GeoBlocked: 'GeoBlocked',
+    Other: 'Other'
+} as const;
+export type TweetMediaAvailability = Enum<typeof TweetMediaAvailability>;
+
+export const MediaState = {
+    Success: 'Succeeded',
+    Failure: 'Failed',
+    Pending: 'Pending'
+} as const;
+export type MediaState = Enum<typeof MediaState>;

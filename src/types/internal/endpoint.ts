@@ -3,7 +3,16 @@ import { PUBLIC_TOKEN } from '../../consts.js';
 import type { Flags } from '../../flags.js';
 import type { TwitterFormatter } from '../../fmt/index.js';
 
-export class Endpoint<T = any, P extends object = {}, V extends object = {}> {
+export interface EndpointOptions<V extends object = {}> {
+    url: string,
+    method: 'get' | 'post',
+    variables?: V,
+    features?: Flags,
+    token?: string,
+    requiresTransactionId?: boolean
+}
+
+export class Endpoint<T = any, P extends object = any, V extends object = {}> implements EndpointOptions {
     url: string;
     method: 'get' | 'post';
     variables?: V;
@@ -12,7 +21,7 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> {
     requiresTransactionId: boolean;
     _params: P;
 
-    constructor(opts: { url: string, method: 'get' | 'post', variables?: V, features?: Flags, token?: string, requiresTransactionId?: boolean }, public fmt: T extends Type ? AsyncConstructor<T> : (fmt: TwitterFormatter, value: Record<string, any>) => T) {
+    constructor(opts: EndpointOptions<V>, public format: (fmt: TwitterFormatter, value: Record<string, any>) => Promise<T>) {
         this.url = opts.url;
         this.method = opts.method;
         this.variables = opts.variables;

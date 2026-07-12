@@ -4,7 +4,7 @@ import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { TwitterFormatter } from './fmt/index.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type Media, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
 import { AsyncConstructor, type Endpoint, type EndpointParams, type Type } from './types/internal/index.js';
 import { err, log, match, warn } from './utils/index.js';
 import { parseQuery, type Query } from './utils/query.js';
@@ -146,27 +146,29 @@ export class TwitterClient {
      * If set, `params`, will be appended to the body of the request, the type of which is inferred from the pathname and method of the endpoint. This object is sent to the API as is, so the keys must have the name Twitter expects
      * 
      * @example
-     * const { errors, data: user } = await this.fetch(new Endpoint<ReturnType, { screen_name: string }>({
-     *     url: 'https://twitter.com/i/api/graphql/-oaLodhGbbnzJBACb1kk2Q/UserByScreenName',
-     *     method: 'get',
-     *     features: {}
-     * }, async (fmt, value) => fmt.next(doSomethingWith(value))));
+     * import { InternalTypes as T } from '@exieneko/twitter-client/types';
+     * 
+     * const { errors, data: user } = await this.fetch(
+     *     new T.Endpoint<ReturnType, { screen_name: string }>({
+     *         url: 'https://twitter.com/i/api/graphql/-oaLodhGbbnzJBACb1kk2Q/UserByScreenName',
+     *         method: 'get',
+     *         features: {}
+     *     }, (fmt, value) => Promise.resolve(...))
+     * );
      * 
      * @param endpoint Target endpoint
      * @param params Dynamic parameters to send to the endpoint
      * @returns Expected awaited return type of the target endpoint's `format` method
      * @see {@link Endpoint}
      */
-    private async fetch<EP extends Endpoint, In = Parameters<EP['fmt']>[1], Out = Awaited<ReturnType<EP['fmt']>>>(endpoint: EP, params?: EndpointParams<EP>): Promise<TwitterResponse<Out>> {
-        // TODO: re-add timing functions, logs, etc
-
+    async fetch<EP extends Endpoint, In = Parameters<EP['format']>[1], Out = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: EndpointParams<EP>): Promise<TwitterResponse<Out>> {
         const [json] = await request<EP, In>(
             endpoint,
             params,
             this.options,
             this.#tokens,
             this.#proxyAgent,
-            this.self?.id.toString(),
+            this.self?.id,
             await this.getTransactionId(endpoint)
         );
 
@@ -174,10 +176,8 @@ export class TwitterClient {
             return {
                 errors: [new TwitterError(json)]
             };
-        // @ts-ignore
-        } else if (json?.errors && !json.data) {
+        } else if (json && typeof json === 'object' && 'errors' in json && !('data' in json) && Array.isArray(json.errors)) {
             return {
-                // @ts-ignore
                 errors: TwitterError.from(json.errors)
             };
         } else if (!json) {
@@ -189,7 +189,7 @@ export class TwitterClient {
         const fmt = new TwitterFormatter(this);
 
         try {
-            const result = await fmt.next<Out, AsyncConstructor<Out, NonNullable<In>>>(endpoint.fmt, json);
+            const result = await fmt.format<Out>(endpoint.format, json);
 
             return {
                 data: result,
@@ -849,7 +849,7 @@ export class TwitterClient {
 
     private async getTimelineSlice(idOrArgs: string | bigint | TimelineGetArgs = {}, args?: CursorOnly) {
         if (typeof idOrArgs === 'string' || typeof idOrArgs === 'bigint') {
-            return await this.fetch(ENDPOINTS.GenericTimelineById, { timelineId: idOrArgs.toString(), cursor: args?.cursor });
+            return await this.fetch(ENDPOINTS.GenericTimelineById.default, { timelineId: idOrArgs.toString(), cursor: args?.cursor });
         }
 
         const seenTweetIds = idOrArgs.seenTweetIds?.map(String) ?? [];
@@ -949,7 +949,7 @@ export class TwitterClient {
 
         if (text.length > TWEET_CHARACTER_LIMIT && this.options.longTweetBehavior === 'Fail') {
             return {
-                errors: [new TwitterError(TwitterErrorCode.InvalidTweetTextLength, { data: text.length })]
+                errors: [new TwitterError(TwitterErrorCode.InvalidTweetTextLength, { data: [text.length] })]
             };
         }
 
@@ -967,7 +967,7 @@ export class TwitterClient {
 
         if (args.mediaIds?.length && args.mediaIds.length > 4) {
             return {
-                errors: [new TwitterError(TwitterErrorCode.InvalidMediaCount, { data: args.mediaIds.length })]
+                errors: [new TwitterError(TwitterErrorCode.InvalidMediaCount, { data: [args.mediaIds.length] })]
             };
         }
 
@@ -976,7 +976,7 @@ export class TwitterClient {
         if (args.card?.kind === 'Poll') {
             if (args.card.choices.length < 2 || args.card.choices.length > 4) {
                 return {
-                    errors: [new TwitterError(TwitterErrorCode.InvalidPollChoicesCount, { data: args.card.choices.length })]
+                    errors: [new TwitterError(TwitterErrorCode.InvalidPollChoicesCount, { data: [args.card.choices.length] })]
                 };
             }
 
@@ -1357,7 +1357,7 @@ export class TwitterClient {
     async vote(args: TweetVoteArgs): Promise<TwitterResponse<boolean>> {
         if (args.choice < 1 || args.choice > 4) {
             return {
-                errors: [new TwitterError(TwitterErrorCode.InvalidVoteIndex, { data: args.choice })]
+                errors: [new TwitterError(TwitterErrorCode.InvalidVoteIndex, { data: [args.choice] })]
             };
         }
 
@@ -1842,7 +1842,7 @@ export class TwitterClient {
      * @returns Media
      * @since v0.6.0
      */
-    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => any): Promise<TwitterResponse<Media>> {
+    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => any): Promise<TwitterResponse<MediaData>> {
         const append = async (id: string, data: ArrayBuffer, index: number, contentType: string) => {
             let formData = new FormData();
             formData.append('media', new Blob([data], { type: contentType }));
