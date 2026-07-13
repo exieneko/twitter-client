@@ -161,7 +161,7 @@ export interface NotificationGetArgs extends CursorOnly, Filter<NotificationTime
  * 
  * @enum
  */
-export const SearchKind = {
+export const SearchOrder = {
     /**
      * Most relevant tweet results
      * 
@@ -170,22 +170,41 @@ export const SearchKind = {
     Relevant: 'Relevant',
     /** Latest tweet results */
     Latest: 'Latest',
-    /** Most relevant tweets containing media */
+    /**
+     * Most relevant tweets containing media
+     * 
+     * @deprecated Add "filter:media" to your query or use `Query.hasMedia`
+     */
     Media: 'Media',
-    /** Most relevant users */
+    /**
+     * Most relevant users
+     * 
+     * @deprecated Replaced by `searchUsers` method
+     */
     Users: 'Users',
-    /** Most relevant lists */
+    /**
+     * Most relevant lists
+     * 
+     * @deprecated Replaced by `searchLists` method
+     */
     Lists: 'Lists'
 } as const;
-export type SearchKind = Enum<typeof SearchKind>;
+export type SearchOrder = Enum<typeof SearchOrder>;
+
+/**
+ * Arguments for searching users or lists
+ */
+export interface SearchArgs extends CursorOnly {
+    /** Source for the search. Should be `typed_query` in almost all cases */
+    source?: 'typed_query' | 'recent_search_click'
+}
 
 /**
  * Arguments for searching tweets
  */
-export interface SearchArgs extends CursorOnly {
-    kind?: SearchKind,
-    /** Source for the search. Should be `typed_query` in almost all cases */
-    source?: 'typed_query' | 'recent_search_click'
+export interface SearchTweetArgs extends SearchArgs, OrderBy<SearchOrder> {
+    /** @deprecated Replaced by `orderBy` */
+    kind?: SearchOrder
 }
 
 /**

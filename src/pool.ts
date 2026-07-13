@@ -1,5 +1,5 @@
 import { slice, TwitterClient } from './client.js';
-import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TwitterTokens, TweetGetArgs, UserTweetsGetArgs, TwitterResponse, TwitterOptions, SearchArgs, ListKind, UserKind, TweetKind } from './types/index.js';
+import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TwitterTokens, TweetGetArgs, UserTweetsGetArgs, TwitterResponse, TwitterOptions, SearchTweetArgs, ListKind, UserKind, TweetKind } from './types/index.js';
 import type { Account } from './types/internal/index.js';
 import { Query } from './utils/query.js';
 import { QueryBuilder } from './utils/querybuilder.js';
@@ -102,12 +102,16 @@ export class TwitterPool {
     }
 
 
-    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind?: 'Relevant' | 'Latest' | 'Media' }): Promise<TwitterResponse<TweetKind>>;
-    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind: 'Users' }): Promise<TwitterResponse<UserKind>>;
-    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind: 'Lists' }): Promise<TwitterResponse<ListKind>>;
-    search(query: string | Query | QueryBuilder, args?: SearchArgs): Promise<TwitterResponse<TweetKind | UserKind | ListKind>> {
-        // @ts-ignore
-        return this.client(c => slice(c.search(query, args as any)));
+    search(query: string | Query | QueryBuilder, args?: SearchTweetArgs) {
+        return this.client(c => slice(c.search(query, args)));
+    }
+
+    searchUsers(query: string, args?: SearchTweetArgs) {
+        return this.client(c => slice(c.searchUsers(query, args)));
+    }
+
+    searchLists(query: string, args?: SearchTweetArgs) {
+        return this.client(c => slice(c.searchLists(query, args)));
     }
 
 

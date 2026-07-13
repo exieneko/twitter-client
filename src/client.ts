@@ -4,10 +4,10 @@ import { ClientTransaction, fetchXDocument, handleXMigration } from 'x-client-tr
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { TwitterFormatter } from './fmt/index.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetKind, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs } from './types/index.js';
 import type { Endpoint, EndpointParams, Type } from './types/internal/index.js';
 import { err, log, match, warn } from './utils/index.js';
-import { parseQuery, type Query } from './utils/query.js';
+import { Query } from './utils/query.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 import { request } from './utils/request.js';
 
@@ -24,7 +24,7 @@ import { request } from './utils/request.js';
  * 
  * @param timeline The timeline returned by the generator function
  * @returns Current slice of `T`
- * @since v1.0.0-rc.1
+ * @since v1.0.0-rc.0
  */
 export async function slice<T extends Type>(timeline: Timeline<T>): Promise<TwitterResponse<Slice<T>>> {
     const { value } = await timeline.next();
@@ -48,7 +48,7 @@ export class TwitterClient {
     /**
      * The current user
      * 
-     * @since 1.0.0-rc.1
+     * @since 1.0.0-rc.0
      */
     self?: User;
 
@@ -74,7 +74,7 @@ export class TwitterClient {
      * Fetches the x.com homepage and creates a `ClientTransaction` object, which is used to generate the `x-client-transaction-id` header for endpoints that require it
      * 
      * @returns Promise resolving to a `ClientTransaction`
-     * @since v1.0.0-rc.1
+     * @since v1.0.0-rc.0
      */
     static async _transaction(log: boolean = false): Promise<ClientTransaction | undefined> {
         try {
@@ -97,7 +97,7 @@ export class TwitterClient {
      * @param tokens Your Twitter account's login tokens
      * @param [options] Additional options
      * @returns Promise resolving to `TwitterClient`
-     * @since v1.0.0-rc.1
+     * @since v1.0.0-rc.0
      */
     static async new(tokens: TwitterTokens, options?: Partial<TwitterOptions>): Promise<TwitterClient> {
         const opts: TwitterOptions = {
@@ -240,7 +240,7 @@ export class TwitterClient {
      * Sets the {@link TwitterClient.self} property and returns its value
      * 
      * @returns User
-     * @since v1.0.0-rc.1
+     * @since v1.0.0-rc.0
      */
     async setSelf(): Promise<TwitterResponse<User>> {
         const { errors, data: settings } = await this.getSettings();
@@ -450,7 +450,7 @@ export class TwitterClient {
     }
 
     protected async searchBookmarksSlice(query: string | Query | QueryBuilder, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: parseQuery(query), ...args });
+        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: Query.parse(query), ...args });
     }
 
     /**
@@ -877,43 +877,60 @@ export class TwitterClient {
      * Search tweets
      * 
      * @param query Query
-     * @param [args] {@link SearchArgs}
+     * @param [args] {@link SearchTweetArgs}
      * @yields Slice of tweets
      * @since v0.1.0
      */
-    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind?: 'Relevant' | 'Latest' | 'Media' }): Timeline<TweetKind>;
+    async* search(query: string | Query | QueryBuilder, args?: SearchTweetArgs): Timeline<TweetKind> {
+        const orderBy: SearchOrder = args?.orderBy === SearchOrder.Latest || args?.orderBy === SearchOrder.Relevant
+            ? args.orderBy
+        : args?.kind === SearchOrder.Latest || args?.kind === SearchOrder.Relevant
+            ? args.kind
+            : SearchOrder.Relevant;
+
+        delete args?.kind;
+
+        for await (const slice of this.getSlice({ ...args, orderBy }, args => this.searchSlice(query, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
     /**
      * Search users
      * 
      * @param query Query
-     * @param [args] {@link SearchArgs}
-     * @yields Slice of tweets
+     * @param [args] {@link SearchTweetArgs}
+     * @yields Slice of users
      * @since v0.1.0
      */
-    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind: 'Users' }): Timeline<UserKind>;
+    async* searchUsers(query: string, args?: SearchArgs): Timeline<UserKind> {
+        for await (const slice of this.getSlice(args, args => this.searchUsersSlice(query, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
     /**
      * Search lists
      * 
      * @param query Query
-     * @param [args] {@link SearchArgs}
-     * @yields Slice of tweets
+     * @param [args] {@link SearchTweetArgs}
+     * @yields Slice of lists
      * @since v0.1.0
      */
-    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind: 'Lists' }): Timeline<ListKind>;
-
-    async* search<T extends Type<string>>(query: string | Query | QueryBuilder, args?: SearchArgs): Timeline<T> {
-        for await (const slice of this.getSlice(args, args => this.searchSlice(query, args))) yield slice as TwitterResponse<Slice<T>>;
+    async* searchLists(query: string, args?: SearchArgs): Timeline<ListKind> {
+        for await (const slice of this.getSlice(args, args => this.searchListsSlice(query, args))) yield slice;
         return EMPTY_SLICE;
     }
 
-    protected async searchSlice(query: string | Query | QueryBuilder, args?: SearchArgs) {
-        const product = args?.kind === 'Relevant'
-            ? 'Top'
-        : args?.kind === 'Users'
-            ? 'People'
-            : args?.kind || 'Top';
+    protected async searchSlice(query: string | Query | QueryBuilder, args?: SearchTweetArgs): Promise<TwitterResponse<Slice<TweetKind>>> {
+        const product = args?.orderBy === SearchOrder.Relevant ? 'Top' : 'Latest';
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: Query.parse(query), querySource: args?.source ?? 'typed_query', product, cursor: args?.cursor });
+    }
 
-        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: parseQuery(query), querySource: 'typed_query', product, cursor: args?.cursor });
+    protected async searchUsersSlice(query: string, args?: SearchArgs): Promise<TwitterResponse<Slice<UserKind>>> {
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: query, querySource: args?.source ?? 'typed_query', product: 'People', cursor: args?.cursor });
+    }
+
+    protected async searchListsSlice(query: string, args?: SearchArgs): Promise<TwitterResponse<Slice<ListKind>>> {
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: query, querySource: args?.source ?? 'typed_query', product: 'Lists', cursor: args?.cursor });
     }
 
     /**
@@ -1097,7 +1114,7 @@ export class TwitterClient {
      * 
      * @param args {@link ScheduledTweetCreateArgs}
      * @returns Scheduled tweet id
-     * @since v1.0.0-rc.1
+     * @since v1.0.0-rc.0
      */
     async createScheduledTweet(args: ScheduledTweetCreateArgs) {
         return await this.fetch(ENDPOINTS.CreateScheduledTweet, {
@@ -1117,7 +1134,7 @@ export class TwitterClient {
      * @param id Scheduled tweet id
      * @param [args] {@link ScheduledTweetCreateArgs}
      * @returns Success status
-     * @since v1.0.0-rc.1
+     * @since v1.0.0-rc.0
      */
     async editScheduledTweet(id: string | bigint, args: ScheduledTweetCreateArgs) {
         return await this.fetch(ENDPOINTS.EditScheduledTweet, {
@@ -1814,7 +1831,7 @@ export class TwitterClient {
      * 
      * @param id User id
      * @returns Success status
-     * @since v1.0.0-rc.1
+     * @since v1.0.0-rc.0
      */
     async softblockUser(id: string | bigint) {
         return await this.fetch(ENDPOINTS.RemoveFollower, { target_user_id: id.toString() });

@@ -7,6 +7,7 @@ export interface SliceCursors {
     next: string
 }
 
+// TODO: this could be replaced with Entry<T | Cursor>[] if segmentedtimelines is moved to TwitterResponse?
 /**
  * Slice of a timeline
  */

@@ -227,6 +227,18 @@ export interface Query {
      */
     OR?: Query[]
 }
+export const Query = {
+    parse(query: string | Query | QueryBuilder): string {
+        if (typeof query === 'string') {
+            return query;
+        } else if (query instanceof QueryBuilder) {
+            return query.toString();
+        }
+
+        const expr = buildExpr(query)
+        return exprToString(expr);
+    }
+};
 
 type QueryExpr = { type: 'token', value: string } | { type: 'not', children: QueryExpr[] } | { type: 'and', children: QueryExpr[] } | { type: 'or', children: QueryExpr[] };
 
@@ -451,15 +463,4 @@ function exprToString(expr: QueryExpr): string {
         default:
             return expr.value;
     }
-}
-
-export function parseQuery(query: string | Query | QueryBuilder): string {
-    if (typeof query === 'string') {
-        return query;
-    } else if (query instanceof QueryBuilder) {
-        return query.toString();
-    }
-
-    const expr = buildExpr(query)
-    return exprToString(expr);
 }
