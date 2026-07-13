@@ -1,7 +1,7 @@
 import { QueryBuilder } from './querybuilder.js';
 
 /**
- * Represents 
+ * Can be used to build any query with filters supported by Twitter search
  * 
  * @since 1.0.0-rc1
  */

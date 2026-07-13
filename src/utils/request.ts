@@ -2,7 +2,7 @@ import { hrtime } from 'node:process';
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
 import { err, log, toSearchParams, warn } from './index.js';
-import { GLOBAL_HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, PUBLIC_TOKEN } from '../consts.js';
+import { GLOBAL_HEADERS, MAX_ACCEPTABLE_REQUEST_TIME } from '../consts.js';
 import type { TwitterOptions, TwitterTokens } from '../types/index.js';
 import { EndpointKind, type Endpoint, type EndpointParams } from '../types/internal/index.js';
 
@@ -15,7 +15,7 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         Host: (endpoint.url.replace('https://', '').replace('.com/', '') + '.com').replace('twitter.com', options.domain),
         Origin: `https://${options.domain}`,
         Referer: `https://${options.domain}/`,
-        authorization: endpoint.token || PUBLIC_TOKEN,
+        authorization: endpoint.token,
         'User-Agent': options.userAgent,
         'x-csrf-token': tokens.csrf
     };
@@ -49,7 +49,7 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         proxyAgent
     ] as const;
 
-    log(options, endpoint.method, endpoint.url);
+    log(options, [endpoint.method.trim().toUpperCase(), endpoint.url.trim()]);
 
     try {
         const response = endpoint.kind() === EndpointKind.GraphQL
@@ -57,25 +57,25 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
             : await sendRequest<EP, E>(...requestData, endpoint.kind() === EndpointKind.Media ? body : undefined);
 
         if (response instanceof Error) {
-            err(options, 'Unexpected error:', response);
+            err(options, ['Unexpected error:', response]);
             return [response as E];
         }
 
         const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-        const logData = [options, `${response.status} ${response.statusText} in ${elapsed}ms`] as const;
+        const logData = [response.status, response.statusText, `in ${elapsed}ms`];
 
         if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
-            warn(...logData);
+            warn(options, logData);
         } else if (response.ok) {
-            log(...logData);
+            log(options, logData);
         } else {
-            err(...logData);
+            err(options, logData);
         }
 
-        const data = <T>await response.json();
-        return [data, response];
+        const data = await response.json();
+        return [data as T, response];
     } catch (error) {
-        err(options, 'Unexpected error:', error);
+        err(options, ['Unexpected error:', error]);
         return [error as E];
     }
 }
@@ -95,7 +95,7 @@ async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string,
             dispatcher: proxyAgent
         });
     } catch (error) {
-        return <E>error;
+        return error as E;
     }
 }
 
@@ -110,6 +110,6 @@ async function sendRequest<EP extends Endpoint, E extends Error>(url: string, en
             dispatcher: proxyAgent
         });
     } catch (error) {
-        return <E>error;
+        return error as E;
     }
 }

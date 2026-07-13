@@ -22,12 +22,12 @@ export class TwitterFormatter {
             this.errors.push(new TwitterError(error));
         }
 
-        err(this, `Error occured during parsing: ${error}`);
+        err(this, [`Error occured during parsing:`, error]);
 
         this.depth--;
 
         if (this.depth < 0) {
-            warn(this, `Formatter depth went below 0 (${this.depth})`);
+            warn(this, [`Formatter depth went below 0 (${this.depth})`]);
         }
 
         try {

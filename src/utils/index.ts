@@ -76,20 +76,20 @@ function shouldLog(value: TwitterInstance) {
     return (value instanceof TwitterFormatter && value.client.options.verbose) || (value instanceof TwitterClient && value.options.verbose) || (!(value instanceof TwitterFormatter) && !(value instanceof TwitterClient) && typeof value !== 'boolean' && value.verbose) || (typeof value === 'boolean' && value);
 }
 
-export function log(client: TwitterInstance, ...data: any[]) {
+export function log(client: TwitterInstance, data: any[]) {
     if (shouldLog(client)) {
-        logger.info(data);
+        logger.info(...data);
     }
 }
 
-export function warn(client: TwitterInstance, ...data: any[]) {
+export function warn(client: TwitterInstance, data: any[]) {
     if (shouldLog(client)) {
-        logger.warn(data);
+        logger.warn(...data);
     }
 }
 
-export function err(client: TwitterInstance, ...data: any[]) {
+export function err(client: TwitterInstance, data: any[]) {
     if (shouldLog(client)) {
-        logger.error(data);
+        logger.error(...data);
     }
 }

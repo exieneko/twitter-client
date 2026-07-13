@@ -18,7 +18,7 @@ export * from './notifications.js';
 export * from './search.js';
 export * from './user.js';
 
-export * as InternalTypes from './internal/index.js';
+export * as Internal from './internal/index.js';
 
 /**
  * Response object returned by all methods on `TwitterClient`. Contains an `errors` array and optional `data` if the request was successful

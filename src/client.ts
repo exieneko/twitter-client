@@ -61,7 +61,7 @@ export class TwitterClient {
             try {
                 this.#proxyAgent = new ProxyAgent(options.proxyUrl);
             } catch (error) {
-                log(options, `Error while creating proxy agent with url "${options.proxyUrl}": ${error}`);
+                err(options, [`Error while creating proxy agent with url "${options.proxyUrl}":`, error]);
             }
         }
 
@@ -81,11 +81,11 @@ export class TwitterClient {
             const document = await fetchXDocument();
             const transaction = await ClientTransaction.create(document);
             return transaction;
-        } catch (error: any) {
-            if (typeof error === 'object' && !!error.message) {
-                err(log, `Failed to initialize ClientTransaction: ${error.message}`);
+        } catch (error) {
+            if (error && typeof error === 'object' && 'message' in error) {
+                err(log, [`Failed to initialize ClientTransaction`, error.message]);
             } else {
-                err(log, `Failed to initialize ClientTransaction: ${error}`);
+                err(log, [`Failed to initialize ClientTransaction`, error]);
             }
         }
     }
@@ -111,16 +111,20 @@ export class TwitterClient {
         };
 
         const start = hrtime.bigint();
-        log(opts, `Initializing TwitterClient with ${!!options ? `options: ${options}` : 'default options'}`);
+        if (options) {
+            log(opts, ['Initializing TwitterClient with options', options]);
+        } else {
+            log(opts, ['Initializing TwitterClient with default options']);
+        }
 
         const transaction = await this._transaction();
         const client = new this(transaction, tokens, opts);
 
         const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-        log(client, `Initialized TwitterClient in ${elapsed}ms`);
+        log(client, [`Initialized TwitterClient in`, `${elapsed}ms`]);
 
         if (client.options.language !== 'en') {
-            warn(client, 'Setting `language` to values other than "en" may have unexpected effects');
+            warn(client, ['Setting `language` to values other than "en" may have unexpected effects']);
         }
 
         return client;
@@ -136,7 +140,7 @@ export class TwitterClient {
         const path = endpoint.url.replace(/.*twitter\.com\//, '/');
         const transactionId = await this.#transaction?.generateTransactionId(endpoint.method, path);
 
-        log(this, `Generated x-client-transaction-id for ${endpoint.method} ${path} (${transactionId})`);
+        log(this, [`Generated x-client-transaction-id for`, endpoint.method, path, `(${transactionId})`]);
         return transactionId;
     }
 

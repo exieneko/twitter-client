@@ -136,12 +136,20 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy: boolean }>> = {
             };
         }
 
+        const isAutomated = value.affiliates_highlighted_label?.label?.userLabelType === 'AutomatedLabel';
+        const affiliateLabel: User['affiliateLabel'] = !!value.affiliates_highlighted_label?.label?.badge?.url && !isAutomated ? {
+            title: value.affiliates_highlighted_label.label.description,
+            owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 2)[1],
+            imageUrl: value.affiliates_highlighted_label.label.badge.url
+        } : undefined;
+
         const verified = !!value.verification?.verified || !!value.is_blue_verified;
         const verifiedType = value.verification?.verified_type;
 
         const verificationKind: VerificationKind = match(value.verification?.verified_type, [
             ['Government', VerificationKind.Government],
             ['Business', VerificationKind.Business],
+            [[], VerificationKind.BlueAffiliate, !verifiedType && !verified && !!affiliateLabel?.owner && new RegExp(`\\/${affiliateLabel.owner}$`, 'i').test(value.verification_info.reason?.description?.entities?.at(0)?.ref.url)],
             [[], VerificationKind.Unverified, !verifiedType && !verified],
             [[], VerificationKind.Blue, verified]
         ], VerificationKind.Unverified);
@@ -150,11 +158,7 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy: boolean }>> = {
             __typename: 'User',
             id: BigInt(value.rest_id),
             affiliatesCount: value.business_account?.affiliates_count || 0,
-            affiliateLabel: !!value.affiliates_highlighted_label?.label?.badge?.url && value.affiliates_highlighted_label.label.userLabelType !== 'AutomatedLabel' ? {
-                title: value.affiliates_highlighted_label.label.description,
-                owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 2)[1],
-                imageUrl: value.affiliates_highlighted_label.label.badge.url
-            } : undefined,
+            affiliateLabel,
             avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
             bannerUrl: value.legacy.profile_banner_url,
             birthday: value.legacy_extended_profile?.birthdate ? {
@@ -173,7 +177,7 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy: boolean }>> = {
             fanAccountKind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None' ? undefined : value.parody_commentary_fan_label as FanAccountKind,
             followersCount: value.legacy.followers_count,
             followingCount: value.legacy.friends_count,
-            isAutomated: value.affiliates_highlighted_label?.label?.userLabelType === 'AutomatedLabel',
+            isAutomated,
             isBlocked: !!value.legacy.blocking,
             isBlockedBy: !!value.legacy.blocked_by,
             isFollowed: !!value.relationship_perspectives.following,
@@ -184,7 +188,7 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy: boolean }>> = {
             location: !!value.location.location ? value.location.location : undefined,
             isMuted: !!value.relationship_perspectives.muting,
             name: value.core.name,
-            pinnedTweetId: value.legacy.pinned_tweet_ids_str.at(0),
+            pinnedTweetId: value.legacy.pinned_tweet_ids_str?.at(0),
             protected: !!value.privacy.protected,
             superFollowingCount: value.creator_subscriptions_count || 0,
             superFollowingHidden: !!value.has_hidden_subscriptions_on_profile,
@@ -199,7 +203,7 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy: boolean }>> = {
                 kind: verificationKind,
                 isVerified: verified,
                 verifiedSince: verified
-                    ? new Date(Number(value.verification_info?.reason?.verified_since_msecs || 0)).toISOString()
+                    ? new Date(Number(value.verification_info?.reason?.verified_since_msec || 0)).toISOString()
                     : undefined,
                 verifiedWithId: !!value.verification_info?.is_identity_verified
             },
@@ -335,8 +339,10 @@ export const VerificationKind = {
      * @default
      */
     Unverified: 'Unverified',
-    /** Blue checkmark for Twitter Blue subscribers, legacy verified accounts, or business account affiliates */
+    /** Blue checkmark for Twitter Blue subscribers or some legacy verified accounts */
     Blue: 'Blue',
+    /** Blue checkmark received for being an affiliate to a gold checkmark account */
+    BlueAffiliate: 'BlueAffiliate',
     /** Gold checkmark for business accounts */
     Business: 'Business',
     /** Gray checkmark for official government accounts */
