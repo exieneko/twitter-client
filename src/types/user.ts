@@ -91,7 +91,7 @@ export interface User extends Type<'User'> {
     /** `true` if tweets of the user should give you notifications */
     wantNotifications: boolean
 }
-export const User: Wrapped<UserKind, Model<User, null, { legacy: boolean }>> = {
+export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = {
     async new(_, value, opts) {
         if (opts.legacy) {
             return {
@@ -188,7 +188,9 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy: boolean }>> = {
             location: !!value.location.location ? value.location.location : undefined,
             isMuted: !!value.relationship_perspectives.muting,
             name: value.core.name,
-            pinnedTweetId: value.legacy.pinned_tweet_ids_str?.at(0),
+            pinnedTweetId: value.legacy.pinned_tweet_ids_str?.at(0)
+                ? BigInt(value.legacy.pinned_tweet_ids_str[0])
+                : undefined,
             protected: !!value.privacy.protected,
             superFollowingCount: value.creator_subscriptions_count || 0,
             superFollowingHidden: !!value.has_hidden_subscriptions_on_profile,

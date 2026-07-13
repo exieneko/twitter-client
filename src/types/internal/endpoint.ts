@@ -12,7 +12,7 @@ export interface EndpointOptions<V extends object = {}> {
     requiresTransactionId?: boolean
 }
 
-export class Endpoint<T = any, P extends object = any, V extends object = {}> implements EndpointOptions {
+export class Endpoint<T = any, P extends object = {}, V extends object = {}> implements EndpointOptions {
     url: string;
     method: 'get' | 'post';
     variables?: V;

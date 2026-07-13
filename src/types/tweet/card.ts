@@ -120,7 +120,7 @@ export const BroadcastCard: Wrapped<CardKind, Model<BroadcastCard, Record<string
         return {
             __typename: 'Broadcast',
             id: BigInt(get(bv, 'broadcast_id')?.string_value!),
-            author: await fmt.next(User, value.user_refs_results?.at(0)?.result, { legacy: false }),
+            author: await fmt.next(User, value.user_refs_results?.at(0)?.result),
             cardName: value.name,
             cardUrl: value.url,
             hasEnded: get(bv, 'broadcast_state')?.string_value?.toUpperCase() === 'ENDED',

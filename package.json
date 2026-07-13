@@ -26,6 +26,10 @@
     "./types": {
       "import": "./dist/types/index.js",
       "types": "./dist/types/index.d.ts"
+    },
+    "./types/internal": {
+      "import": "./dist/types/internal/index.js",
+      "types": "./dist/types/internal/index.d.ts"
     }
   },
   "scripts": {

@@ -150,10 +150,10 @@ export class TwitterClient {
      * If set, `params`, will be appended to the body of the request, the type of which is inferred from the pathname and method of the endpoint. This object is sent to the API as is, so the keys must have the name Twitter expects
      * 
      * @example
-     * import { InternalTypes as T } from '@exieneko/twitter-client/types';
+     * import { Endpoint } from '@exieneko/twitter-client/types/internal';
      * 
      * const { errors, data: user } = await this.fetch(
-     *     new T.Endpoint<ReturnType, { screen_name: string }>({
+     *     new Endpoint<ReturnType, { screen_name: string }>({
      *         url: 'https://twitter.com/i/api/graphql/-oaLodhGbbnzJBACb1kk2Q/UserByScreenName',
      *         method: 'get',
      *         features: {}
@@ -166,42 +166,49 @@ export class TwitterClient {
      * @see {@link Endpoint}
      */
     async fetch<EP extends Endpoint, In = Parameters<EP['format']>[1], Out = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: EndpointParams<EP>): Promise<TwitterResponse<Out>> {
-        const [json] = await request<EP, In>(
+        const transactionId = await this.getTransactionId(endpoint);
+
+        const [json, response] = await request<EP, In>(
             endpoint,
             params,
             this.options,
             this.#tokens,
             this.#proxyAgent,
             this.self?.id,
-            await this.getTransactionId(endpoint)
+            transactionId
         );
 
         if (json instanceof Error) {
             return {
-                errors: [new TwitterError(json)]
+                errors: [new TwitterError(json)],
+                response
             };
         } else if (json && typeof json === 'object' && 'errors' in json && !('data' in json) && Array.isArray(json.errors)) {
             return {
-                errors: TwitterError.from(json.errors)
+                errors: TwitterError.from(json.errors),
+                response
             };
         } else if (!json) {
             return {
-                errors: [new TwitterError()]
+                errors: [new TwitterError()],
+                response
             };
         }
 
-        const fmt = new TwitterFormatter(this);
+        const fmt = new TwitterFormatter(this, params);
 
         try {
             const result = await fmt.format<Out>(endpoint.format, json);
 
             return {
                 data: result,
-                errors: fmt.errors
+                errors: fmt.errors,
+                response
             };
         } catch (error: any) {
             return {
-                errors: [new TwitterError(error)]
+                errors: [new TwitterError(error)],
+                response
             };
         }
     }

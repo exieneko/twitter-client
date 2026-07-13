@@ -1,3 +1,4 @@
+import type { Response } from 'undici';
 import type { TwitterError } from './error.js';
 import type { Enum } from './internal/index.js';
 
@@ -18,14 +19,21 @@ export * from './notifications.js';
 export * from './search.js';
 export * from './user.js';
 
-export * as Internal from './internal/index.js';
+export * from '../fmt/index.js';
 
 /**
- * Response object returned by all methods on `TwitterClient`. Contains an `errors` array and optional `data` if the request was successful
+ * Response object returned by all methods on `TwitterClient`
  */
 export interface TwitterResponse<T> {
+    /**
+     * Errors returned by Twitter and thrown during parsing
+     */
     errors: TwitterError[],
-    data?: T
+    data?: T,
+    /**
+     * Http response received by the server
+     */
+    response?: Response
 }
 
 

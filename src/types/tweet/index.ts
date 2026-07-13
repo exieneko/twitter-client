@@ -85,7 +85,7 @@ export interface Tweet extends Type<'Tweet'> {
     viewsCount?: number
 }
 
-export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy: false } | { legacy: true, author: object, quotedTweet?: object, quotedTweetAuthor?: object }>> = {
+export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | { legacy: true, author: object, quotedTweet?: object, quotedTweetAuthor?: object }>> = {
     async new(fmt, value, opts) {
         function getText(t: any) {
             return ((t.note_tweet?.note_tweet_results?.result?.text || t.legacy.full_text || '') as string).replace(
@@ -156,7 +156,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy: false } | { 
         return {
             __typename: 'Tweet',
             id: BigInt(value.rest_id),
-            author: await fmt.next(User, value.core.user_results.result, { legacy: false }),
+            author: await fmt.next(User, value.core.user_results.result),
             birdwatchNote: value.birdwatch_pivot?.note?.rest_id ? {
                 id: BigInt(value.birdwatch_pivot.note.rest_id),
                 // TODO: follow t.co redirects to get actual urls
@@ -195,7 +195,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy: false } | { 
             source: value.source.match(/>(.*?)</)?.at(1) || value.source,
             quoteTweetsCount: value.legacy.quote_count || 0,
             quotedTweet: value.quoted_status_result?.result
-                ? await fmt.next(Tweet, value.quoted_status_result?.result, { legacy: false })
+                ? await fmt.next(Tweet, value.quoted_status_result?.result)
                 : undefined,
             quotedTweetId: value.legacy.quoted_status_id_str
                 ? BigInt(value.legacy.quoted_status_id_str)
@@ -236,8 +236,8 @@ export const Retweet: Wrapped<TweetKind, Model<Retweet>> = {
         return {
             __typename: 'Retweet',
             id: BigInt(value.rest_id),
-            tweet: await fmt.next(Tweet, value.legacy.retweeted_status_result.result, { legacy: false }),
-            user: await fmt.next(User, value.core.user_results.result, { legacy: false })
+            tweet: await fmt.next(Tweet, value.legacy.retweeted_status_result.result),
+            user: await fmt.next(User, value.core.user_results.result)
         };
     },
     assert(value) {
@@ -373,7 +373,7 @@ export const TweetKind: Model<TweetKind, MaybeType> & Default<TweetKind> = {
             return await fmt.next(TweetTombstone, tweet.tombstone?.text?.text?.toLowerCase());
         }
 
-        return await fmt.next(Tweet, tweet, { legacy: false });
+        return await fmt.next(Tweet, tweet);
     },
     default() {
         return TweetTombstone.default();

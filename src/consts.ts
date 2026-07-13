@@ -1,5 +1,5 @@
 import * as flags from './flags.js';
-import { AboutUser, AccountSettings, BirdwatchHelpfulTag, TweetBirdwatchNotes, BirdwatchUnhelpfulTag, BirdwatchUser, CommunityKind, DraftTweet, List, ListKind, MaybeTweet, MediaData, MediaUploadInit, Notification, ScheduledTweet, Slice, Trend, Tweet, TweetKind, TweetTombstone, TwitterResponse, Typeahead, UnreadCount, User, UserKind } from './types/index.js';
+import { AboutUser, AccountSettings, BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, BirdwatchUser, CommunityKind, DraftTweet, ListKind, MaybeTweet, MediaData, MediaUploadInit, Notification, ScheduledTweet, Slice, Trend, Tweet, TweetBirdwatchNotes, TweetKind, TwitterResponse, Typeahead, UnreadCount, User, UserKind } from './types/index.js';
 import { Endpoint, type EndpointGroup } from './types/internal/index.js';
 import { gql, v11 } from './utils/index.js';
 
@@ -45,7 +45,7 @@ export const ENDPOINTS = {
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline
     }, (fmt, value) => Slice.users(fmt, value.data.viewer.muting_timeline.timeline.instructions)),
-    account_settings: new Endpoint<AccountSettings, {}>({
+    account_settings: new Endpoint<AccountSettings>({
         url: v11('account/settings.json'),
         method: 'get',
         variables: {"include_ext_sharing_audiospaces_listening_data_with_followers":true,"include_mention_filter":true,"include_nsfw_user_flag":true,"include_nsfw_admin_flag":true,"include_ranked_timeline":true,"include_alt_text_compose":true,"include_ext_dm_av_call_settings":true,"ext":"ssoConnections","include_country_code":true,"include_ext_dm_nsfw_media_filter":true},
@@ -73,7 +73,7 @@ export const ENDPOINTS = {
         variables: {"include_profile_interstitial_type":1,"include_blocking":1,"include_blocked_by":1,"include_followed_by":1,"include_want_retweets":1,"include_mute_edge":1,"include_can_dm":1,"include_can_media_tag":1,"include_ext_is_blue_verified":1,"include_ext_verified_type":1,"include_ext_profile_image_shape":1,"skip_status":1,"return_user":true},
         requiresTransactionId: true
     }, async (_, value) => !!value.id_str),
-    account_verify_credentials: new Endpoint<User, {}>({
+    account_verify_credentials: new Endpoint<User>({
         url: v11('account/verify_credentials.json'),
         method: 'get',
         requiresTransactionId: true
@@ -82,7 +82,7 @@ export const ENDPOINTS = {
 
 
     // BIRDWATCH
-    BirdwatchFetchGlobalTimeline: new Endpoint<Slice<TweetKind>, {}>({
+    BirdwatchFetchGlobalTimeline: new Endpoint<Slice<TweetKind>>({
         url: gql('rG-k-eTUj0YhAqXkSNJbiQ/BirdwatchFetchGlobalTimeline'),
         method: 'get',
         features: flags.timeline
@@ -95,7 +95,7 @@ export const ENDPOINTS = {
     BirdwatchFetchBirdwatchProfile: new Endpoint<BirdwatchUser, { alias: string }>({
         url: gql('id9iGfEQF47W1kvRBHUmRQ/BirdwatchFetchBirdwatchProfile'),
         method: 'get'
-    }, (fmt, value) => fmt.next(BirdwatchUser, value.data.birdwatch_profile_by_alias, {})),
+    }, (fmt, value) => fmt.next(BirdwatchUser, value.data.birdwatch_profile_by_alias)),
     BirdwatchCreateRating: new Endpoint<boolean, {
         data_v2: {
             helpful_tags?: BirdwatchHelpfulTag[],
@@ -140,7 +140,7 @@ export const ENDPOINTS = {
         method: 'post',
         token: OAUTH_KEY
     }, async (_, value) => value.data.tweet_bookmark_delete === 'Done'),
-    BookmarksAllDelete: new Endpoint<boolean, {}>({
+    BookmarksAllDelete: new Endpoint<boolean>({
         url: gql('skiACZKC1GDYli-M8RzEPQ/BookmarksAllDelete'),
         method: 'post',
         token: OAUTH_KEY
@@ -191,7 +191,7 @@ export const ENDPOINTS = {
         method: 'get',
         features: flags.timeline
     }, (fmt, value) => Slice.discover(fmt, value.data.explore_page.body, { root: value })),
-    ExploreSidebar: new Endpoint<Slice<Trend>, {}>({
+    ExploreSidebar: new Endpoint<Slice<Trend>>({
         url: 'FrpzJjnhtQSrL4txK29E7A/ExploreSidebar',
         method: 'get',
         features: flags.timeline
@@ -217,13 +217,13 @@ export const ENDPOINTS = {
         features: flags.timeline
     }, (fmt, value) => Slice.tweets(fmt, value.data.list.tweets_timeline.timeline.instructions, { type: 'Default' })),
     /** @todo */
-    ListsManagementPageTimeline: new Endpoint<unknown, {}>({
+    ListsManagementPageTimeline: new Endpoint<unknown>({
         url: gql('mjBb_n_f5Ci-eIysajMRWQ/ListsManagementPageTimeline'),
         method: 'get',
         variables: {"count":100},
         features: flags.timeline
     }, async (_, value) => value),
-    ListsDiscovery: new Endpoint<Slice<ListKind>, {}>({
+    ListsDiscovery: new Endpoint<Slice<ListKind>>({
         url: gql('WcZy_1yhZQ5zOabw_WElww/ListsDiscovery'),
         method: 'get',
         variables: {"count":40},
@@ -342,7 +342,7 @@ export const ENDPOINTS = {
         variables: {"count":40},
         features: flags.timeline
     }, (fmt, value) => Slice.notifications(fmt, value.data.viewer_v2.user_results.result.notification_timeline.timeline.instructions)),
-    badge_count: new Endpoint<UnreadCount, {}>({
+    badge_count: new Endpoint<UnreadCount>({
         url: 'https://twitter.com/i/api/2/badge_count/badge_count.json',
         method: 'get',
         variables: {"supports_ntab_urt":1,"include_xchat_count":1}
@@ -364,7 +364,7 @@ export const ENDPOINTS = {
         variables: {"count":40},
         features: flags.timeline,
         token: ALT_TOKEN,
-    }, (fmt, value) => Slice.search(fmt, value.data.search_by_raw_query.search_timeline.timeline.instructions, { searchItemType: 'Tweet' })),
+    }, (fmt, value) => Slice.search(fmt, value.data.search_by_raw_query.search_timeline.timeline.instructions)),
     search_typeahead: new Endpoint<Typeahead, { q: string }>({
         url: v11('search/typeahead.json'),
         method: 'get',
@@ -434,7 +434,7 @@ export const ENDPOINTS = {
     }>({
         url: gql('Uf3io9zVp1DsYxrmL5FJ7g/CreateTweet'),
         method: 'post'
-    }, (fmt, value) => fmt.next(Tweet, value.data.create_tweet?.tweet_results?.result, { legacy: false })),
+    }, (fmt, value) => fmt.next(Tweet, value.data.create_tweet?.tweet_results?.result)),
     CreateNoteTweet: new Endpoint<Tweet, {
         batch_compose?: 'BatchFirst' | 'BatchSubsequent',
         card_uri?: string,
@@ -457,7 +457,7 @@ export const ENDPOINTS = {
     }>({
         url: gql('lPTBLb_FPA5r8z_cH-s8lw/CreateNoteTweet'),
         method: 'post'
-    }, (fmt, value) => fmt.next(Tweet, value.data.notetweet_create?.tweet_results?.result, { legacy: false })),
+    }, (fmt, value) => fmt.next(Tweet, value.data.notetweet_create?.tweet_results?.result)),
     DeleteTweet: new Endpoint<boolean, { tweet_id: string }>({
         url: gql('VaenaVgh5q5ih7kvyVjgtg/DeleteTweet'),
         method: 'post',
@@ -546,13 +546,13 @@ export const ENDPOINTS = {
         method: 'get',
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline
-    }, (fmt, value) => fmt.next(MaybeTweet, value.data.tweetResult.result, {})),
+    }, (fmt, value) => fmt.next(MaybeTweet, value.data.tweetResult.result)),
     TweetResultsByRestIds: new Endpoint<MaybeTweet[], { tweetIds: string[] }>({
         url: gql('-R17e8UqwApFGdMxa3jASA/TweetResultsByRestIds'),
         method: 'get',
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline
-    }, (fmt, value) => Promise.all((value.data.tweetResult as any[] || []).map(tweet => fmt.next(MaybeTweet, tweet?.result, {})))),
+    }, (fmt, value) => Promise.all((value.data.tweetResult as any[] || []).map(tweet => fmt.next(MaybeTweet, tweet?.result)))),
     ModeratedTimeline: new Endpoint<Slice<TweetKind>, { rootTweetId: string, cursor?: string }>({
         url: gql('ftAt_EqbCL3YVp0VURo8iQ/ModeratedTimeline'),
         method: 'get',
@@ -639,22 +639,22 @@ export const ENDPOINTS = {
         requiresTransactionId: true
     }, async (_, value) => !!value.card.url),
     media_upload: {
-        init: new Endpoint<MediaUploadInit, {}>({
+        init: new Endpoint<MediaUploadInit>({
             url: 'https://upload.twitter.com/1.1/media/upload.json',
             method: 'get',
             variables: {"command":"INIT"}
         }, async (_, value) => value as MediaUploadInit),
-        append: new Endpoint<unknown, {}>({
+        append: new Endpoint<unknown>({
             url: 'https://upload.twitter.com/1.1/media/upload.json',
             method: 'post',
             variables: {"command":"APPEND"}
         }, async (_, value) => value),
-        finalize: new Endpoint<MediaData, {}>({
+        finalize: new Endpoint<MediaData>({
             url: 'https://upload.twitter.com/1.1/media/upload.json',
             method: 'get',
             variables: {"command":"FINALIZE"}
         }, (fmt, value) => fmt.next(MediaData, value)),
-        status: new Endpoint<MediaData, {}>({
+        status: new Endpoint<MediaData>({
             url: 'https://upload.twitter.com/1.1/media/upload.json',
             method: 'get',
             variables: {"command":"STATUS"}
@@ -672,22 +672,22 @@ export const ENDPOINTS = {
         url: gql('-oaLodhGbbnzJBACb1kk2Q/UserByScreenName'),
         method: 'get',
         features: flags.user
-    }, (fmt, value) => fmt.next(UserKind, value.data.user.result, { legacy: false })),
+    }, (fmt, value) => fmt.next(UserKind, value.data.user.result)),
     UsersByScreenNames: new Endpoint<UserKind[], { screen_names: string[] }>({
         url: gql('ujL_oXbgVlDHQzWSTgzvnA/UsersByScreenNames'),
         method: 'get',
         features: flags.user
-    }, (fmt, value) => Promise.all((value.data.users as any[] || []).map(user => fmt.next(UserKind, user?.result, { legacy: false })))),
+    }, (fmt, value) => Promise.all((value.data.users as any[] || []).map(user => fmt.next(UserKind, user?.result)))),
     UserByRestId: new Endpoint<UserKind, { userId: string }>({
         url: gql('Bbaot8ySMtJD7K2t01gW7A/UserByRestId'),
         method: 'get',
         features: flags.user
-    }, (fmt, value) => fmt.next(UserKind, value.data.user.result, { legacy: false })),
+    }, (fmt, value) => fmt.next(UserKind, value.data.user.result)),
     UsersByRestIds: new Endpoint<UserKind[], { userIds: string[] }>({
         url: gql('xavgLWWbFH8wm_8MQN8plQ/UsersByRestIds'),
         method: 'get',
         features: flags.user
-    }, (fmt, value) => Promise.all((value.data.users as any[] || []).map(user => fmt.next(UserKind, user?.result, { legacy: false })))),
+    }, (fmt, value) => Promise.all((value.data.users as any[] || []).map(user => fmt.next(UserKind, user?.result)))),
     AboutAccountQuery: new Endpoint<AboutUser, { screenName: string }>({
         url: gql('zs_jFPFT78rBpXv9Z3U2YQ/AboutAccountQuery'),
         method: 'get'

@@ -62,7 +62,7 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         }
 
         const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-        const logData = [response.status, response.statusText, `in ${elapsed}ms`];
+        const logData = [response.status, `in ${elapsed}ms`];
 
         if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
             warn(options, logData);

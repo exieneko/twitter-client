@@ -38,7 +38,7 @@ export const Notification: Model<Notification, Record<string, any>, { kind: Noti
 
         const users = await Promise.all(
             (value.template?.from_users as MaybeType[] || [])
-                .map(x => fmt.nextIf(UserKind, x?.user_results?.result, { legacy: false }))
+                .map(x => fmt.nextIf(UserKind, x?.user_results?.result))
         );
 
         return {

@@ -47,7 +47,7 @@ export const Community: Wrapped<CommunityKind, Model<Community>> = {
             canJoin: value.join_policy === 'Open',
             canInvite: value.invites_policy === 'MemberInvitesAllowed' && !value.invites_result?.__typename.includes('Unavailable'),
             createdAt: new Date(value.created_at).toISOString(),
-            creator: await fmt.next(User, value.creator_results?.result, { legacy: false }),
+            creator: await fmt.next(User, value.creator_results?.result),
             description: value.description || '',
             isMember: !!value.is_member,
             membersCount: value.member_count || 0,

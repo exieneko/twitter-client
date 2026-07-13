@@ -5,12 +5,14 @@ import type { Model } from '../types/internal/model.js';
 import { err, warn } from '../utils/index.js';
 
 export class TwitterFormatter {
+    params: Map<string, any>;
     client: TwitterClient;
     depth: number = 0;
     errors: TwitterError[] = [];
 
-    constructor(client: TwitterClient) {
+    constructor(client: TwitterClient, params?: object) {
         this.client = client;
+        this.params = new Map(Object.entries(params ?? {}));
     }
 
 
@@ -49,13 +51,21 @@ export class TwitterFormatter {
         }
     }
 
-    async next<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>>(model: M, value: Parameters<M['new']>[1], ...rest: [Parameters<M['new']>[2]] extends [null | undefined] ? [] : [opts: Parameters<M['new']>[2]]): Promise<This> {
+    async next<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>>(
+        model: M,
+        value: Parameters<M['new']>[1],
+        ...rest: [Parameters<M['new']>[2]] extends [null | undefined]
+            ? []
+        : Required<Parameters<M['new']>[2]> extends Parameters<M['new']>[2]
+            ? [opts?: Parameters<M['new']>[2]]
+            : [opts: Parameters<M['new']>[2]]
+    ): Promise<This> {
         this.depth++;
-        const opts = rest[0];
+        const opts = rest[0] ?? {};
 
         try {
             // @ts-ignore
-            const result = await model.new(this, await value, opts);
+            const result = await model.new(this, value, opts);
             this.depth--;
             return result;
         } catch (error: any) {
@@ -63,7 +73,15 @@ export class TwitterFormatter {
         }
     }
 
-    async nextIf<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>>(model: M, value: Parameters<M['new']>[1], ...rest: [Parameters<M['new']>[2]] extends [null | undefined] ? [] : [opts: Parameters<M['new']>[2]]): Promise<This | undefined> {
+    async nextIf<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>>(
+        model: M,
+        value: Parameters<M['new']>[1],
+        ...rest: [Parameters<M['new']>[2]] extends [null | undefined]
+            ? []
+        : Required<Parameters<M['new']>[2]> extends Parameters<M['new']>[2]
+            ? [opts?: Parameters<M['new']>[2]]
+            : [opts: Parameters<M['new']>[2]]
+    ): Promise<This | undefined> {
         if (typeof value === 'undefined' || value === null) {
             return;
         }

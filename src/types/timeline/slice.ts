@@ -1,5 +1,11 @@
 import { Conversation, Cursor, CursorDirection, ListKind, Notification, Trend, Tweet, TweetKind, UserKind, type Entry, type TimelineSegment } from '../index.js';
 import type { Default, Model, Type, WithMethods } from '../internal/index.js';
+import { ENDPOINTS } from '../../consts.js';
+
+export interface SliceCursors {
+    previous: string,
+    next: string
+}
 
 /**
  * Slice of a timeline
@@ -9,21 +15,22 @@ export interface Slice<T extends Type> extends Type<'Slice'> {
     segments?: TimelineSegment[],
     /** Timeline entries in this slice */
     entries: Entry<T | Cursor>[],
-    /** Cloned top and bottom cursor values in `entries` */
-    cursors: {
-        previous?: string,
-        next?: string
-    }
+    /**
+     * Cloned top and bottom cursor values in `entries`
+     * 
+     * @deprecated Use `Slice.cursors()` instead
+     */
+    cursors: Partial<SliceCursors>
 }
 export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, any> }> & WithMethods<[
     ['discover', TweetKind | Trend, { root: Record<string, any> }],
     ['lists', ListKind, { type: 'Default' | 'Discovery' }],
     ['notifications', Notification],
-    ['search', TweetKind | UserKind | ListKind, { searchItemType: 'Tweet' | 'User' | 'List' }],
+    ['search', TweetKind | UserKind | ListKind],
     ['trends', Trend],
     ['tweets', TweetKind, { type: 'Default' } | { type: 'Birdwatch', root: Record<string, any> } | { type: 'Media', gridModule?: { content: object, key: string } } | { type: 'DeviceFollow', globalObjects: Record<string, any> }],
     ['users', UserKind]
-]> & Default<Slice<any>> = {
+]> & Default<Slice<any>> & { cursors<T extends Type>(value: Slice<T>): Partial<SliceCursors> } = {
     async new(_, value, opts) {
         const cursors = value.filter(entry => entry.content.__typename === 'Cursor') as Entry<Cursor>[];
 
@@ -101,11 +108,13 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
 
         return await fmt.next(this, entries, {});
     },
-    async search(fmt, value, opts) {
-        if (opts.searchItemType === 'Tweet') {
-            return Slice.tweets(fmt, value, { type: 'Default' });
-        } else if (opts.searchItemType === 'User') {
+    async search(fmt, value) {
+        const product: typeof ENDPOINTS.SearchTimeline._params.product = fmt.params.get('product');
+
+        if (product === 'People') {
             return Slice.users(fmt, value);
+        } else if (product !== 'Lists') {
+            return Slice.tweets(fmt, value, { type: 'Default' });
         }
 
         const entries = [
@@ -233,7 +242,7 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
                     id: entry.entryId,
                     content: entry.content.__typename === 'TimelineTimelineCursor'
                         ? await fmt.next(Cursor, entry.content)
-                        : await fmt.next(UserKind, entry.content.itemContent?.user_results?.result, { legacy: false })
+                        : await fmt.next(UserKind, entry.content.itemContent?.user_results?.result)
                 } satisfies Entry<UserKind | Cursor>))
         );
     
@@ -244,6 +253,14 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
             __typename: 'Slice',
             entries: [],
             cursors: {}
+        };
+    },
+    cursors(value) {
+        const cursors = value.entries.filter((entry): entry is Entry<Cursor> => entry.content.__typename === 'Cursor');
+
+        return {
+            previous: cursors.find(entry => entry.content.direction === CursorDirection.Previous)?.content.value,
+            next: cursors.findLast(entry => entry.content.direction === CursorDirection.Next)?.content.value
         };
     }
 };

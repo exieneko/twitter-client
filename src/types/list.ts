@@ -34,7 +34,7 @@ export const List: Wrapped<ListKind, Model<List>> = {
             id: BigInt(value.id_str),
             bannerUrl: value.custom_banner_media.media_info.original_img_id,
             createdAt: new Date(value.created_at).toISOString(),
-            creator: await fmt.next(User, value.user_results?.result, { legacy: false }),
+            creator: await fmt.next(User, value.user_results?.result),
             description: value.description || '',
             isListed: !!value.is_member,
             listedCount: value.member_count || 0,
