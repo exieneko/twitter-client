@@ -1,6 +1,6 @@
-import { QueryBuilder, TwitterClient } from '../dist/index.js';
 import { describe } from 'node:test';
 import { config as dotenv } from 'dotenv';
+import { TwitterClient } from '../dist/index.js';
 
 dotenv({ quiet: true });
 
@@ -25,6 +25,6 @@ describe('get self', options, async () => {
 });
 
 describe('get a tweet', options, async () => {
-    const { data: tweet } = await twitter.getTweetResult('20');
+    const { data: tweet } = await twitter.getTweetResult(20n);
     assert(tweet.author.username === 'jack');
 });

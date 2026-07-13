@@ -1,11 +1,11 @@
-import { hrtime } from 'process';
+import { hrtime } from 'node:process';
 import { FormData, ProxyAgent } from 'undici';
-import { ClientTransaction, handleXMigration } from 'x-client-transaction-id';
+import { ClientTransaction, fetchXDocument, handleXMigration } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetKind, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs } from './types/index.js';
-import { AsyncConstructor, type Endpoint, type EndpointParams, type Type } from './types/internal/index.js';
+import type { Endpoint, EndpointParams, Type } from './types/internal/index.js';
 import { err, log, match, warn } from './utils/index.js';
 import { parseQuery, type Query } from './utils/query.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
@@ -78,14 +78,14 @@ export class TwitterClient {
      */
     static async _transaction(log: boolean = false): Promise<ClientTransaction | undefined> {
         try {
-            const document = await handleXMigration();
+            const document = await fetchXDocument();
             const transaction = await ClientTransaction.create(document);
             return transaction;
         } catch (error: any) {
             if (typeof error === 'object' && !!error.message) {
-                err(log, `Failed to initialize ClientTransaction because of ${error.message}`);
+                err(log, `Failed to initialize ClientTransaction: ${error.message}`);
             } else {
-                err(log, `Failed to initialize ClientTransaction because of ${error}`);
+                err(log, `Failed to initialize ClientTransaction: ${error}`);
             }
         }
     }
@@ -113,8 +113,8 @@ export class TwitterClient {
         const start = hrtime.bigint();
         log(opts, `Initializing TwitterClient with ${!!options ? `options: ${options}` : 'default options'}`);
 
-        const transaction = await TwitterClient._transaction();
-        const client = new TwitterClient(transaction, tokens, opts);
+        const transaction = await this._transaction();
+        const client = new this(transaction, tokens, opts);
 
         const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
         log(client, `Initialized TwitterClient in ${elapsed}ms`);

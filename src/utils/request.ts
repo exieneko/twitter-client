@@ -1,5 +1,5 @@
+import { hrtime } from 'node:process';
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
-import { hrtime } from 'process';
 
 import { err, log, toSearchParams, warn } from './index.js';
 import { GLOBAL_HEADERS, MAX_ACCEPTABLE_REQUEST_TIME, PUBLIC_TOKEN } from '../consts.js';
