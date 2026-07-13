@@ -1,6 +1,8 @@
-import { TwitterClient } from './client.js';
-import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TwitterTokens, TweetGetArgs, UserTweetsGetArgs } from './types/index.js';
+import { slice, TwitterClient } from './client.js';
+import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TwitterTokens, TweetGetArgs, UserTweetsGetArgs, TwitterResponse, TwitterOptions, SearchArgs, ListKind, UserKind, TweetKind } from './types/index.js';
 import type { Account } from './types/internal/index.js';
+import { Query } from './utils/query.js';
+import { QueryBuilder } from './utils/querybuilder.js';
 
 /**
  * Asyncronous client utilizing `TwitterClient` instances to make requests to the Twitter browser API using several users
@@ -9,9 +11,13 @@ import type { Account } from './types/internal/index.js';
  * @since 0.7.0
  */
 export class TwitterPool {
+    private static INITIAL_RATE_LIMIT = 500;
+
     #accounts: Account[] = [];
 
-    private constructor() {}
+    private constructor(accounts: Account[]) {
+        this.#accounts = accounts;
+    }
 
     /**
      * Async contructor for `TwitterPool`
@@ -19,151 +25,178 @@ export class TwitterPool {
      * @param tokens Account tokens
      * @returns Promise resolving to `TwitterPool`
      */
-    static async new(tokens: TwitterTokens[]): Promise<TwitterPool> {
-        let pool = new TwitterPool();
-        pool.setAccounts(tokens);
-        return pool;
+    static async new(tokens: TwitterTokens[], options?: Partial<TwitterOptions>): Promise<TwitterPool> {
+        const accounts = await this._accounts(tokens, options);
+        return new this(accounts);
     }
 
-
-
-    private client() {
-        const account = this.#accounts.toSorted((a, b) => b.uses - a.uses)[0];
-        this.#accounts[this.#accounts.findIndex(({ id }) => id === account.id)].uses++;
-        return account.client;
-    }
-
-
-
-    private async setAccounts(tokens: TwitterTokens[]) {
-        this.#accounts = await Promise.all(
-            tokens.map(async (t, i) => ({
-                id: i,
-                client: await TwitterClient.new(t),
-                uses: 0
-            }))
+    private static async _accounts(tokens: TwitterTokens[], options?: Partial<TwitterOptions>): Promise<Account[]> {
+        return await Promise.all(
+            tokens.map(async (tokens, index) => ({
+                id: index,
+                client: await TwitterClient.new(tokens, options),
+                rateLimitMax: this.INITIAL_RATE_LIMIT,
+                rateLimitRemaining: this.INITIAL_RATE_LIMIT,
+                rateLimitResetAt: new Date()
+            } satisfies Account))
         );
     }
 
 
 
-    async getCommunity(id: string) {
-        return this.client().getCommunity(id);
+    private resetRateLimits() {
+        const now = Date.now();
+
+        for (let account of this.#accounts) {
+            if (account.rateLimitResetAt.getTime() < now) {
+                account.rateLimitRemaining = account.rateLimitMax;
+            }
+        }
     }
 
-    async getCommunityTweets(id: string, args?: CommunityTweetsGetArgs) {
-        return this.client().getCommunityTweets(id, args);
+    private async client<T>(fn: (client: TwitterClient) => Promise<TwitterResponse<T>>) {
+        this.resetRateLimits();
+        this.#accounts.sort((a, b) => b.rateLimitRemaining - a.rateLimitRemaining);
+
+        const result = await fn(this.#accounts[0].client);
+
+        const rateLimit = result.response?.headers.get('x-rate-limit-limit');
+        const rateLimitRemaining = result.response?.headers.get('x-rate-limit-remaining');
+        const rateLimitReset = result.response?.headers.get('x-rate-limit-reset');
+
+        if (rateLimit) this.#accounts[0].rateLimitMax = Number(rateLimit);
+        if (rateLimitRemaining) this.#accounts[0].rateLimitRemaining = Number(rateLimitRemaining);
+        if (rateLimitReset) this.#accounts[0].rateLimitResetAt = new Date(Number(rateLimitReset) * 1000);
+
+        return result;
     }
 
-    async getCommunityMedia(id: string, args?: CursorOnly) {
-        return this.client().getCommunityMedia(id, args);
+    getCommunity(id: string | bigint) {
+        return this.client(c => c.getCommunity(id));
+    }
+
+    getCommunityTweets(id: string | bigint, args?: CommunityTweetsGetArgs) {
+        return this.client(c => slice(c.getCommunityTweets(id, args)));
+    }
+
+    getCommunityMedia(id: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getCommunityMedia(id, args)));
     }
 
 
 
-    async getList(id: string, args?: BySlug) {
-        return this.client().getList(id, args);
+    getList(id: string | bigint, args?: BySlug) {
+        return this.client(c => c.getList(id, args));
     }
 
-    async getListTweets(id: string, args?: CursorOnly) {
-        return this.client().getListTweets(id, args);
+    getListTweets(id: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getListTweets(id, args)));
     }
 
-    async getListMembers(id: string, args?: CursorOnly) {
-        return this.client().getListMembers(id, args);
+    getListMembers(id: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getListMembers(id, args)));
     }
 
-    async getListSubscribers(id: string, args?: CursorOnly) {
-        return this.client().getListSubscribers(id, args);
+    getListSubscribers(id: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getListSubscribers(id, args)));
+    }
+
+
+    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind?: 'Relevant' | 'Latest' | 'Media' }): Promise<TwitterResponse<TweetKind>>;
+    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind: 'Users' }): Promise<TwitterResponse<UserKind>>;
+    search(query: string | Query | QueryBuilder, args?: SearchArgs & { kind: 'Lists' }): Promise<TwitterResponse<ListKind>>;
+    search(query: string | Query | QueryBuilder, args?: SearchArgs): Promise<TwitterResponse<TweetKind | UserKind | ListKind>> {
+        // @ts-ignore
+        return this.client(c => slice(c.search(query, args as any)));
     }
 
 
 
-    async getTweet(id: string, args?: TweetGetArgs) {
-        return this.client().getTweet(id, args);
+    getTweet(id: string | bigint, args?: TweetGetArgs) {
+        return this.client(c => slice(c.getTweet(id, args)));
     }
 
-    async getTweetResult(id: string) {
-        return this.client().getTweetResult(id);
+    getTweetResult(id: string | bigint) {
+        return this.client(c => c.getTweetResult(id));
     }
 
-    async getTweetResults(ids: [string, ...string[]]) {
-        return this.client().getTweetResults(ids);
+    getTweetResults(ids: (string | bigint)[]) {
+        return this.client(c => c.getTweetResults(ids));
     }
 
-    async getHiddenReplies(tweetId: string) {
-        return this.client().getHiddenReplies(tweetId);
+    getHiddenReplies(tweetId: string | bigint) {
+        return this.client(c => slice(c.getHiddenReplies(tweetId)));
     }
     
-    async getLikes(tweetId: string) {
-        return this.client().getLikes(tweetId);
+    getLikes(tweetId: string | bigint) {
+        return this.client(c => slice(c.getLikes(tweetId)));
     }
 
-    async getRetweets(tweetId: string) {
-        return this.client().getRetweets(tweetId);
+    getRetweets(tweetId: string | bigint) {
+        return this.client(c => slice(c.getRetweets(tweetId)));
     }
 
-    async getQuotedTweets(tweetId: string, args?: CursorOnly) {
-        return this.client().getQuoteTweets(tweetId, args);
+    getQuotedTweets(tweetId: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getQuoteTweets(tweetId, args)));
     }
 
 
 
-    async getUser(id: string, args?: ByUsername) {
-        return this.client().getUser(id, args);
+    getUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+        return this.client(c => c.getUser(id, args));
     }
 
-    async getUsers(ids: string[], args?: ByUsername) {
-        return this.client().getUsers(ids, args);
+    getUsers<T extends ByUsername>(ids: T['byUsername'] extends true ? string[] : (string | bigint)[], args?: T) {
+        return this.client(c => c.getUsers(ids, args));
     }
     
-    async getUserTweets(id: string, args?: UserTweetsGetArgs) {
-        return this.client().getUserTweets(id, args);
+    getUserTweets(id: string | bigint, args?: UserTweetsGetArgs) {
+        return this.client(c => slice(c.getUserTweets(id, args)));
     }
 
-    async getUserMedia(id: string, args?: CursorOnly) {
-        return this.client().getUserMedia(id, args);
+    getUserMedia(id: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getUserMedia(id, args)));
     }
 
-    async getUserHighlightedTweets(id: string, args?: CursorOnly) {
-        return this.client().getUserHighlightedTweets(id, args);
+    getUserHighlightedTweets(id: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getUserHighlightedTweets(id, args)));
     }
 
-    async getFollowing(userId: string, args?: CursorOnly) {
-        return this.client().getFollowing(userId, args);
+    getFollowing(userId: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getFollowing(userId, args)));
     }
 
-    async getFollowers(userId: string, args?: CursorOnly) {
-        return this.client().getFollowers(userId, args);
+    getFollowers(userId: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getFollowers(userId, args)));
     }
 
-    async getVerifiedFollowers(userId: string, args?: CursorOnly) {
-        return this.client().getVerifiedFollowers(userId, args);
+    getVerifiedFollowers(userId: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getVerifiedFollowers(userId, args)));
     }
 
-    async getSuperFollowing(userId: string, args?: CursorOnly) {
-        return this.client().getSuperFollowing(userId, args);
+    getSuperFollowing(userId: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getSuperFollowing(userId, args)));
     }
 
-    async getAffiliates(userId: string, args?: CursorOnly) {
-        return this.client().getAffiliates(userId, args);
+    getAffiliates(userId: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getAffiliates(userId, args)));
     }
 
-    async getUserLists(id: string, args?: CursorOnly) {
-        return this.client().getUserLists(id, args);
+    getUserLists(id: string | bigint, args?: CursorOnly) {
+        return this.client(c => slice(c.getUserLists(id, args)));
     }
 
 
 
-    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void) {
-        return this.client().upload(media, args, callback);
+    upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void) {
+        return this.client(c => c.upload(media, args, callback));
     }
 
-    async mediaStatus(id: string) {
-        return this.client().mediaStatus(id);
+    mediaStatus(id: string | bigint) {
+        return this.client(c => c.mediaStatus(id));
     }
 
-    async addAltText(id: string, text: string) {
-        return this.client().addAltText(id, text);
+    addAltText(id: string | bigint, text: string) {
+        return this.client(c => c.addAltText(id, text));
     }
 }

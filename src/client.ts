@@ -277,7 +277,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getBlockedUsersSlice(args?: BlockedUsersGetArgs) {
+    protected async getBlockedUsersSlice(args?: BlockedUsersGetArgs) {
         if (args?.imported) {
             return await this.fetch(ENDPOINTS.BlockedAccountsImported, { cursor: args?.cursor });
         }
@@ -297,7 +297,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getMutedUsersSlice(args?: CursorOnly) {
+    protected async getMutedUsersSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.MutedAccounts, args);
     }
 
@@ -432,7 +432,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getBookmarksSlice(args?: CursorOnly) {
+    protected async getBookmarksSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Bookmarks, args);
     }
 
@@ -449,7 +449,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    async searchBookmarksSlice(query: string | Query | QueryBuilder, args?: CursorOnly) {
+    protected async searchBookmarksSlice(query: string | Query | QueryBuilder, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: parseQuery(query), ...args });
     }
 
@@ -489,7 +489,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getCommunityTweetsSlice(id: string, args?: CommunityTweetsGetArgs) {
+    protected async getCommunityTweetsSlice(id: string, args?: CommunityTweetsGetArgs) {
         const rankingMode = args?.orderBy === CommunityTweetsOrder.Latest ? 'Recency' : 'Relevance';
         return await this.fetch(ENDPOINTS.CommunityTweetsTimeline, { communityId: id, rankingMode, cursor: args?.cursor });
     }
@@ -507,7 +507,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getCommunityMediaSlice(id: string, args?: CursorOnly) {
+    protected async getCommunityMediaSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.CommunityMediaTimeline, { communityId: id, ...args });
     }
 
@@ -566,7 +566,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getListTweetsSlice(id: string, args?: CursorOnly) {
+    protected async getListTweetsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListLatestTweetsTimeline, { listId: id, ...args });
     }
 
@@ -609,7 +609,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getListMembersSlice(id: string, args?: CursorOnly) {
+    protected async getListMembersSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListMembers, { listId: id, ...args });
     }
 
@@ -626,7 +626,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getListSubscribersSlice(id: string, args?: CursorOnly) {
+    protected async getListSubscribersSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListSubscribers, { listId: id, ...args });
     }
 
@@ -783,7 +783,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getNotificationsSlice(args?: NotificationGetArgs) {
+    protected async getNotificationsSlice(args?: NotificationGetArgs) {
         const timelineType = !args?.filter || args.filter === 'None' ? 'All' : args.filter;
         return await this.fetch(ENDPOINTS.NotificationsTimeline, { timeline_type: timelineType, cursor: args?.cursor });
     }
@@ -800,7 +800,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getNotifiedTweetsSlice(args?: CursorOnly) {
+    protected async getNotifiedTweetsSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.device_follow, args);
     }
 
@@ -855,10 +855,10 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getTimelineSlice(args?: TimelineGetArgs): Promise<TwitterResponse<Slice<TweetKind>>>;
-    private async getTimelineSlice(id: string | bigint, args?: CursorOnly): Promise<TwitterResponse<Slice<TweetKind>>>;
+    protected async getTimelineSlice(args?: TimelineGetArgs): Promise<TwitterResponse<Slice<TweetKind>>>;
+    protected async getTimelineSlice(id: string | bigint, args?: CursorOnly): Promise<TwitterResponse<Slice<TweetKind>>>;
 
-    private async getTimelineSlice(idOrArgs: string | bigint | TimelineGetArgs = {}, args?: CursorOnly) {
+    protected async getTimelineSlice(idOrArgs: string | bigint | TimelineGetArgs = {}, args?: CursorOnly) {
         if (typeof idOrArgs === 'string' || typeof idOrArgs === 'bigint') {
             return await this.fetch(ENDPOINTS.GenericTimelineById.default, { timelineId: idOrArgs.toString(), cursor: args?.cursor });
         }
@@ -906,7 +906,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    async searchSlice(query: string | Query | QueryBuilder, args?: SearchArgs) {
+    protected async searchSlice(query: string | Query | QueryBuilder, args?: SearchArgs) {
         const product = args?.kind === 'Relevant'
             ? 'Top'
         : args?.kind === 'Users'
@@ -1149,7 +1149,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getTweetSlice(id: string, args?: TweetGetArgs) {
+    protected async getTweetSlice(id: string, args?: TweetGetArgs) {
         const rankingMode = match(args?.orderBy, [
             [TweetOrder.New, 'Recency'],
             [TweetOrder.Likes, 'Likes']
@@ -1193,7 +1193,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getHiddenRepliesSlice(tweetId: string, args?: CursorOnly) {
+    protected async getHiddenRepliesSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ModeratedTimeline, { rootTweetId: tweetId, ...args });
     }
 
@@ -1210,7 +1210,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getLikesSlice(tweetId: string, args?: CursorOnly) {
+    protected async getLikesSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Favoriters, { tweetId: tweetId, ...args });
     }
 
@@ -1227,7 +1227,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getRetweetsSlice(tweetId: string, args?: CursorOnly) {
+    protected async getRetweetsSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Retweeters, { tweetId: tweetId, ...args });
     }
 
@@ -1244,7 +1244,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getQuoteTweetsSlice(tweetId: string, args?: CursorOnly) {
+    protected async getQuoteTweetsSlice(tweetId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: `quoted_tweet_id:${tweetId}`, querySource: 'tdqt', product: 'Top', ...args }) as TwitterResponse<Slice<TweetKind>>;
     }
 
@@ -1490,7 +1490,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getUserTweetsSlice(id: string, args?: UserTweetsGetArgs) {
+    protected async getUserTweetsSlice(id: string, args?: UserTweetsGetArgs) {
         if (args?.replies) {
             return await this.fetch(ENDPOINTS.UserTweetsAndReplies, { userId: id, cursor: args.cursor });
         }
@@ -1511,7 +1511,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getUserMediaSlice(id: string, args?: CursorOnly) {
+    protected async getUserMediaSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserMedia, { userId: id, ...args });
     }
 
@@ -1528,7 +1528,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getUserLikesSlice(id: string, args?: CursorOnly) {
+    protected async getUserLikesSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Likes, { userId: id, ...args });
     }
 
@@ -1545,7 +1545,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getUserHighlightedTweetsSlice(id: string, args?: CursorOnly) {
+    protected async getUserHighlightedTweetsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserHighlightsTweets, { userId: id, ...args });
     }
 
@@ -1562,7 +1562,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getFollowingSlice(userId: string, args?: CursorOnly) {
+    protected async getFollowingSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Following, { userId: userId, ...args });
     }
 
@@ -1579,7 +1579,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getFollowersSlice(userId: string, args?: CursorOnly) {
+    protected async getFollowersSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.Followers, { userId: userId, ...args });
     }
 
@@ -1596,7 +1596,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getFollowersYouKnowSlice(userId: string, args?: CursorOnly) {
+    protected async getFollowersYouKnowSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.FollowersYouKnow, { userId: userId, ...args });
     }
 
@@ -1613,7 +1613,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getVerifiedFollowersSlice(userId: string, args?: CursorOnly) {
+    protected async getVerifiedFollowersSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.BlueVerifiedFollowers, { userId: userId, ...args });
     }
 
@@ -1630,7 +1630,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getSuperFollowingSlice(userId: string, args?: CursorOnly) {
+    protected async getSuperFollowingSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserCreatorSubscriptions, { userId: userId, ...args });
     }
 
@@ -1647,7 +1647,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getAffiliatesSlice(userId: string, args?: CursorOnly) {
+    protected async getAffiliatesSlice(userId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.UserBusinessProfileTeamTimeline, { userId: userId, teamName: 'NotAssigned', ...args });
     }
 
@@ -1664,7 +1664,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    private async getUserListsSlice(id: string, args?: CursorOnly) {
+    protected async getUserListsSlice(id: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.CombinedLists, { userId: id, ...args });
     }
 
@@ -1909,8 +1909,8 @@ export class TwitterClient {
      * @returns Media
      * @since v0.6.0
      */
-    async mediaStatus(id: string) {
-        return await this.fetch(ENDPOINTS.media_upload.status, { media_id: id });
+    async mediaStatus(id: bigint| string) {
+        return await this.fetch(ENDPOINTS.media_upload.status, { media_id: id.toString() });
     }
 
     /**
@@ -1921,11 +1921,11 @@ export class TwitterClient {
      * @returns Success status
      * @since v0.6.0
      */
-    async addAltText(id: string, text: string) {
+    async addAltText(id: bigint | string, text: string) {
         return await this.fetch(ENDPOINTS.media_metadata_create, {
             allow_download_status: { allow_download: 'true' },
             alt_text: { text },
-            media_id: id
+            media_id: id.toString()
         });
     }
 }

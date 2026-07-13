@@ -32,6 +32,7 @@ export type MaybeType<T extends string = string> = (Type<T> & Record<string, any
 export interface Account {
     id: number,
     client: TwitterClient,
-    // TODO: make this read the rate limit header instead of just increasing the count for every action
-    uses: number
+    rateLimitMax: number,
+    rateLimitRemaining: number,
+    rateLimitResetAt: Date
 }
