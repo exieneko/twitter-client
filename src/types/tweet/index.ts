@@ -8,11 +8,11 @@ import { assert, match } from '../../utils/index.js';
  * @see {@link Conversation}
  */
 export interface Tweet extends Type<'Tweet'> {
-    id: bigint,
+    id: string,
     author: User,
     /** Birdwatch note on this tweet */
     birdwatchNote?: {
-        id: bigint,
+        id: string,
         /** The full text of the note */
         text: string,
         language: string,
@@ -39,7 +39,7 @@ export interface Tweet extends Type<'Tweet'> {
         allowedUntil?: string,
         remainingCount: number,
         /** The current id of this tweet and ids of all previous edits */
-        tweetIds: bigint[]
+        tweetIds: string[]
     },
     /** `true` if the tweet is so long that the full text is not displayed normally. `text` will still contain all text */
     isExpandable: boolean,
@@ -65,7 +65,7 @@ export interface Tweet extends Type<'Tweet'> {
     /** The quoted tweet, if it exists. May be `undefined` even if `has_quoted_tweet` is `true` and `quoted_tweet_id` is a `string`, to avoid too many recursions. Due to issues on Twitter's end, sometimes the tweet is not sent in the response data, so this property may be `undefined` for no reason */
     quotedTweet?: Tweet,
     /** Id of the quoted tweet, if it exists */
-    quotedTweetId?: bigint,
+    quotedTweetId?: string,
     /** Amount of users that replied to the tweet */
     repliesCount: number,
     /** Reply permission controlling who can reply to this tweet */
@@ -74,7 +74,7 @@ export interface Tweet extends Type<'Tweet'> {
         /** Username of the user this tweet is in reply to */
         username: string,
         /** Id of the tweet this tweet is in reply to */
-        tweetId: bigint
+        tweetId: string
     },
     retweeted: boolean,
     /** Amount of users that retweeted the tweet */
@@ -103,7 +103,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
 
             return {
                 __typename: 'Tweet',
-                id: BigInt(value.id_str),
+                id: value.id_str,
                 author: await fmt.next(User, opts.author, { legacy: true }),
                 bookmarked: !!value.bookmarked,
                 bookmarksCount: value.bookmark_count || 0,
@@ -115,7 +115,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
                 editing: {
                     isAllowed: false,
                     remainingCount: 0,
-                    tweetIds: [BigInt(value.id_str)]
+                    tweetIds: [value.id_str]
                 },
                 isExpandable: false,
                 isTranslatable: !!value.translatable,
@@ -140,7 +140,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
                     ['ByInvitation', ReplyPermission.Mentioned]
                 ], ReplyPermission.Everyone),
                 replyingTo: !!value.in_reply_to_status_id_str ? {
-                    tweetId: BigInt(value.in_reply_to_status_id_str),
+                    tweetId: value.in_reply_to_status_id_str,
                     username: value.in_reply_to_screen_name
                 } : undefined,
                 retweeted: !!value.retweeted,
@@ -155,10 +155,10 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
 
         return {
             __typename: 'Tweet',
-            id: BigInt(value.rest_id),
+            id: value.rest_id,
             author: await fmt.next(User, value.core.user_results.result),
             birdwatchNote: value.birdwatch_pivot?.note?.rest_id ? {
-                id: BigInt(value.birdwatch_pivot.note.rest_id),
+                id: value.birdwatch_pivot.note.rest_id,
                 // TODO: follow t.co redirects to get actual urls
                 text: (value.birdwatch_pivot.subtitle.entities as { fromIndex: number, toIndex: number, ref: { url: string } }[])
                     .toSorted((a, b) => b.fromIndex - a.fromIndex)
@@ -180,7 +180,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
                 isAllowed: !!editControl?.is_edit_eligible,
                 allowedUntil: new Date(Number(editControl?.editable_until_msecs || 0)).toISOString(),
                 remainingCount: Number(editControl?.edits_remaining || 0),
-                tweetIds: editControl?.edit_tweet_ids?.map(BigInt) ?? [value.rest_id]
+                tweetIds: editControl?.edit_tweet_ids ?? [value.rest_id]
             },
             isExpandable: !!value.note_tweet?.is_expandable,
             isTranslatable: !!value.is_translatable,
@@ -197,9 +197,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
             quotedTweet: value.quoted_status_result?.result
                 ? await fmt.next(Tweet, value.quoted_status_result?.result)
                 : undefined,
-            quotedTweetId: value.legacy.quoted_status_id_str
-                ? BigInt(value.legacy.quoted_status_id_str)
-                : undefined,
+            quotedTweetId: value.legacy.quoted_status_id_str,
             repliesCount: value.legacy.reply_count || 0,
             replyPermission: match(value.legacy.conversation_control?.policy as string | undefined, [
                 ['Community', ReplyPermission.Following],
@@ -207,7 +205,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
                 ['ByInvitation', ReplyPermission.Mentioned]
             ], ReplyPermission.Everyone),
             replyingTo: value.legacy.in_reply_to_status_id_str ? {
-                tweetId: BigInt(value.legacy.in_reply_to_status_id_str),
+                tweetId: value.legacy.in_reply_to_status_id_str,
                 username: value.legacy.in_reply_to_screen_name
             } : undefined,
             retweeted: !!value.legacy.retweeted,
@@ -227,7 +225,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
  * Retweet that contains the retweeted tweet within
  */
 export interface Retweet extends Type<'Retweet'> {
-    id: bigint,
+    id: string,
     tweet: Tweet,
     user: User
 }
@@ -235,7 +233,7 @@ export const Retweet: Wrapped<TweetKind, Model<Retweet>> = {
     async new(fmt, value) {
         return {
             __typename: 'Retweet',
-            id: BigInt(value.rest_id),
+            id: value.rest_id,
             tweet: await fmt.next(Tweet, value.legacy.retweeted_status_result.result),
             user: await fmt.next(User, value.core.user_results.result)
         };
@@ -249,14 +247,14 @@ export const Retweet: Wrapped<TweetKind, Model<Retweet>> = {
  * Conversation that can contain multiple tweets
  */
 export interface Conversation extends Type<'Conversation'> {
-    allTweetIds: bigint[],
+    allTweetIds: string[],
     items: (MaybeTweet | Cursor)[]
 }
 export const Conversation: Wrapped<TweetKind, Model<Conversation>> & Default<Conversation> = {
     async new(fmt, value) {
         return {
             __typename: 'Conversation',
-            allTweetIds: (value.metadata?.conversationMetadata?.allTweetIds as string[] || []).map(BigInt),
+            allTweetIds: value.metadata?.conversationMetadata?.allTweetIds || [],
             items: await Promise.all(
                 (value.items as any[] || []).map(async item => {
                     const v = item.item.itemContent;
@@ -383,26 +381,26 @@ export const TweetKind: Model<TweetKind, MaybeType> & Default<TweetKind> = {
 
 
 export interface DraftTweet extends Type<'DraftTweet'> {
-    id: bigint,
+    id: string,
     attachmentUrl?: string,
     text: string,
-    mediaIds: bigint[],
+    mediaIds: string[],
     thread: {
         text: string,
-        mediaIds: bigint[]
+        mediaIds: string[]
     }[]
 }
 export const DraftTweet: Model<DraftTweet> = {
     async new(_, value) {
         return {
             __typename: 'DraftTweet',
-            id: BigInt(value.rest_id),
+            id: value.rest_id,
             attachmentUrl: value.attachment_url,
             text: value.tweet_create_request?.status,
-            mediaIds: (value.tweet_create_request?.media_ids as any[] || []).map(BigInt),
+            mediaIds: value.tweet_create_request?.media_ids || [],
             thread: (value.tweet_create_request?.thread_tweets as any[] || []).map(tweet => ({
                 text: tweet.status,
-                mediaIds: (tweet.mediaIds as any[] || []).map(BigInt)
+                mediaIds: tweet.mediaIds || []
             }))
         };
     }

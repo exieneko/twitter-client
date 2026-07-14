@@ -70,26 +70,33 @@ export function toSearchParams(obj: object) {
 
 
 
-type TwitterInstance = TwitterFormatter | TwitterClient | TwitterOptions | boolean;
+type TwitterInstance = TwitterFormatter | TwitterClient | Partial<TwitterOptions>;
 
-function shouldLog(value: TwitterInstance) {
-    return (value instanceof TwitterFormatter && value.client.options.verbose) || (value instanceof TwitterClient && value.options.verbose) || (!(value instanceof TwitterFormatter) && !(value instanceof TwitterClient) && typeof value !== 'boolean' && value.verbose) || (typeof value === 'boolean' && value);
+function shouldLog(value: TwitterInstance | undefined, key: keyof TwitterOptions = 'verbose'): boolean {
+    if (typeof value === 'undefined') {
+        return false;
+    }
+
+    if (value instanceof TwitterFormatter) return !!value.client.options[key];
+    if (value instanceof TwitterClient) return !!value.options[key];
+    if (typeof value === 'object') return !!value[key];
+    return !!value;
 }
 
-export function log(client: TwitterInstance, data: any[]) {
+export function log(client: TwitterInstance | undefined, data: any[]) {
     if (shouldLog(client)) {
         logger.info(...data);
     }
 }
 
-export function warn(client: TwitterInstance, data: any[]) {
-    if (shouldLog(client)) {
+export function warn(client: TwitterInstance | undefined, data: any[]) {
+    if (!shouldLog(client, 'silent')) {
         logger.warn(...data);
     }
 }
 
-export function err(client: TwitterInstance, data: any[]) {
-    if (shouldLog(client)) {
+export function err(client: TwitterInstance | undefined, data: any[]) {
+    if (!shouldLog(client, 'silent')) {
         logger.error(...data);
     }
 }

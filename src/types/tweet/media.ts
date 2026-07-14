@@ -2,7 +2,7 @@ import type { Enum, Model, PartialBy, Type, Wrapped } from '../internal/index.js
 import { match } from '../../utils/index.js';
 
 export interface TweetImage extends Type<'Image'> {
-    id: bigint,
+    id: string,
     /** Alt text set on the media by the author of the tweet */
     altText?: string,
     availability: TweetMediaAvailability,
@@ -20,7 +20,7 @@ export const TweetImage: Wrapped<TweetMedia, Model<TweetImage>> = {
     async new(_, value) {
         return {
             __typename: 'Image',
-            id: BigInt(value.id_str),
+            id: value.id_str,
             altText: value.ext_alt_text || undefined,
             availability: match(value.ext_media_availability?.reason, [
                 [undefined, TweetMediaAvailability.Available],
@@ -134,7 +134,7 @@ export interface MediaUploadInit {
  * Data about an uploaded media file
  */
 export interface MediaData extends Type<'MediaData'> {
-    id: bigint,
+    id: string,
     mediaKey: string,
     /** Size of the media in bytes */
     bytes: number,
@@ -156,7 +156,7 @@ export const MediaData: Model<MediaData> = {
     async new(fmt, value) {
         return {
             __typename: 'MediaData',
-            id: BigInt(value.media_id_string),
+            id: value.media_id_string,
             mediaKey: value.media_key,
             bytes: value.size || 0,
             contentType: value.image?.image_type || value.video?.video_type || 'image/gif',

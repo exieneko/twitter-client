@@ -10,6 +10,7 @@ export const TwitterErrorCode = {
     TweetAlreadyLiked: 139,
     AutomatedRequest: 226,
     RateLimitReached: 344,
+    MissingCSRF: 353,
 
     /**
      * Fallback

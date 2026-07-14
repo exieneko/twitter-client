@@ -161,7 +161,7 @@ export interface Query {
      * 
      * `quoted_tweet_id:20000000000000000000`
      */
-    quotedTweetId?: string | number | bigint,
+    quotedTweetId?: string | bigint,
 
     // users
     /**

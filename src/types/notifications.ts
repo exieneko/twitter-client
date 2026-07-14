@@ -6,7 +6,7 @@ import { match } from '../utils/index.js';
  * A Twitter notification
  */
 export interface Notification extends Type<'Notification'> {
-    id: bigint,
+    id: string,
     createdAt: string,
     /** Id of the primary object in a notification, like a tweet or Birdwatch note */
     objectId?: string,
@@ -43,7 +43,7 @@ export const Notification: Model<Notification, Record<string, any>, { kind: Noti
 
         return {
             __typename: 'Notification',
-            id: BigInt(value.id || tweet?.id),
+            id: value.id || tweet?.id,
             createdAt: new Date(value.timestamp_ms).toISOString(),
             objectId,
             text: match(opts.kind, [

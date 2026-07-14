@@ -6,7 +6,7 @@ import { assert, match } from '../utils/index.js';
  * A Twitter community
  */
 export interface Community extends Type<'Community'> {
-    id: bigint,
+    id: string,
     /** URL for the community's banner and preview image */
     bannerUrl?: string,
     /** `true` if you can join this community without an invite */
@@ -31,7 +31,7 @@ export interface Community extends Type<'Community'> {
     role: CommunityRole,
     /** Community rules */
     rules: {
-        id: bigint,
+        id: string,
         description?: string,
         name: string
     }[],
@@ -42,7 +42,7 @@ export const Community: Wrapped<CommunityKind, Model<Community>> = {
     async new(fmt, value) {
         return {
             __typename: 'Community',
-            id: BigInt(value.id_str),
+            id: value.id_str,
             bannerUrl: value.custom_banner_media?.media_info?.original_img_url,
             canJoin: value.join_policy === 'Open',
             canInvite: value.invites_policy === 'MemberInvitesAllowed' && !value.invites_result?.__typename.includes('Unavailable'),
@@ -61,7 +61,7 @@ export const Community: Wrapped<CommunityKind, Model<Community>> = {
                 ['Moderator', CommunityRole.Moderator]
             ], CommunityRole.Owner),
             rules: (value.rules as any[] || []).map(rule => ({
-                id: BigInt(rule.rest_id),
+                id: rule.rest_id,
                 description: rule.description,
                 name: rule.name
             })),

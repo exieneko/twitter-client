@@ -63,6 +63,21 @@ export interface TwitterOptions {
      */
     language: string,
     /**
+     * File paths to store data
+     * 
+     * @default {}
+     */
+    files: {
+        /**
+         * Saves account tokens as a JSON array. Use `TwitterClient.loadCookies(filepath)` to initialize the client from this file
+         */
+        cookies?: string,
+        /**
+         * Saves response data will as a JSON array
+         */
+        data?: string
+    },
+    /**
      * How to handle when a tweet's text length exceeds 280 characters
      * 
      * @default LongTweetBehavior.Force
@@ -70,10 +85,14 @@ export interface TwitterOptions {
     longTweetBehavior: LongTweetBehavior,
     /**
      * Optional http proxy url
-     * 
-     * @default undefined
      */
     proxyUrl?: string,
+    /**
+     * Silence all errors?
+     * 
+     * @default false
+     */
+    silent?: boolean,
     /**
      * User-Agent header to send with requests
      * 

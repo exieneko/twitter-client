@@ -1,40 +1,43 @@
 import { hrtime } from 'node:process';
+import { parseHTML } from 'linkedom';
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
 import { err, log, toSearchParams, warn } from './index.js';
 import { GLOBAL_HEADERS, MAX_ACCEPTABLE_REQUEST_TIME } from '../consts.js';
-import type { TwitterOptions, TwitterTokens } from '../types/index.js';
+import type { TwitterOptions } from '../types/index.js';
 import { EndpointKind, type Endpoint, type EndpointParams } from '../types/internal/index.js';
 
-export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: EndpointParams<EP> | undefined, options: TwitterOptions, tokens: TwitterTokens, proxyAgent?: ProxyAgent, userId?: bigint, transactionId?: string, body?: BodyInit): Promise<[T | E, Response?]> {
+export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: EndpointParams<EP> | undefined, options: TwitterOptions, { cookies, proxyAgent, transactionId, body }: {
+    cookies: Record<string, string>,
+    proxyAgent?: ProxyAgent,
+    transactionId?: string,
+    body?: BodyInit
+}): Promise<[T | E, Response?]> {
     const start = hrtime.bigint();
 
     const headers: Record<string, string> = {
         ...GLOBAL_HEADERS,
-        'Accept-Language': `${options.language === 'en' ? 'en-US,en' : options.language};q=0.5`,
-        Host: (endpoint.url.replace('https://', '').replace('.com/', '') + '.com').replace('twitter.com', options.domain),
-        Origin: `https://${options.domain}`,
-        Referer: `https://${options.domain}/`,
+        'accept-language': `${options.language === 'en' ? 'en-US,en' : options.language};q=0.9`,
+        host: (endpoint.url.replace('https://', '').replace('.com/', '') + '.com').replace('twitter.com', options.domain),
+        origin: `https://${options.domain}`,
+        referer: `https://${options.domain}/`,
         authorization: endpoint.token,
-        'User-Agent': options.userAgent,
-        'x-csrf-token': tokens.csrf
+        'user-agent': options.userAgent,
+        'x-csrf-token': cookies.ct0
     };
 
-    const cookie = {
-        auth_token: tokens.authToken,
-        ct0: tokens.csrf,
-        twid: userId ? `u%3D${userId}` : undefined,
-        lang: options.language
-    };
-
-    headers['cookie'] = Object.entries(cookie).filter(([, v]) => !!v).map(([k, v]) => `${k}=${v}`).join('; ');
+    headers['cookie'] = Object
+        .entries(cookies)
+        .filter(([, v]) => !!v)
+        .map(([k, v]) => `${k}=${v}`)
+        .join('; ');
 
     if (transactionId) {
         headers['x-client-transaction-id'] = transactionId;
     }
 
     if (endpoint.kind() !== EndpointKind.Media) {
-        headers['Content-Type'] = endpoint.kind() === EndpointKind.GraphQL
+        headers['content-type'] = endpoint.kind() === EndpointKind.GraphQL
             ? 'application/json; charset=utf-8'
             : 'application/x-www-form-urlencoded; charset=utf-8';
     }
@@ -49,7 +52,7 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         proxyAgent
     ] as const;
 
-    log(options, [endpoint.method.trim().toUpperCase(), endpoint.url.trim()]);
+    log(options, [endpoint.method.toUpperCase(), endpoint.url]);
 
     try {
         const response = endpoint.kind() === EndpointKind.GraphQL
@@ -112,4 +115,40 @@ async function sendRequest<EP extends Endpoint, E extends Error>(url: string, en
     } catch (error) {
         return error as E;
     }
+}
+
+/**
+ * Modified from fetchXDocument function in `x-client-transaction-id` to allow usage of a proxy
+ * 
+ * @see https://github.com/Lqm1/x-client-transaction-id/blob/main/utils.ts
+ */
+export async function fetchXDocument(opts: TwitterOptions, dispatcher?: ProxyAgent) {
+    const headers = {
+        ...GLOBAL_HEADERS,
+        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': opts.language,
+        pragma: 'no-cache',
+        'user-agent': opts.userAgent,
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'none',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1'
+    };
+
+    const start = hrtime.bigint();
+
+    log(opts, ['GET https://x.com/home']);
+    const response = await fetch('https://x.com/home', { headers, dispatcher });
+    const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
+
+    if (!response.ok) {
+        err(opts, [response.status, `in ${elapsed}ms`]);
+        throw new Error(response.status.toString());
+    } else {
+        log(opts, [response.status, `in ${elapsed}ms`]);
+    }
+
+    const html = await response.text();
+    return parseHTML(html).window.document;
 }

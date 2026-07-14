@@ -18,8 +18,17 @@ export const EMPTY_SLICE: TwitterResponse<Slice<any>> = {
 };
 
 export const GLOBAL_HEADERS = {
-    Accept: '*/*',
-    Connection: 'keep-alive',
+    accept: '*/*',
+    connection: 'keep-alive',
+    'accept-encoding': 'gzip, deflate, br, zstd',
+    'cache-control': 'no-cache',
+    priority: 'u=0, i',
+    'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-site',
     'x-twitter-active-user': 'yes',
     'x-twitter-auth-type': 'OAuth2Session'
 };

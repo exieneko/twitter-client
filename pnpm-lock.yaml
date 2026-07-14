@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      linkedom:
+        specifier: ^0.18.13
+        version: 0.18.13
       node-color-log:
         specifier: ^14.0.0
         version: 14.0.0

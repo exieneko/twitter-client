@@ -102,13 +102,13 @@ export const PollChoice: Model<PollChoice, number, CardOpts> = {
  * Stream broadcast in a tweet
  */
 export interface BroadcastCard extends CardBase, Type<'Broadcast'> {
-    id: bigint,
+    id: string,
     /** Author of the embedded broadcast */
     author: User,
     /** `true` if the broadcast has ended */
     hasEnded: boolean,
     /** Id of the broadcast video media */
-    mediaId: bigint,
+    mediaId: string,
     mediaKey: string,
     thumbnail?: CardImage,
     title: string,
@@ -119,12 +119,12 @@ export const BroadcastCard: Wrapped<CardKind, Model<BroadcastCard, Record<string
     async new(fmt, value, { bv, get }) {
         return {
             __typename: 'Broadcast',
-            id: BigInt(get(bv, 'broadcast_id')?.string_value!),
+            id: get(bv, 'broadcast_id')?.string_value!,
             author: await fmt.next(User, value.user_refs_results?.at(0)?.result),
             cardName: value.name,
             cardUrl: value.url,
             hasEnded: get(bv, 'broadcast_state')?.string_value?.toUpperCase() === 'ENDED',
-            mediaId: BigInt(get(bv, 'broadcast_media_id')?.string_value!),
+            mediaId: get(bv, 'broadcast_media_id')?.string_value!,
             mediaKey: get(bv, 'broadcast_media_key')?.string_value!,
             thumbnail: get(bv, 'broadcast_thumbnail_original')?.image_value,
             title: get(bv, 'title')?.string_value!,

@@ -5,7 +5,7 @@ import { assert, match } from '../utils/index.js';
  * User
  */
 export interface User extends Type<'User'> {
-    id: bigint,
+    id: string,
     /** Amount of affiliates the user has */
     affiliatesCount: number,
     /** User's affiliate label if they're associated with a business account */
@@ -56,7 +56,7 @@ export interface User extends Type<'User'> {
     location?: string,
     name: string,
     /** `id` of the user's pinned tweet, `undefined` if it doesn't exist */
-    pinnedTweetId?: bigint,
+    pinnedTweetId?: string,
     /** `true` if the user's tweets can only be viewed by users that follow them */
     protected: boolean,
     /** Amount of other users the user is super-following */
@@ -96,7 +96,7 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = 
         if (opts.legacy) {
             return {
                 __typename: 'User',
-                id: BigInt(value.id_str),
+                id: value.id_str,
                 affiliatesCount: 0,
                 avatarUrl: value.profile_image_url_https.replace('normal', '400x400'),
                 bannerUrl: value.profile_banner_url || undefined,
@@ -156,7 +156,7 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = 
 
         return {
             __typename: 'User',
-            id: BigInt(value.rest_id),
+            id: value.rest_id,
             affiliatesCount: value.business_account?.affiliates_count || 0,
             affiliateLabel,
             avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
@@ -183,14 +183,12 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = 
             isFollowed: !!value.relationship_perspectives.following,
             isFollowRequested: !!value.legacy.follow_request_sent,
             isFollowedBy: !!value.relationship_perspectives.followed_by,
+            isMuted: !!value.relationship_perspectives.muting,
             isTranslatable: !!value.is_profile_translatable,
             job: value.professional?.category?.at(0)?.name,
             location: !!value.location.location ? value.location.location : undefined,
-            isMuted: !!value.relationship_perspectives.muting,
             name: value.core.name,
-            pinnedTweetId: value.legacy.pinned_tweet_ids_str?.at(0)
-                ? BigInt(value.legacy.pinned_tweet_ids_str[0])
-                : undefined,
+            pinnedTweetId: value.legacy.pinned_tweet_ids_str?.at(0),
             protected: !!value.privacy.protected,
             superFollowingCount: value.creator_subscriptions_count || 0,
             superFollowingHidden: !!value.has_hidden_subscriptions_on_profile,
@@ -198,7 +196,7 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = 
             mediaCount: value.legacy.media_count,
             likesCount: value.legacy.favourites_count,
             listedCount: value.legacy.listed_count,
-            highlightedTweetsCount: Number(value.highlights_info?.highlighted_tweets || '0'),
+            highlightedTweetsCount: Number(value.highlights_info?.highlighted_tweets || 0),
             username: value.core.screen_name,
             url: value.legacy.entities.url?.urls?.at?.(0)?.expanded_url?.replace(/^http:\/\//, 'https://')?.replace(/\/$/, ''),
             verification: {
@@ -266,7 +264,7 @@ export const UserKind: Model<UserKind, MaybeType, { legacy: boolean }> & Default
  * Additional information about a user
  */
 export interface AboutUser extends Type<'AboutUser'> {
-    id: bigint,
+    id: string,
     /** URL for the user's profile picture */
     avatarUrl: string,
     /** Country the user is based in */
@@ -289,7 +287,7 @@ export const AboutUser: Model<AboutUser> = {
     async new(_, value) {
         return {
             __typename: 'AboutUser',
-            id: BigInt(value.rest_id),
+            id: value.rest_id,
             avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
             basedIn: value.about_profile?.account_based_in,
             createdAt: new Date(value.core.created_at).toISOString(),

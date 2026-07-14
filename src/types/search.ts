@@ -6,7 +6,7 @@ import type { Model, Type } from './internal/index.js';
 export interface Typeahead extends Type<'SearchTypeahead'> {
     resultsCount: number,
     topics: string[],
-    userIds: bigint[],
+    userIds: string[],
     query: string
 }
 export const Typeahead: Model<Typeahead> = {
@@ -15,7 +15,7 @@ export const Typeahead: Model<Typeahead> = {
             __typename: 'SearchTypeahead',
             resultsCount: value.num_results,
             topics: (value.topics as any[] || []).map(topic => topic.topic),
-            userIds: (value.users as any[] || []).map(user => BigInt(user.id_str)),
+            userIds: (value.users as any[] || []).map(user => user.id_str),
             query: value.query
         };
     }

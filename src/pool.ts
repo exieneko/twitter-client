@@ -71,33 +71,33 @@ export class TwitterPool {
         return result;
     }
 
-    getCommunity(id: string | bigint) {
+    getCommunity(id: string) {
         return this.client(c => c.getCommunity(id));
     }
 
-    getCommunityTweets(id: string | bigint, args?: CommunityTweetsGetArgs) {
+    getCommunityTweets(id: string, args?: CommunityTweetsGetArgs) {
         return this.client(c => slice(c.getCommunityTweets(id, args)));
     }
 
-    getCommunityMedia(id: string | bigint, args?: CursorOnly) {
+    getCommunityMedia(id: string, args?: CursorOnly) {
         return this.client(c => slice(c.getCommunityMedia(id, args)));
     }
 
 
 
-    getList(id: string | bigint, args?: BySlug) {
+    getList(id: string, args?: BySlug) {
         return this.client(c => c.getList(id, args));
     }
 
-    getListTweets(id: string | bigint, args?: CursorOnly) {
+    getListTweets(id: string, args?: CursorOnly) {
         return this.client(c => slice(c.getListTweets(id, args)));
     }
 
-    getListMembers(id: string | bigint, args?: CursorOnly) {
+    getListMembers(id: string, args?: CursorOnly) {
         return this.client(c => slice(c.getListMembers(id, args)));
     }
 
-    getListSubscribers(id: string | bigint, args?: CursorOnly) {
+    getListSubscribers(id: string, args?: CursorOnly) {
         return this.client(c => slice(c.getListSubscribers(id, args)));
     }
 
@@ -116,77 +116,77 @@ export class TwitterPool {
 
 
 
-    getTweet(id: string | bigint, args?: TweetGetArgs) {
+    getTweet(id: string, args?: TweetGetArgs) {
         return this.client(c => slice(c.getTweet(id, args)));
     }
 
-    getTweetResult(id: string | bigint) {
+    getTweetResult(id: string) {
         return this.client(c => c.getTweetResult(id));
     }
 
-    getTweetResults(ids: (string | bigint)[]) {
+    getTweetResults(ids: (string)[]) {
         return this.client(c => c.getTweetResults(ids));
     }
 
-    getHiddenReplies(tweetId: string | bigint) {
+    getHiddenReplies(tweetId: string) {
         return this.client(c => slice(c.getHiddenReplies(tweetId)));
     }
     
-    getLikes(tweetId: string | bigint) {
+    getLikes(tweetId: string) {
         return this.client(c => slice(c.getLikes(tweetId)));
     }
 
-    getRetweets(tweetId: string | bigint) {
+    getRetweets(tweetId: string) {
         return this.client(c => slice(c.getRetweets(tweetId)));
     }
 
-    getQuotedTweets(tweetId: string | bigint, args?: CursorOnly) {
+    getQuotedTweets(tweetId: string, args?: CursorOnly) {
         return this.client(c => slice(c.getQuoteTweets(tweetId, args)));
     }
 
 
 
-    getUser<T extends ByUsername>(id: T['byUsername'] extends true ? string : string | bigint, args?: T) {
+    getUser(id: string, args?: ByUsername) {
         return this.client(c => c.getUser(id, args));
     }
 
-    getUsers<T extends ByUsername>(ids: T['byUsername'] extends true ? string[] : (string | bigint)[], args?: T) {
+    getUsers(ids: string[], args?: ByUsername) {
         return this.client(c => c.getUsers(ids, args));
     }
     
-    getUserTweets(id: string | bigint, args?: UserTweetsGetArgs) {
+    getUserTweets(id: string, args?: UserTweetsGetArgs) {
         return this.client(c => slice(c.getUserTweets(id, args)));
     }
 
-    getUserMedia(id: string | bigint, args?: CursorOnly) {
+    getUserMedia(id: string, args?: CursorOnly) {
         return this.client(c => slice(c.getUserMedia(id, args)));
     }
 
-    getUserHighlightedTweets(id: string | bigint, args?: CursorOnly) {
+    getUserHighlightedTweets(id: string, args?: CursorOnly) {
         return this.client(c => slice(c.getUserHighlightedTweets(id, args)));
     }
 
-    getFollowing(userId: string | bigint, args?: CursorOnly) {
+    getFollowing(userId: string, args?: CursorOnly) {
         return this.client(c => slice(c.getFollowing(userId, args)));
     }
 
-    getFollowers(userId: string | bigint, args?: CursorOnly) {
+    getFollowers(userId: string, args?: CursorOnly) {
         return this.client(c => slice(c.getFollowers(userId, args)));
     }
 
-    getVerifiedFollowers(userId: string | bigint, args?: CursorOnly) {
+    getVerifiedFollowers(userId: string, args?: CursorOnly) {
         return this.client(c => slice(c.getVerifiedFollowers(userId, args)));
     }
 
-    getSuperFollowing(userId: string | bigint, args?: CursorOnly) {
+    getSuperFollowing(userId: string, args?: CursorOnly) {
         return this.client(c => slice(c.getSuperFollowing(userId, args)));
     }
 
-    getAffiliates(userId: string | bigint, args?: CursorOnly) {
+    getAffiliates(userId: string, args?: CursorOnly) {
         return this.client(c => slice(c.getAffiliates(userId, args)));
     }
 
-    getUserLists(id: string | bigint, args?: CursorOnly) {
+    getUserLists(id: string, args?: CursorOnly) {
         return this.client(c => slice(c.getUserLists(id, args)));
     }
 
@@ -196,11 +196,11 @@ export class TwitterPool {
         return this.client(c => c.upload(media, args, callback));
     }
 
-    mediaStatus(id: string | bigint) {
+    mediaStatus(id: string) {
         return this.client(c => c.mediaStatus(id));
     }
 
-    addAltText(id: string | bigint, text: string) {
+    addAltText(id: string, text: string) {
         return this.client(c => c.addAltText(id, text));
     }
 }

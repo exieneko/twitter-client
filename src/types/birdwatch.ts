@@ -5,7 +5,7 @@ import { match } from '../utils/index.js';
  * Single Birdwatch note
  */
 export interface BirdwatchNote extends Type<'BirdwatchNote'> {
-    id: bigint,
+    id: string,
     author: BirdwatchUser,
     /** `true` if the note is added due to the media content of the tweet */
     byMedia: boolean,
@@ -41,7 +41,7 @@ export const BirdwatchNote: Model<BirdwatchNote> = {
     async new(fmt, value) {
         return {
             __typename: 'BirdwatchNote',
-            id: BigInt(value.rest_id),
+            id: value.rest_id,
             author: await fmt.next(BirdwatchUser, value.birdwatch_profile, { isAi: !!value.is_api_author }),
             byMedia: !!value.is_media_note,
             byUrl: !!value.is_url_note,

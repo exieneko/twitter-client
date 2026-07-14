@@ -6,7 +6,7 @@ import { assert } from '../utils/index.js';
  * A Twitter list. Lists contain users whose tweets can be viewed on the list's timeline
  */
 export interface List extends Type<'List'> {
-    id: bigint,
+    id: string,
     bannerUrl?: string,
     createdAt: string,
     creator: User,
@@ -31,7 +31,7 @@ export const List: Wrapped<ListKind, Model<List>> = {
     async new(fmt, value) {
         return {
             __typename: 'List',
-            id: BigInt(value.id_str),
+            id: value.id_str,
             bannerUrl: value.custom_banner_media.media_info.original_img_id,
             createdAt: new Date(value.created_at).toISOString(),
             creator: await fmt.next(User, value.user_results?.result),
