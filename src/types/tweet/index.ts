@@ -261,7 +261,7 @@ export const Conversation: Wrapped<TweetKind, Model<Conversation>> & Default<Con
 
                     return v.__typename === 'TimelineTimelineCursor'
                         ? await fmt.next(Cursor, v)
-                        : await fmt.next(MaybeTweet, v, { safe: false });
+                        : await fmt.next(MaybeTweet, v.tweet_results.result, { safe: false });
                 })
             )
         };
