@@ -41,17 +41,17 @@ export interface Tweet extends Type<'Tweet'> {
         /** The current id of this tweet and ids of all previous edits */
         tweetIds: string[]
     },
-    /** `true` if the tweet is so long that the full text is not displayed normally. `text` will still contain all text */
-    isExpandable: boolean,
-    isTranslatable: boolean,
-    /** `true` if Twitter restricted this tweet due to it being hateful. This also disables all client-side interaction options */
-    isVisibilityRestricted: boolean,
     /** `true` if the tweet has an active or pending Birdwatch note */
     hasBirdwatchNote: boolean,
     /** `true` the tweet has a Grok conversation embed */
     hasGrokChatEmbed: boolean,
     /** `true` if this tweet is quoting another tweet */
     hasQuotedTweet: boolean,
+    /** `true` if the tweet is so long that the full text is not displayed normally. `text` will still contain all text */
+    isExpandable: boolean,
+    isTranslatable: boolean,
+    /** `true` if Twitter restricted this tweet due to it being hateful. This also disables all client-side interaction options */
+    isVisibilityRestricted: boolean,
     language: string,
     /** `true` if you liked this tweet */
     liked: boolean,
@@ -81,6 +81,12 @@ export interface Tweet extends Type<'Tweet'> {
     retweetsCount: number,
     /** The full text of the tweet, including user mentions in the beginning of replies. If the tweet is a note tweet, this property will contain the expanded text instead of the 280 character preview */
     text: string,
+    /** Auto-translated text of the tweet to client's language */
+    translation?: {
+        text: string,
+        /** Destination language */
+        language: string
+    },
     /** Amount of views the tweet has. May be `undefined` if the tweet predates view tracking */
     viewsCount?: number
 }
@@ -117,12 +123,12 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
                     remainingCount: 0,
                     tweetIds: [value.id_str]
                 },
-                isExpandable: false,
-                isTranslatable: !!value.translatable,
-                isVisibilityRestricted: false,
                 hasBirdwatchNote: !!value.has_birdwatch_notes,
                 hasGrokChatEmbed: false,
                 hasQuotedTweet: !!value.is_quote_status,
+                isExpandable: false,
+                isTranslatable: !!value.translatable,
+                isVisibilityRestricted: false,
                 language: value.lang,
                 liked: !!value.favorited,
                 likesCount: value.favorite_count || 0,
@@ -182,12 +188,12 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
                 remainingCount: Number(editControl?.edits_remaining || 0),
                 tweetIds: editControl?.edit_tweet_ids ?? [value.rest_id]
             },
-            isExpandable: !!value.note_tweet?.is_expandable,
-            isTranslatable: !!value.is_translatable,
-            isVisibilityRestricted: value.tweetInterstitial?.__typename === 'ContextualTweetInterstitial',
             hasBirdwatchNote: !!value.has_birdwatch_notes,
             hasGrokChatEmbed: !!value.grok_share_attachment,
             hasQuotedTweet: !!value.legacy.is_quote_status,
+            isExpandable: !!value.note_tweet?.is_expandable,
+            isTranslatable: !!value.is_translatable,
+            isVisibilityRestricted: value.tweetInterstitial?.__typename === 'ContextualTweetInterstitial',
             language: value.legacy.lang,
             liked: !!value.legacy.favorited,
             likesCount: value.legacy.favorite_count || 0,
@@ -213,6 +219,10 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
             text: !!value.legacy.entities.media?.length
                 ? getText(value).replace(/https:\/\/t\.co\/.+$/, '').trimEnd()
                 : getText(value),
+            translation: typeof value.grok_translated_post_with_availability?.data?.translation?.length === 'string' ? {
+                text: value.grok_translated_post_with_availability.data.translation,
+                language: value.grok_translated_post_with_availability.data.destination_language || 'zxx'
+            } : undefined,
             viewsCount: Number(value.views.count) || undefined
         };
     },
