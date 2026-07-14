@@ -25,13 +25,13 @@ export * from '../fmt/index.js';
  * Response object returned by all methods on `TwitterClient`
  */
 export interface TwitterResponse<T> {
+    data?: T,
     /**
      * Errors returned by Twitter and thrown during parsing
      */
     errors: TwitterError[],
-    data?: T,
     /**
-     * Http response received by the server
+     * Http response received by the server. Always `undefined` unless the `includeResponse` is set to true
      */
     response?: Response
 }
@@ -78,6 +78,13 @@ export interface TwitterOptions {
         data?: string
     },
     /**
+     * Include the API response as the `response` property on all returned data? This object may include sensitive information like the set-cookie header
+     * 
+     * @default
+     * false
+     */
+    includeResponse: boolean,
+    /**
      * How to handle when a tweet's text length exceeds 280 characters
      * 
      * @default LongTweetBehavior.Force
@@ -92,7 +99,7 @@ export interface TwitterOptions {
      * 
      * @default false
      */
-    silent?: boolean,
+    silent: boolean,
     /**
      * User-Agent header to send with requests
      * 

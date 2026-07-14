@@ -111,6 +111,7 @@ export class TwitterClient {
         const opts: TwitterOptions = {
             domain: 'twitter.com',
             files: {},
+            includeResponse: false,
             language: 'en',
             longTweetBehavior: 'Force',
             proxyUrl: undefined,
@@ -188,10 +189,13 @@ export class TwitterClient {
         }
     }
 
-    private async dump(data: any) {
+    private dump<T>(data: TwitterResponse<T>) {
         if (!this.options.files.data) {
             return;
         }
+
+        const clone = structuredClone(data);
+        delete clone.response;
 
         try {
             let json: any[] = [];
@@ -205,14 +209,14 @@ export class TwitterClient {
                 json = [];
             }
 
-            json.push(data);
+            json.push(clone);
             writeFileSync(this.options.files.data, JSON.stringify(json, null, 2), 'utf8');
         } catch (error) {
             err(this, ['Error while writing file:', error]);
         }
     }
 
-    private async dumpCookies() {
+    private dumpCookies() {
         if (!this.options.files.cookies) {
             return;
         }
@@ -259,23 +263,23 @@ export class TwitterClient {
             if (json instanceof Error) {
                 return {
                     errors: [new TwitterError(json)],
-                    response
+                    response: twitter.options.includeResponse ? response : undefined
                 };
             } else if (json && typeof json === 'object' && 'errors' in json && !('data' in json) && Array.isArray(json.errors)) {
                 return {
                     errors: TwitterError.from(json.errors),
-                    response
+                    response: twitter.options.includeResponse ? response : undefined
                 };
             } else if (!json) {
                 return {
                     errors: [new TwitterError()],
-                    response
+                    response: twitter.options.includeResponse ? response : undefined
                 };
             }
 
             if (response) {
                 twitter.addTokens(response.headers.getSetCookie());
-                await twitter.dumpCookies();
+                twitter.dumpCookies();
             }
 
             try {
@@ -285,18 +289,18 @@ export class TwitterClient {
                 return {
                     data: result,
                     errors: fmt.errors,
-                    response
+                    response: twitter.options.includeResponse ? response : undefined
                 };
             } catch (error: any) {
                 return {
                     errors: [new TwitterError(error)],
-                    response
+                    response: twitter.options.includeResponse ? response : undefined
                 };
             }
         }
 
         const result = await wrapper(this);
-        await this.dump(result);
+        this.dump(result);
         return result;
     }
 
