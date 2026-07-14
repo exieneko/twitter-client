@@ -1291,6 +1291,18 @@ export class TwitterClient {
     }
 
     /**
+     * Translate a tweet to `language` using Grok
+     * 
+     * @param id Tweet id
+     * @param [language] Desired language. Defaults to client language if omitted
+     * @returns Translated text
+     * @since v1.0.0-rc.1
+     */
+    async translateTweet(id: string, language?: string) {
+        return await this.fetch(ENDPOINTS.grok_translation, { dst_lang: language ?? this.options.language, id });
+    }
+
+    /**
      * Get hidden replies on a tweet
      * 
      * @param tweetId Tweet id

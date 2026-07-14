@@ -1,4 +1,4 @@
-import type { AsyncConstructor, Enum, Type } from './index.js';
+import type { Enum } from './index.js';
 import { PUBLIC_TOKEN } from '../../consts.js';
 import type { Flags } from '../../flags.js';
 import type { TwitterFormatter } from '../../fmt/index.js';
@@ -52,6 +52,8 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> imp
             return EndpointKind.GraphQL;
         } else if (this.url.includes('/i/api/2')) {
             return EndpointKind.v2;
+        } else if (this.url.includes('api.twitter.com/2/')) {
+            return EndpointKind.v2Alt;
         }
 
         return EndpointKind.v11;
@@ -62,6 +64,7 @@ export const EndpointKind = {
     GraphQL: 'GraphQL',
     v11: 'v1.1',
     v2: 'v2',
+    v2Alt: 'v2Alt',
     Media: 'Media'
 } as const;
 export type EndpointKind = Enum<typeof EndpointKind>;

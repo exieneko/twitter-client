@@ -38,7 +38,7 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
     }
 
     if (endpoint.kind() !== EndpointKind.Media) {
-        headers['content-type'] = endpoint.kind() === EndpointKind.GraphQL
+        headers['content-type'] = endpoint.kind() === EndpointKind.GraphQL || endpoint.kind() === EndpointKind.v2Alt
             ? 'application/json; charset=utf-8'
             : 'application/x-www-form-urlencoded; charset=utf-8';
     }
@@ -49,7 +49,7 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
 
 
 
-    const url = endpoint.url.replace('twitter.com', options.domain)
+    const url = endpoint.url.replace('twitter.com', options.domain);
     const requestData = [
         url,
         endpoint,
@@ -110,13 +110,16 @@ async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string,
 
 async function sendRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: EndpointParams<EP> | undefined, headers: Record<string, any>, proxyAgent?: ProxyAgent, mediaFormData?: BodyInit) {
     const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
-    console.log(url + '?' + body);
 
     try {
-        return await fetch((endpoint.method === 'get' && body || mediaFormData) ? `${url}?${body}` : url, {
+        return await fetch(((endpoint.method === 'get' && body) || mediaFormData) ? `${url}?${body}` : url, {
             method: endpoint.method,
             headers,
-            body: mediaFormData ? mediaFormData : endpoint.post(body),
+            body: mediaFormData
+                ? mediaFormData
+            : endpoint.kind() === EndpointKind.v2Alt
+                ? endpoint.post({ ...endpoint.variables, ...params })
+                : endpoint.post(body),
             dispatcher: proxyAgent
         });
     } catch (error) {

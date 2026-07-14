@@ -693,6 +693,11 @@ export const ENDPOINTS = {
         method: 'get',
         features: flags.user
     }, (fmt, value) => Promise.all((value.data.users as any[] || []).map(user => fmt.next(UserKind, user?.result)))),
+    grok_translation: new Endpoint<string, { dst_lang: string, id: string }>({
+        url: 'https://api.twitter.com/2/grok/translation.json',
+        method: 'post',
+        variables: {"content_type":"POST"}
+    }, async (_, value) => value.result.text),
     AboutAccountQuery: new Endpoint<AboutUser, { screenName: string }>({
         url: gql('zs_jFPFT78rBpXv9Z3U2YQ/AboutAccountQuery'),
         method: 'get'
