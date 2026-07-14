@@ -18,11 +18,12 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
     const headers: Record<string, string> = {
         ...GLOBAL_HEADERS,
         'accept-language': `${options.language === 'en' ? 'en-US,en' : options.language};q=0.9`,
-        host: (endpoint.url.replace('https://', '').replace('.com/', '') + '.com').replace('twitter.com', options.domain),
+        host: endpoint.url.replace(/^https:\/\//, '').replace('twitter.com', options.domain).replace(/\.com\/.*/, '.com'),
         origin: `https://${options.domain}`,
         referer: `https://${options.domain}/`,
         authorization: endpoint.token,
         'user-agent': options.userAgent,
+        'x-twitter-client-language': options.language,
         'x-csrf-token': cookies.ct0
     };
 
@@ -42,17 +43,22 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
             : 'application/x-www-form-urlencoded; charset=utf-8';
     }
 
+    if (headers['content-type'] && endpoint.method === 'get' && !endpoint.features && endpoint.kind() === EndpointKind.v11) {
+        delete headers['content-type'];
+    }
 
 
+
+    const url = endpoint.url.replace('twitter.com', options.domain)
     const requestData = [
-        endpoint.url.replace('twitter.com', options.domain),
+        url,
         endpoint,
         params,
         headers,
         proxyAgent
     ] as const;
 
-    log(options, [endpoint.method.toUpperCase(), endpoint.url]);
+    log(options, [endpoint.method.toUpperCase(), url]);
 
     try {
         const response = endpoint.kind() === EndpointKind.GraphQL
@@ -104,6 +110,7 @@ async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string,
 
 async function sendRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: EndpointParams<EP> | undefined, headers: Record<string, any>, proxyAgent?: ProxyAgent, mediaFormData?: BodyInit) {
     const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
+    console.log(url + '?' + body);
 
     try {
         return await fetch((endpoint.method === 'get' && body || mediaFormData) ? `${url}?${body}` : url, {
@@ -128,11 +135,15 @@ export async function fetchXDocument(opts: TwitterOptions, dispatcher?: ProxyAge
         accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'accept-language': opts.language,
         pragma: 'no-cache',
-        'user-agent': opts.userAgent,
+        priority: 'u=0, i',
+        'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
         'sec-fetch-dest': 'document',
         'sec-fetch-mode': 'navigate',
         'sec-fetch-site': 'none',
         'sec-fetch-user': '?1',
+        'user-agent': opts.userAgent,
         'upgrade-insecure-requests': '1'
     };
 
