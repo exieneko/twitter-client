@@ -676,16 +676,25 @@ export class TwitterClient {
     /**
      * Get lists you're a member of
      * 
-     * @todo This should be turned into a generator
      * @param [args] {@link CursorOnly}
-     * @returns Slice of lists
+     * @yields Slice of lists
      * @since v0.6.0
      */
-    async listedOn(args?: CursorOnly) {
+    async* listedOn(args?: CursorOnly): Timeline<ListKind> {
+        for await (const slice of this.getSlice(args, args => this.listedOnSlice(args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    protected async listedOnSlice(args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListMemberships, args);
     }
 
-    async getOwnedLists(userId: string, otherUserId: string, args?: CursorOnly) {
+    async* getOwnedLists(userId: string, otherUserId: string, args?: CursorOnly): Timeline<ListKind> {
+        for await (const slice of this.getSlice(args, args => this.getOwnedListsSlice(userId, otherUserId, args))) yield slice;
+        return EMPTY_SLICE;
+    }
+
+    protected async getOwnedListsSlice(userId: string, otherUserId: string, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.ListOwnerships, { userId: userId.toString(), isListMemberTargetUserId: otherUserId.toString(), ...args });
     }
 
