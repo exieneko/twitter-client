@@ -194,23 +194,26 @@ export class TwitterClient {
             return;
         }
 
-        const clone = structuredClone(data);
-        delete clone.response;
-
         try {
+            let obj: TwitterResponse<T> = { data: structuredClone(data.data), errors: structuredClone(data.errors) };
+
             let json: any[] = [];
 
             if (existsSync(this.options.files.data)) {
                 const content = readFileSync(this.options.files.data, 'utf8');
-                json = JSON.parse(content);
+                try {
+                    json = JSON.parse(content);
+                } catch {
+                    json = [];
+                }
             }
 
             if (!Array.isArray(json)) {
                 json = [];
             }
 
-            json.push(clone);
-            writeFileSync(this.options.files.data, JSON.stringify(json, null, 2), 'utf8');
+            json.push(obj);
+            writeFileSync(this.options.files.data, JSON.stringify(json), 'utf8');
         } catch (error) {
             err(this, ['Error while writing file:', error]);
         }
@@ -221,7 +224,7 @@ export class TwitterClient {
             return;
         }
 
-        writeFileSync(this.options.files.cookies, JSON.stringify(this.#cookies, null, 2), 'utf8');
+        writeFileSync(this.options.files.cookies, JSON.stringify(this.#cookies), 'utf8');
     }
 
     /**
