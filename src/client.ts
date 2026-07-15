@@ -5,7 +5,7 @@ import { ClientTransaction } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { TwitterFormatter } from './fmt/index.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, TweetKind, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type Slice, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, Slice, TweetKind, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs } from './types/index.js';
 import type { Endpoint, EndpointParams, Type } from './types/internal/index.js';
 import { err, log, match, warn } from './utils/index.js';
 import { Query } from './utils/query.js';
@@ -315,8 +315,12 @@ export class TwitterClient {
             const next = await callback(currentArgs);
 
             iterations++;
-            if (next.data?.cursors.next) {
-                cursors.push(next.data.cursors.next);
+
+            if (next.data?.entries) {
+                const c = Slice.cursors(next.data);
+                if (c.next) {
+                    cursors.push(c.next);
+                }
             }
 
             yield next;
@@ -366,7 +370,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getBlockedUsers(args?: BlockedUsersGetArgs): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, this.getBlockedUsersSlice)) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getBlockedUsersSlice(args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -386,7 +390,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getMutedUsers(args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, this.getMutedUsersSlice)) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getMutedUsersSlice(args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -881,7 +885,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getNotifications(args?: NotificationGetArgs): Timeline<Notification> {
-        for await (const slice of this.getSlice(args, this.getNotificationsSlice)) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getNotificationsSlice(args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -898,7 +902,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getNotifiedTweets(args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, this.getNotifiedTweetsSlice)) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getNotifiedTweetsSlice(args))) yield slice;
         return EMPTY_SLICE;
     }
 

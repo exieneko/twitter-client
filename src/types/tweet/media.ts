@@ -153,7 +153,7 @@ export interface MediaData extends Type<'MediaData'> {
     }
 }
 export const MediaData: Model<MediaData> = {
-    async new(fmt, value) {
+    async new(_, value) {
         return {
             __typename: 'MediaData',
             id: value.media_id_string,

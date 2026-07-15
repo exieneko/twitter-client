@@ -90,27 +90,36 @@ export interface Tweet extends Type<'Tweet'> {
     /** Amount of views the tweet has. May be `undefined` if the tweet predates view tracking */
     viewsCount?: number
 }
-
-export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | { legacy: true, author: object, quotedTweet?: object, quotedTweetAuthor?: object }>> = {
+export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
     async new(fmt, value, opts) {
-        function getText(t: any) {
-            return ((t.note_tweet?.note_tweet_results?.result?.text || t.legacy.full_text || '') as string).replace(
-                /\bhttps:\/\/t\.co\/[a-zA-Z0-9_-]+/,
-                sub => t.legacy.entities.urls?.find((x: any) => x.url === sub)?.expanded_url || sub
-            );
+        function getText(t: any, legacy: boolean): string {
+            const text: string = t.note_tweet?.note_tweet_results?.result?.text || t.legacy?.full_text || t.full_text || '';
+
+            const mediaCount: number = (legacy ? t.extended_entities?.media?.length : t.legacy?.entities?.media?.length) ?? 0;
+
+            if (/^https:\/\/t\.co\.[a-zA-Z0-9_\-]+\/?$/.test(text) && mediaCount > 0) {
+                return '';
+            }
+
+            return text
+                .replace(/\bhttps:\/\/t\.co\/[a-zA-Z0-9_\-]+/g, sub => ((legacy ? t.entities.urls : t.legacy.entities.urls) as any[] || [])?.find(x => x.url === sub)?.expanded_url || sub)
+                .replace(/\bhttps:\/\/t\.co\/[a-zA-Z0-9_\-]+$/g, '')
+                .trimEnd();
         }
 
         const editControl = value.edit_control?.edit_control_initial ?? value.edit_control;
+        const source = value.source.match(/>(.*?)</)?.at(1) || value.source || 'Twitter Web App';
+        const text = getText(value, !!opts.legacy);
 
         if (opts.legacy) {
             const media = await Promise.all(
-                (value.extended_entities.media as any[] ?? []).map(media => fmt.next(TweetMedia, media))
+                (value.extended_entities?.media as any[] ?? []).map(media => fmt.next(TweetMedia, media))
             );
 
             return {
                 __typename: 'Tweet',
                 id: value.id_str,
-                author: await fmt.next(User, opts.author, { legacy: true }),
+                author: await fmt.next(User, opts.globalObjects.users[value.user_id_str], { legacy: true }),
                 bookmarked: !!value.bookmarked,
                 bookmarksCount: value.bookmark_count || 0,
                 createdAt: new Date(value.created_at).toISOString(),
@@ -129,14 +138,14 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
                 isExpandable: false,
                 isTranslatable: !!value.translatable,
                 isVisibilityRestricted: false,
-                language: value.lang,
+                language: value.lang || 'zxx',
                 liked: !!value.favorited,
                 likesCount: value.favorite_count || 0,
                 media,
-                source: value.source,
+                source,
                 quoteTweetsCount: value.quote_count || 0,
-                quotedTweet: opts.quotedTweet && opts.quotedTweetAuthor
-                    ? await fmt.next(Tweet, opts.quotedTweet, { legacy: true, author: opts.quotedTweetAuthor })
+                quotedTweet: value.quoted_status_id_str in opts.globalObjects.tweets
+                    ? await fmt.next(Tweet, opts.globalObjects.tweets[value.quoted_status_id_str], { legacy: true, globalObjects: opts.globalObjects })
                     : undefined,
                 quotedTweetId: value.quoted_status_id_str || undefined,
                 repliesCount: value.reply_count || 0,
@@ -151,7 +160,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
                 } : undefined,
                 retweeted: !!value.retweeted,
                 retweetsCount: value.retweet_count || 0,
-                text: value.full_text
+                text
             };
         }
 
@@ -194,11 +203,11 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
             isExpandable: !!value.note_tweet?.is_expandable,
             isTranslatable: !!value.is_translatable,
             isVisibilityRestricted: value.tweetInterstitial?.__typename === 'ContextualTweetInterstitial',
-            language: value.legacy.lang,
+            language: value.legacy.lang || 'zxx',
             liked: !!value.legacy.favorited,
             likesCount: value.legacy.favorite_count || 0,
             media,
-            source: value.source.match(/>(.*?)</)?.at(1) || value.source,
+            source,
             quoteTweetsCount: value.legacy.quote_count || 0,
             quotedTweet: value.quoted_status_result?.result
                 ? await fmt.next(Tweet, value.quoted_status_result?.result)
@@ -216,9 +225,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, { legacy?: false } | {
             } : undefined,
             retweeted: !!value.legacy.retweeted,
             retweetsCount: value.legacy.retweet_count || 0,
-            text: !!value.legacy.entities.media?.length
-                ? getText(value).replace(/https:\/\/t\.co\/.+$/, '').trimEnd()
-                : getText(value),
+            text,
             translation: typeof value.grok_translated_post_with_availability?.data?.translation?.length === 'string' ? {
                 text: value.grok_translated_post_with_availability.data.translation,
                 language: value.grok_translated_post_with_availability.data.destination_language || 'zxx'
@@ -239,8 +246,17 @@ export interface Retweet extends Type<'Retweet'> {
     tweet: Tweet,
     user: User
 }
-export const Retweet: Wrapped<TweetKind, Model<Retweet>> = {
-    async new(fmt, value) {
+export const Retweet: Wrapped<TweetKind, Model<Retweet, null, LegacyOpts>> = {
+    async new(fmt, value, opts) {
+        if (opts.legacy) {
+            return {
+                __typename: 'Retweet',
+                id: value.id_str,
+                tweet: await fmt.next(Tweet, opts.globalObjects.tweets[value.retweeted_status_id_str], { legacy: true, globalObjects: opts.globalObjects }),
+                user: await fmt.next(User, opts.globalObjects.users[value.user_id_str], { legacy: true })
+            };
+        }
+
         return {
             __typename: 'Retweet',
             id: value.rest_id,
@@ -346,14 +362,9 @@ export const MaybeTweet: Wrapped<TweetKind, Model<MaybeTweet, MaybeType, { safe?
     }
 };
 
-// const x = {} as TweetKind;
-
-// if (MaybeTweet.is(x)) {
-// }
-
 export type TweetKind = MaybeTweet | Retweet | Conversation;
-export const TweetKind: Model<TweetKind, MaybeType> & Default<TweetKind> = {
-    async new(fmt, value) {
+export const TweetKind: Model<TweetKind, MaybeType, LegacyOpts> & Default<TweetKind> = {
+    async new(fmt, value, opts) {
         if (!value) {
             return {
                 __typename: 'TweetTombstone',
@@ -369,6 +380,12 @@ export const TweetKind: Model<TweetKind, MaybeType> & Default<TweetKind> = {
                     ['Suspended', TweetUnavailableReason.AuthorSuspended]
                 ], TweetUnavailableReason.Unavailable)
             };
+        }
+
+        if (opts.legacy && !!value.retweeted_status_id_str) {
+            return await fmt.next(Retweet, value, { legacy: true, globalObjects: opts.globalObjects });
+        } else if (opts.legacy) {
+            return await fmt.next(Tweet, value, { legacy: true, globalObjects: opts.globalObjects });
         }
 
         const tweet = value.__typename === 'TweetWithVisibilityResults' ? value.tweet : value;
@@ -478,3 +495,13 @@ export const ReplyPermission = {
     Verified: 'Verified'
 } as const;
 export type ReplyPermission = Enum<typeof ReplyPermission>;
+
+type LegacyOpts = {
+    legacy?: false
+} | {
+    legacy: true,
+    globalObjects: {
+        tweets: Record<string, Record<string, any>>,
+        users: Record<string, Record<string, any>>
+    }
+};

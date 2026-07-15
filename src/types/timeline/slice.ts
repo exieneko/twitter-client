@@ -189,13 +189,10 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
 
                         const tweetId = entry.content.item.content.tweet.id;
                         const tweet = opts.globalObjects.tweets[tweetId];
-                        const author = opts.globalObjects.users[tweet.user_id_str];
-                        const quotedTweet = tweet.quoted_status_id_str ? opts.globalObjects.tweet[tweet.quoted_status_id_str] : undefined;
-                        const quotedTweetAuthor = quotedTweet ? opts.globalObjects.users[quotedTweet.user_id_str] : undefined;
 
                         return {
                             id,
-                            content: await fmt.next(Tweet, tweet, { legacy: true, author, quotedTweet, quotedTweetAuthor })
+                            content: await fmt.next(TweetKind, tweet, { legacy: true, globalObjects: opts.globalObjects as any })
                         };
                     });
                 break;

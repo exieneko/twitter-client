@@ -109,7 +109,16 @@ async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string,
 }
 
 async function sendRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: EndpointParams<EP> | undefined, headers: Record<string, any>, proxyAgent?: ProxyAgent, mediaFormData?: BodyInit) {
+    for (const key in params) {
+        // @ts-ignore
+        if (typeof params[key] === 'undefined') {
+            // @ts-ignore
+            delete params[key];
+        }
+    }
+
     const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
+    console.log(url + '?' + body);
 
     try {
         return await fetch(((endpoint.method === 'get' && body) || mediaFormData) ? `${url}?${body}` : url, {
@@ -117,7 +126,7 @@ async function sendRequest<EP extends Endpoint, E extends Error>(url: string, en
             headers,
             body: mediaFormData
                 ? mediaFormData
-            : endpoint.kind() === EndpointKind.v2Alt
+            : endpoint.method === 'post' && endpoint.kind() === EndpointKind.v2Alt
                 ? endpoint.post({ ...endpoint.variables, ...params })
                 : endpoint.post(body),
             dispatcher: proxyAgent

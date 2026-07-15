@@ -41,7 +41,10 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> imp
 
     post(body?: any): string | undefined {
         if (this.method === 'post' && body) {
-            return JSON.stringify(body);
+            if (this.kind() === 'GraphQL') {
+                return JSON.stringify(body);
+            }
+            return String(body);
         }
     }
 
