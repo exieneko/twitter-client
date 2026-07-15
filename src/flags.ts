@@ -70,13 +70,13 @@ export const birdwatch = {
     responsive_web_birdwatch_note_internal_insights_enabled: true,
     responsive_web_grok_community_note_auto_translation_is_enabled: false,
     responsive_web_graphql_timeline_navigation_enabled: true,
-    payments_enabled: false,
+    // payments_enabled: false,
     profile_label_improvements_pcf_label_in_post_enabled: true,
     responsive_web_profile_redirect_enabled: false,
     rweb_tipjar_consumption_enabled: true,
     verified_phone_label_enabled: false,
     responsive_web_graphql_skip_user_profile_image_extensions_enabled: false
-};
+} satisfies Flags;
 
 export const short = {
     profile_label_improvements_pcf_label_in_post_enabled: true,

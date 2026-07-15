@@ -69,7 +69,7 @@ export class TwitterClient {
             try {
                 this.#proxyAgent = new ProxyAgent(options.proxyUrl);
             } catch (error) {
-                err(options, [`Error while creating proxy agent with url "${options.proxyUrl}":`, error]);
+                err(options, `Error while creating proxy agent with url "${options.proxyUrl}":`, error);
             }
         }
 
@@ -90,11 +90,7 @@ export class TwitterClient {
             const transaction = await ClientTransaction.create(document);
             return transaction;
         } catch (error) {
-            if (error && typeof error === 'object' && 'message' in error) {
-                err(opts, [`Failed to initialize ClientTransaction`, error.message]);
-            } else {
-                err(opts, [`Failed to initialize ClientTransaction`, error]);
-            }
+            err(opts, 'Failed to initialize ClientTransaction', error);
         }
     }
 
@@ -122,7 +118,7 @@ export class TwitterClient {
         };
 
         const start = hrtime.bigint();
-        log(opts, ['Initializing TwitterClient with options:', options]);
+        log(opts, 'Initializing TwitterClient with options:', options);
 
         const proxyAgent = options?.proxyUrl ? new ProxyAgent(options.proxyUrl) : undefined;
         const transaction = await this._transaction(opts, proxyAgent);
@@ -130,10 +126,10 @@ export class TwitterClient {
         const client = new this(transaction, tokens, opts, proxyAgent);
 
         const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-        log(client, [`Initialized TwitterClient in`, `${elapsed}ms`]);
+        log(client, `Initialized TwitterClient in ${elapsed}ms`);
 
         if (client.options.language !== 'en') {
-            warn(client, ['Setting `language` to values other than "en" may have unexpected effects']);
+            warn(client, 'Setting language option to values other than "en" may have unexpected effects');
         }
 
         return client;
@@ -149,7 +145,7 @@ export class TwitterClient {
             return client;
         }
 
-        err(options, ['auth_token and ct0 cookies not found in JSON object']);
+        err(options, 'auth_token and ct0 cookies not found in JSON object');
     }
 
     static async fromCookiesFile(filePath: string, options?: Partial<TwitterOptions>): Promise<TwitterClient | undefined> {
@@ -159,21 +155,17 @@ export class TwitterClient {
 
             return await this.fromCookies(json, options);
         } catch (error) {
-            err(options, [error]);
+            err(options, error);
         }
     }
 
 
 
     private async getTransactionId(endpoint: Endpoint): Promise<string | undefined> {
-        if (!endpoint.requiresTransactionId) {
-            return;
-        }
-
         const path = endpoint.url.replace(/.*twitter\.com\//, '/');
-        const transactionId = await this.#transaction?.generateTransactionId(endpoint.method.toUpperCase(), path);
+        const transactionId = await this.#transaction?.generateTransactionId(endpoint.method, path);
 
-        log(this, ['Generated x-client-transaction-id for', endpoint.method.toUpperCase(), path, `(${transactionId})`]);
+        log(this, 'Generated x-client-transaction-id for', endpoint.method, path, `(${transactionId})`);
         return transactionId;
     }
 
@@ -215,7 +207,7 @@ export class TwitterClient {
             json.push(obj);
             writeFileSync(this.options.files.data, JSON.stringify(json), 'utf8');
         } catch (error) {
-            err(this, ['Error while writing file:', error]);
+            err(this, 'Error while dumping JSON:', error);
         }
     }
 
@@ -472,7 +464,7 @@ export class TwitterClient {
      * @since v0.4.0
      */
     async getBirdwatchNotesOnTweet(id: string) {
-        return await this.fetch(ENDPOINTS.BirdwatchFetchNotes, { tweet_id: id.toString() });
+        return await this.fetch(ENDPOINTS.BirdwatchFetchNotes, { tweet_id: id });
     }
 
     /**
@@ -573,7 +565,7 @@ export class TwitterClient {
      * @since v0.3.0
      */
     async getCommunity(id: string) {
-        return await this.fetch(ENDPOINTS.CommunityByRestId, { communityId: id.toString() });
+        return await this.fetch(ENDPOINTS.CommunityByRestId, { communityId: id });
     }
 
     /**
@@ -585,7 +577,7 @@ export class TwitterClient {
      * @since v0.3.0
      */
     async* getCommunityTweets(id: string, args?: CommunityTweetsGetArgs): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getCommunityTweetsSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getCommunityTweetsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -603,7 +595,7 @@ export class TwitterClient {
      * @since v0.3.0
      */
     async* getCommunityMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getCommunityMediaSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getCommunityMediaSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -619,7 +611,7 @@ export class TwitterClient {
      * @since v0.3.0
      */
     async joinCommunity(id: string) {
-        return await this.fetch(ENDPOINTS.JoinCommunity, { communityId: id.toString() });
+        return await this.fetch(ENDPOINTS.JoinCommunity, { communityId: id });
     }
 
     /**
@@ -630,7 +622,7 @@ export class TwitterClient {
      * @since v0.3.0
      */
     async leaveCommunity(id: string) {
-        return await this.fetch(ENDPOINTS.LeaveCommunity, { communityId: id.toString() });
+        return await this.fetch(ENDPOINTS.LeaveCommunity, { communityId: id });
     }
 
 
@@ -644,7 +636,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async getList(id: string, args?: BySlug) {
-        const listId = id.toString();
+        const listId = id;
 
         if (args?.bySlug) {
             return await this.fetch(ENDPOINTS.ListBySlug, { listId });
@@ -662,7 +654,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getListTweets(id: string, args?: CursorOnly) {
-        for await (const slice of this.getSlice(args, args => this.getListTweetsSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getListTweetsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -714,7 +706,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getListMembers(id: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getListMembersSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getListMembersSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -731,7 +723,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getListSubscribers(id: string, args?: CursorOnly): Timeline<UserKind> {
-        for await (const slice of this.getSlice(args, args => this.getListSubscribersSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getListSubscribersSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -759,7 +751,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async editList(id: string, args: Required<ListCreateArgs>) {
-        return await this.fetch(ENDPOINTS.UpdateList, { listId: id.toString(), name: args.name, description: args.description, isPrivate: args.private });
+        return await this.fetch(ENDPOINTS.UpdateList, { listId: id, name: args.name, description: args.description, isPrivate: args.private });
     }
 
     /**
@@ -770,7 +762,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async deleteList(id: string) {
-        return await this.fetch(ENDPOINTS.DeleteList, { listId: id.toString() });
+        return await this.fetch(ENDPOINTS.DeleteList, { listId: id });
     }
 
     /**
@@ -820,7 +812,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async subscribeToList(id: string) {
-        return await this.fetch(ENDPOINTS.ListSubscribe, { listId: id.toString() });
+        return await this.fetch(ENDPOINTS.ListSubscribe, { listId: id });
     }
 
     /**
@@ -831,7 +823,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async unsubscribeFromList(id: string) {
-        return await this.fetch(ENDPOINTS.ListUnsubscribe, { listId: id.toString() });
+        return await this.fetch(ENDPOINTS.ListUnsubscribe, { listId: id });
     }
 
     /**
@@ -842,7 +834,7 @@ export class TwitterClient {
      * @since v0.6.0
      */
     async pinList(id: string) {
-        return await this.fetch(ENDPOINTS.PinTimeline, { pinnedTimelineItem: { id: id.toString(), pinned_timeline_type: 'List' } });
+        return await this.fetch(ENDPOINTS.PinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
     }
 
     /**
@@ -853,7 +845,7 @@ export class TwitterClient {
      * @returns Success status
      */
     async unpinList(id: string) {
-        return await this.fetch(ENDPOINTS.UnpinTimeline, { pinnedTimelineItem: { id: id.toString(), pinned_timeline_type: 'List' } });
+        return await this.fetch(ENDPOINTS.UnpinTimeline, { pinnedTimelineItem: { id, pinned_timeline_type: 'List' } });
     }
 
     /**
@@ -864,7 +856,7 @@ export class TwitterClient {
      * @since v0.6.0
      */
     async muteList(id: string) {
-        return await this.fetch(ENDPOINTS.MuteList, { listId: id.toString() });
+        return await this.fetch(ENDPOINTS.MuteList, { listId: id });
     }
 
     /**
@@ -875,7 +867,7 @@ export class TwitterClient {
      * @since v0.6.0
      */
     async unmuteList(id: string) {
-        return await this.fetch(ENDPOINTS.UnmuteList, { listId: id.toString() });
+        return await this.fetch(ENDPOINTS.UnmuteList, { listId: id });
     }
 
 
@@ -1156,7 +1148,7 @@ export class TwitterClient {
             } : undefined,
             media: {
                 media_entities: args.mediaIds?.map(id => ({
-                    media_id: id.toString(),
+                    media_id: id,
                     tagged_users: []
                 })) || [],
                 possibly_sensitive: !!args.sensitive
@@ -1177,14 +1169,14 @@ export class TwitterClient {
             return { errors, data: tweet };
         }
 
-        let lastTweetId = tweet.id.toString();
+        let lastTweetId = tweet.id;
 
         for (const t of thread) {
             const { data } = await this.fetch(ENDPOINTS.CreateTweet, {
                 batch_compose: !args.replyTo ? 'BatchSubsequent' : undefined,
                 media: {
                     media_entities: t.mediaIds?.map(id => ({
-                        media_id: id.toString(),
+                        media_id: id,
                         tagged_users: []
                     })) || [],
                     possibly_sensitive: !!args.sensitive
@@ -1201,7 +1193,7 @@ export class TwitterClient {
                 return { errors, data: tweet };
             }
 
-            lastTweetId = data.id.toString();
+            lastTweetId = data.id;
         }
 
         return { errors, data: tweet };
@@ -1215,7 +1207,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async deleteTweet(id: string) {
-        return await this.fetch(ENDPOINTS.DeleteTweet, { tweet_id: id.toString() });
+        return await this.fetch(ENDPOINTS.DeleteTweet, { tweet_id: id });
     }
 
     /**
@@ -1232,7 +1224,7 @@ export class TwitterClient {
                 auto_populate_reply_metadata: false,
                 exclude_reply_user_ids: [],
                 status: args.text || '',
-                media_ids: args.mediaIds?.map(id => id.toString()) || []
+                media_ids: args.mediaIds || []
             }
         });
     }
@@ -1251,10 +1243,10 @@ export class TwitterClient {
             post_tweet_request: {
                 auto_populate_reply_metadata: false,
                 exclude_reply_user_ids: [],
-                media_ids: args.mediaIds?.map(id => id.toString()) || [],
+                media_ids: args.mediaIds || [],
                 status: args.text || ''
             },
-            scheduled_tweet_id: id.toString()
+            scheduled_tweet_id: id
         });
     }
 
@@ -1271,7 +1263,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getTweet(id: string, args?: TweetGetArgs): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getTweetSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getTweetSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1292,7 +1284,7 @@ export class TwitterClient {
      * @since v0.6.0
      */
     async getTweetResult(id: string) {
-        return await this.fetch(ENDPOINTS.TweetResultByRestId, { tweetId: id.toString() });
+        return await this.fetch(ENDPOINTS.TweetResultByRestId, { tweetId: id });
     }
 
     /**
@@ -1303,7 +1295,7 @@ export class TwitterClient {
      * @since v0.6.0
      */
     async getTweetResults(ids: string[]) {
-        return await this.fetch(ENDPOINTS.TweetResultsByRestIds, { tweetIds: ids.map(id => id.toString()) });
+        return await this.fetch(ENDPOINTS.TweetResultsByRestIds, { tweetIds: ids });
     }
 
     /**
@@ -1460,7 +1452,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async hideTweet(id: string) {
-        return await this.fetch(ENDPOINTS.ModerateTweet, { tweetId: id.toString() });
+        return await this.fetch(ENDPOINTS.ModerateTweet, { tweetId: id });
     }
 
     /**
@@ -1471,7 +1463,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async unhideTweet(id: string) {
-        return await this.fetch(ENDPOINTS.UnmoderateTweet, { tweetId: id.toString() });
+        return await this.fetch(ENDPOINTS.UnmoderateTweet, { tweetId: id });
     }
 
     /**
@@ -1482,7 +1474,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async pinTweet(id: string) {
-        return await this.fetch(ENDPOINTS.PinTweet, { tweet_id: id.toString() });
+        return await this.fetch(ENDPOINTS.PinTweet, { tweet_id: id });
     }
 
     /**
@@ -1493,7 +1485,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async unpinTweet(id: string) {
-        return await this.fetch(ENDPOINTS.UnpinTweet, { tweet_id: id.toString() });
+        return await this.fetch(ENDPOINTS.UnpinTweet, { tweet_id: id });
     }
 
     /**
@@ -1547,7 +1539,7 @@ export class TwitterClient {
      * @since v0.6.0
      */
     async unmention(id: string) {
-        return await this.fetch(ENDPOINTS.UnmentionUserFromConversation, { tweet_id: id.toString() });
+        return await this.fetch(ENDPOINTS.UnmentionUserFromConversation, { tweet_id: id });
     }
 
     /**
@@ -1558,7 +1550,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async muteTweet(id: string) {
-        return await this.fetch(ENDPOINTS.mutes_conversations_create, { tweet_id: id.toString() });
+        return await this.fetch(ENDPOINTS.mutes_conversations_create, { tweet_id: id });
     }
 
     /**
@@ -1569,7 +1561,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async unmuteTweet(id: string) {
-        return await this.fetch(ENDPOINTS.mutes_conversations_destroy, { tweet_id: id.toString() });
+        return await this.fetch(ENDPOINTS.mutes_conversations_destroy, { tweet_id: id });
     }
 
 
@@ -1584,8 +1576,8 @@ export class TwitterClient {
      */
     async getUser(id: string, args?: ByUsername) {
         const result = await (args?.byUsername
-            ? this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id.toString() })
-            : this.fetch(ENDPOINTS.UserByRestId, { userId: id.toString() })
+            ? this.fetch(ENDPOINTS.UserByScreenName, { screen_name: id })
+            : this.fetch(ENDPOINTS.UserByRestId, { userId: id })
         );
         
         if (result.errors.length > 0) {
@@ -1609,10 +1601,10 @@ export class TwitterClient {
      */
     async getUsers(ids: string[], args?: ByUsername) {
         if (args?.byUsername) {
-            return await this.fetch(ENDPOINTS.UsersByScreenNames, { screen_names: ids.map(id => id.toString()) });
+            return await this.fetch(ENDPOINTS.UsersByScreenNames, { screen_names: ids });
         }
 
-        return await this.fetch(ENDPOINTS.UsersByRestIds, { userIds: ids.map(id => id.toString()) });
+        return await this.fetch(ENDPOINTS.UsersByRestIds, { userIds: ids });
     }
 
     /**
@@ -1624,7 +1616,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getUserTweets(id: string, args?: UserTweetsGetArgs): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserTweetsSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getUserTweetsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1645,7 +1637,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getUserMedia(id: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserMediaSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getUserMediaSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1662,7 +1654,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getUserLikes(id: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserLikesSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getUserLikesSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1679,7 +1671,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getUserHighlightedTweets(id: string, args?: CursorOnly): Timeline<TweetKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserHighlightedTweetsSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getUserHighlightedTweetsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1798,7 +1790,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async* getUserLists(id: string, args?: CursorOnly): Timeline<ListKind> {
-        for await (const slice of this.getSlice(args, args => this.getUserListsSlice(id.toString(), args))) yield slice;
+        for await (const slice of this.getSlice(args, args => this.getUserListsSlice(id, args))) yield slice;
         return EMPTY_SLICE;
     }
 
@@ -1815,7 +1807,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async followUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.friendships_create, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
+        return await this.fetch(ENDPOINTS.friendships_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1827,7 +1819,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async unfollowUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.friendships_destroy, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
+        return await this.fetch(ENDPOINTS.friendships_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1930,7 +1922,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async blockUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.blocks_create, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
+        return await this.fetch(ENDPOINTS.blocks_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1944,7 +1936,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async unblockUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.blocks_destroy, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
+        return await this.fetch(ENDPOINTS.blocks_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1955,7 +1947,7 @@ export class TwitterClient {
      * @since v1.0.0-rc.0
      */
     async softblockUser(id: string) {
-        return await this.fetch(ENDPOINTS.RemoveFollower, { target_user_id: id.toString() });
+        return await this.fetch(ENDPOINTS.RemoveFollower, { target_user_id: id });
     }
 
     /**
@@ -1967,7 +1959,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async muteUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.mutes_users_create, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
+        return await this.fetch(ENDPOINTS.mutes_users_create, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -1979,7 +1971,7 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async unmuteUser(id: string, args?: ByUsername) {
-        return await this.fetch(ENDPOINTS.mutes_users_destroy, args?.byUsername ? { screen_name: id.toString() } : { user_id: id.toString() });
+        return await this.fetch(ENDPOINTS.mutes_users_destroy, args?.byUsername ? { screen_name: id } : { user_id: id });
     }
 
     /**
@@ -2052,7 +2044,7 @@ export class TwitterClient {
      * @since v0.6.0
      */
     async mediaStatus(id: string) {
-        return await this.fetch(ENDPOINTS.media_upload.status, { media_id: id.toString() });
+        return await this.fetch(ENDPOINTS.media_upload.status, { media_id: id });
     }
 
     /**
@@ -2067,7 +2059,7 @@ export class TwitterClient {
         return await this.fetch(ENDPOINTS.media_metadata_create, {
             allow_download_status: { allow_download: 'true' },
             alt_text: { text },
-            media_id: id.toString()
+            media_id: id
         });
     }
 }

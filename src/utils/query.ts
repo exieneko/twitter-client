@@ -3,7 +3,7 @@ import { QueryBuilder } from './querybuilder.js';
 /**
  * Can be used to build any query with filters supported by Twitter search
  * 
- * @since 1.0.0-rc1
+ * @since 1.0.0-rc.0
  */
 export interface Query {
     /**
@@ -161,7 +161,7 @@ export interface Query {
      * 
      * `quoted_tweet_id:20000000000000000000`
      */
-    quotedTweetId?: string | bigint,
+    quotedTweetId?: string,
 
     // users
     /**

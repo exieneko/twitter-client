@@ -9,12 +9,15 @@ export interface EndpointOptions<V extends object = {}> {
     variables?: V,
     features?: Flags,
     token?: string,
+    /**
+     * @deprecated Transaction id will be generated for all endpoints
+     */
     requiresTransactionId?: boolean
 }
 
-export class Endpoint<T = any, P extends object = {}, V extends object = {}> implements EndpointOptions {
+export class Endpoint<T = any, P extends object = {}, V extends object = {}> implements Omit<EndpointOptions, 'method'> {
     url: string;
-    method: 'get' | 'post';
+    method: Uppercase<EndpointOptions['method']>;
     variables?: V;
     features?: Flags;
     token: string;
@@ -23,7 +26,7 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> imp
 
     constructor(opts: EndpointOptions<V>, public format: (fmt: TwitterFormatter, value: Record<string, any>) => Promise<T>) {
         this.url = opts.url;
-        this.method = opts.method;
+        this.method = opts.method.toUpperCase() as typeof this.method;
         this.variables = opts.variables;
         this.features = opts.features;
         this.token = opts.token || PUBLIC_TOKEN;
@@ -32,7 +35,7 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> imp
     }
 
     get(url: string, body?: string) {
-        if (this.method === 'get' && body && body.length > 0) {
+        if (this.method === 'GET' && body && body.length > 0) {
             return url + body;
         }
 
@@ -40,7 +43,7 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> imp
     }
 
     post(body?: any): string | undefined {
-        if (this.method === 'post' && body) {
+        if (this.method === 'POST' && body) {
             if (this.kind() === 'GraphQL') {
                 return JSON.stringify(body);
             }
@@ -50,16 +53,16 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> imp
 
     kind(): EndpointKind {
         if (this.url.includes('upload.twitter.com')) {
-            return EndpointKind.Media;
+            return 'Media';
         } else if (this.url.includes('/i/api/graphql')) {
-            return EndpointKind.GraphQL;
+            return 'GraphQL';
         } else if (this.url.includes('/i/api/2')) {
-            return EndpointKind.v2;
+            return 'v2';
         } else if (this.url.includes('api.twitter.com/2/')) {
-            return EndpointKind.v2Alt;
+            return 'v2Alt';
         }
 
-        return EndpointKind.v11;
+        return 'v1.1';
     }
 }
 

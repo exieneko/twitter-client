@@ -3,9 +3,9 @@ import { parseHTML } from 'linkedom';
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
 import { err, log, toSearchParams, warn } from './index.js';
-import { GLOBAL_HEADERS, MAX_ACCEPTABLE_REQUEST_TIME } from '../consts.js';
+import { GLOBAL_HEADERS } from '../consts.js';
 import type { TwitterOptions } from '../types/index.js';
-import { EndpointKind, type Endpoint, type EndpointParams } from '../types/internal/index.js';
+import type { Endpoint, EndpointKind, EndpointParams } from '../types/internal/index.js';
 
 export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: EndpointParams<EP> | undefined, options: TwitterOptions, { cookies, proxyAgent, transactionId, body }: {
     cookies: Record<string, string>,
@@ -37,13 +37,13 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         headers['x-client-transaction-id'] = transactionId;
     }
 
-    if (endpoint.kind() !== EndpointKind.Media) {
-        headers['content-type'] = endpoint.kind() === EndpointKind.GraphQL || endpoint.kind() === EndpointKind.v2Alt
+    if (endpoint.kind() !== 'Media') {
+        headers['content-type'] = endpoint.kind() === 'GraphQL' || endpoint.kind() === 'v2Alt'
             ? 'application/json; charset=utf-8'
             : 'application/x-www-form-urlencoded; charset=utf-8';
     }
 
-    if (headers['content-type'] && endpoint.method === 'get' && !endpoint.features && endpoint.kind() === EndpointKind.v11) {
+    if (headers['content-type'] && endpoint.method === 'GET' && !endpoint.features && endpoint.kind() === 'v1.1') {
         delete headers['content-type'];
     }
 
@@ -58,33 +58,31 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         proxyAgent
     ] as const;
 
-    log(options, [endpoint.method.toUpperCase(), url]);
+    log(options, endpoint.method, url);
 
     try {
-        const response = endpoint.kind() === EndpointKind.GraphQL
+        const response = endpoint.kind() === 'GraphQL'
             ? await sendGqlRequest<EP, E>(...requestData)
-            : await sendRequest<EP, E>(...requestData, endpoint.kind() === EndpointKind.Media ? body : undefined);
+            : await sendRequest<EP, E>(...requestData, endpoint.kind() === 'Media' ? body : undefined);
 
         if (response instanceof Error) {
-            err(options, ['Unexpected error:', response]);
+            err(options, response);
             return [response as E];
         }
 
         const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-        const logData = [response.status, `in ${elapsed}ms`];
+        const logData = [endpoint.method, response.status, `in ${elapsed}ms`];
 
-        if (response.ok && elapsed > MAX_ACCEPTABLE_REQUEST_TIME) {
-            warn(options, logData);
-        } else if (response.ok) {
-            log(options, logData);
+        if (response.ok) {
+            log(options, ...logData);
         } else {
-            err(options, logData);
+            err(options, ...logData);
         }
 
         const data = await response.json();
         return [data as T, response];
     } catch (error) {
-        err(options, ['Unexpected error:', error]);
+        err(options, error);
         return [error as E];
     }
 }
@@ -118,15 +116,14 @@ async function sendRequest<EP extends Endpoint, E extends Error>(url: string, en
     }
 
     const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
-    console.log(url + '?' + body);
 
     try {
-        return await fetch(((endpoint.method === 'get' && body) || mediaFormData) ? `${url}?${body}` : url, {
+        return await fetch(((endpoint.method === 'GET' && body) || mediaFormData) ? `${url}?${body}` : url, {
             method: endpoint.method,
             headers,
             body: mediaFormData
                 ? mediaFormData
-            : endpoint.method === 'post' && endpoint.kind() === EndpointKind.v2Alt
+            : endpoint.method === 'POST' && endpoint.kind() === 'v2Alt'
                 ? endpoint.post({ ...endpoint.variables, ...params })
                 : endpoint.post(body),
             dispatcher: proxyAgent
@@ -161,15 +158,15 @@ export async function fetchXDocument(opts: TwitterOptions, dispatcher?: ProxyAge
 
     const start = hrtime.bigint();
 
-    log(opts, ['GET https://x.com/home']);
+    log(opts, 'GET https://x.com/home');
     const response = await fetch('https://x.com/home', { headers, dispatcher });
     const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
 
     if (!response.ok) {
-        err(opts, [response.status, `in ${elapsed}ms`]);
+        err(opts, response.status, `in ${elapsed}ms`);
         throw new Error(response.status.toString());
     } else {
-        log(opts, [response.status, `in ${elapsed}ms`]);
+        log(opts, response.status, `in ${elapsed}ms`);
     }
 
     const html = await response.text();

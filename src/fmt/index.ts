@@ -24,19 +24,15 @@ export class TwitterFormatter {
             this.errors.push(new TwitterError(error));
         }
 
-        err(this, [`Error occured during parsing:`, error]);
+        err(this, 'Error occured during parsing:', error);
 
         this.depth--;
 
         if (this.depth < 0) {
-            warn(this, [`Formatter depth went below 0 (${this.depth})`]);
+            warn(this, `Formatter depth went below 0 (${this.depth})`);
         }
 
-        try {
-            return error as T;
-        } catch {
-            return { __typename: 'Error' } as T;
-        }
+        return error as T;
     }
 
     async format<T>(fn: (fmt: this, value: any) => Promise<T>, value: any): Promise<T | undefined> {
@@ -46,7 +42,7 @@ export class TwitterFormatter {
             const result = await fn(this, value);
             this.depth--;
             return result;
-        } catch (error: any) {
+        } catch (error) {
             return this.handleError(error);
         }
     }
@@ -68,7 +64,7 @@ export class TwitterFormatter {
             const result = await model.new(this, value, opts);
             this.depth--;
             return result;
-        } catch (error: any) {
+        } catch (error) {
             return this.handleError(error);
         }
     }

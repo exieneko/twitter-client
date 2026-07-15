@@ -83,19 +83,19 @@ function shouldLog(value: TwitterInstance | undefined, key: keyof TwitterOptions
     return !!value;
 }
 
-export function log(client: TwitterInstance | undefined, data: any[]) {
-    if (shouldLog(client)) {
+export function log(client: TwitterInstance | undefined, ...data: any[]) {
+    if (shouldLog(client) && !shouldLog(client, 'silent')) {
         logger.info(...data);
     }
 }
 
-export function warn(client: TwitterInstance | undefined, data: any[]) {
+export function warn(client: TwitterInstance | undefined, ...data: any[]) {
     if (!shouldLog(client, 'silent')) {
         logger.warn(...data);
     }
 }
 
-export function err(client: TwitterInstance | undefined, data: any[]) {
+export function err(client: TwitterInstance | undefined, ...data: any[]) {
     if (!shouldLog(client, 'silent')) {
         logger.error(...data);
     }

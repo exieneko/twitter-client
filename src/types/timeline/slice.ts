@@ -1,4 +1,4 @@
-import { Conversation, Cursor, CursorDirection, ListKind, Notification, Trend, Tweet, TweetKind, UserKind, type Entry, type TimelineSegment } from '../index.js';
+import { Conversation, Cursor, CursorDirection, ListKind, Notification, Trend, TweetKind, UserKind, type Entry, type TimelineSegment } from '../index.js';
 import type { Default, Model, Type, WithMethods } from '../internal/index.js';
 import { ENDPOINTS } from '../../consts.js';
 
