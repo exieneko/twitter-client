@@ -69,7 +69,7 @@ export interface TwitterOptions {
      */
     files: {
         /**
-         * Saves account tokens as a JSON array. Use `TwitterClient.loadCookies(filepath)` to initialize the client from this file
+         * Saves account tokens as a JSON array. Use `TwitterClient.fromCookiesFile(filepath)` to initialize the client from this file
          */
         cookies?: string,
         /**
@@ -80,8 +80,7 @@ export interface TwitterOptions {
     /**
      * Include the API response as the `response` property on all returned data? This object may include sensitive information like the set-cookie header
      * 
-     * @default
-     * false
+     * @default false
      */
     includeResponse: boolean,
     /**
@@ -95,7 +94,7 @@ export interface TwitterOptions {
      */
     proxyUrl?: string,
     /**
-     * Silence all errors?
+     * Silence all errors and logs? Overrides `verbose` option
      * 
      * @default false
      */

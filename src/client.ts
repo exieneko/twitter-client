@@ -135,6 +135,14 @@ export class TwitterClient {
         return client;
     }
 
+    /**
+     * Initialize `TwitterClient` from a cookies object
+     * 
+     * @param json Object containing cookies that should be loaded
+     * @param [options] Additional options
+     * @returns Promise resolving to `TwitterClient` or `undefined` if `json` doesn't contain the required cookies
+     * @since v1.0.0-rc.1
+     */
     static async fromCookies(json: Record<string, string>, options?: Partial<TwitterOptions>): Promise<TwitterClient | undefined> {
         if (typeof json.auth_token === 'string' && typeof json.ct0 === 'string') {
             const client = await this.new({
@@ -148,6 +156,14 @@ export class TwitterClient {
         err(options, 'auth_token and ct0 cookies not found in JSON object');
     }
 
+    /**
+     * Initialize `TwitterClient` from a JSON file
+     * 
+     * @param filePath Path to the file containing your cookies
+     * @param [options] Additional options
+     * @returns Promise resolving to `TwitterClient` or `undefined` if `filePath` doesn't exist, can't be parsed as JSON, or if `TwitterClient.fromCookies` call fails
+     * @since v1.0.0-rc.1
+     */
     static async fromCookiesFile(filePath: string, options?: Partial<TwitterOptions>): Promise<TwitterClient | undefined> {
         try {
             const content = readFileSync(filePath, 'utf8');
