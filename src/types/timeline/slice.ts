@@ -138,7 +138,7 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
                 } satisfies Entry<ListKind>))
         ];
 
-        return await fmt.next(this, await Promise.all(entries), {})
+        return await fmt.next(this, await Promise.all(entries))
     },
     async trends(fmt, value) {
         const entries = await Promise.all(
@@ -151,21 +151,21 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
         return await fmt.next(this, entries, {});
     },
     async tweets(fmt, value, opts) {
-        let entries: Promise<Entry<TweetKind | Cursor> | undefined>[];
+        let entries: Entry<TweetKind | Cursor>[];
 
         switch (opts.type) {
             case 'Media':
                 const grid = opts.gridModule?.content ?? fmt.entries(value).find(entry => entry.content.__typename === 'TimelineTimelineModule')?.content;
                 const items: any[] = grid?.[opts.gridModule?.key ?? 'items'] || [];
 
-                entries = [
+                entries = await Promise.all([
                     ...fmt
                         .entries(value)
                         .filter(entry => entry.content.__typename === 'TimelineTimelineCursor')
                         .map(async entry => ({
                             id: entry.entryId,
                             content: await fmt.next(Cursor, entry.content)
-                        } satisfies Entry<TweetKind | Cursor>)),
+                        } satisfies Entry<Cursor>)),
                     ...items
                         .map(async item => ({
                             id: item.entryId,
@@ -173,64 +173,69 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
                                 ? await fmt.next(Cursor, item.item.itemContent)
                                 : await fmt.next(TweetKind, item.item.itemContent.tweet_results?.result)
                         } satisfies Entry<TweetKind | Cursor>))
-                ];
+                ]);
                 break;
             case 'DeviceFollow':
-                entries = value
-                    .map(async entry => {
-                        const id: string = entry.entryId;
+                entries = await Promise.all(
+                    value
+                        .map(async entry => {
+                            const id: string = entry.entryId;
 
-                        if ('operation' in entry.content) {
-                            return {
-                                id,
-                                content: await fmt.next(Cursor, entry.content.operation.cursor)
-                            } satisfies Entry<Cursor>;
-                        }
-
-                        const tweetId = entry.content.item.content.tweet.id;
-                        const tweet = opts.globalObjects.tweets[tweetId];
-
-                        return {
-                            id,
-                            content: await fmt.next(TweetKind, tweet, { legacy: true, globalObjects: opts.globalObjects as any })
-                        };
-                    });
-                break;
-            default:
-                entries = fmt
-                    .entries(value)
-                    .map<typeof entries[number]>(async entry => {
-                        const id: string = entry.entryId;
-
-                        if (entry.content.__typename === 'TimelineTimelineCursor') {
-                            return {
-                                id,
-                                content: await fmt.next(Cursor, entry.content)
-                            };
-                        } else if (entry.content.__typename === 'TimelineTimelineItem' && !id.includes('promoted') && id.includes('tweet')) {
-                            return {
-                                id,
-                                content: await fmt.next(TweetKind, entry.content.itemContent.tweet_results?.result)
-                            };
-                        } else if (entry.content.__typename === 'TimelineTimelineModule' && id.includes('conversation')) {
-                            if (entry.content.items.at(0)?.entryId.includes('promoted')) {
-                                return;
+                            if ('operation' in entry.content) {
+                                return {
+                                    id,
+                                    content: await fmt.next(Cursor, entry.content.operation.cursor)
+                                } satisfies Entry<Cursor>;
                             }
 
+                            const tweetId = entry.content.item.content.tweet.id;
+                            const tweet = opts.globalObjects.tweets[tweetId];
+
                             return {
                                 id,
-                                content: await fmt.next(Conversation, entry.content)
+                                content: await fmt.next(TweetKind, tweet, { legacy: true, globalObjects: opts.globalObjects as any })
                             };
+                        })
+                );
+                break;
+            default:
+                entries = [];
+                let conversationMembers = new Set<string>();
+
+                for (const entry of fmt.entries(value)) {
+                    const id: string = entry.entryId;
+
+                    if (entry.content.__typename === 'TimelineTimelineCursor') {
+                        entries.push({
+                            id,
+                            content: await fmt.next(Cursor, entry.content)
+                        });
+                        continue;
+                    } else if (entry.content.__typename === 'TimelineTimelineItem' && !id.includes('promoted') && id.includes('tweet')) {
+                        const content = await fmt.next(TweetKind, entry.content.itemContent.tweet_results?.result);
+
+                        if (content.__typename === 'Tweet' && content.replyingTo?.username && !conversationMembers.has(content.replyingTo.username.toLowerCase())) {
+                            conversationMembers.add(content.replyingTo.username.toLowerCase());
                         }
-                    });
+
+                        entries.push({ id, content });
+                        continue;
+                    } else if (entry.content.__typename === 'TimelineTimelineModule' && id.includes('conversation')) {
+                        if (entry.content.items.at(0)?.entryId.includes('promoted')) {
+                            continue;
+                        }
+
+                        entries.push({
+                            id,
+                            content: await fmt.next(Conversation, entry.content, { members: conversationMembers })
+                        });
+                        continue;
+                    }
+                }
                 break;
         }
 
-        const result = await Promise
-            .all(entries)
-            .then(arr => arr.filter(entry => !!entry));
-
-        return await fmt.next(this, result, opts.type === 'Birdwatch' ? { body: opts.root } : {});
+        return await fmt.next(this, entries, opts.type === 'Birdwatch' ? { body: opts.root } : {});
     },
     async users(fmt, value) {
         const entries = await Promise.all(

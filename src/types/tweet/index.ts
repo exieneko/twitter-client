@@ -41,6 +41,10 @@ export interface Tweet extends Type<'Tweet'> {
         /** The current id of this tweet and ids of all previous edits */
         tweetIds: string[]
     },
+    /**
+     * Full text content of the tweet as received from the API. Includes conversation user mentions in the beginning, quote tweet and media urls
+     */
+    fullText: string,
     /** `true` if the tweet has an active or pending Birdwatch note */
     hasBirdwatchNote: boolean,
     /** `true` the tweet has a Grok conversation embed */
@@ -71,15 +75,17 @@ export interface Tweet extends Type<'Tweet'> {
     /** Reply permission controlling who can reply to this tweet */
     replyPermission: ReplyPermission,
     replyingTo?: {
-        /** Username of the user this tweet is in reply to */
-        username: string,
         /** Id of the tweet this tweet is in reply to */
-        tweetId: string
+        tweetId: string,
+        /** User id of the user this tweet is in reply to */
+        userId: string,
+        /** Username of the user this tweet is in reply to */
+        username: string
     },
     retweeted: boolean,
     /** Amount of users that retweeted the tweet */
     retweetsCount: number,
-    /** The full text of the tweet, including user mentions in the beginning of replies. If the tweet is a note tweet, this property will contain the expanded text instead of the 280 character preview */
+    /** Text content of the tweet stripped on unnecessary data */
     text: string,
     /** Auto-translated text of the tweet to client's language */
     translation?: {
@@ -92,8 +98,8 @@ export interface Tweet extends Type<'Tweet'> {
 }
 export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
     async new(fmt, value, opts) {
-        function getText(t: any, legacy: boolean): string {
-            const text: string = t.note_tweet?.note_tweet_results?.result?.text || t.legacy?.full_text || t.full_text || '';
+        function getText(t: any, fullText: string, legacy: boolean): string {
+            let text = fullText;
 
             const mediaCount: number = (legacy ? t.extended_entities?.media?.length : t.legacy?.entities?.media?.length) ?? 0;
 
@@ -101,15 +107,26 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                 return '';
             }
 
-            return text
+            text = text
                 .replace(/\bhttps:\/\/t\.co\/[a-zA-Z0-9_\-]+/g, sub => ((legacy ? t.entities.urls : t.legacy.entities.urls) as any[] || [])?.find(x => x.url === sub)?.expanded_url || sub)
                 .replace(/\bhttps:\/\/t\.co\/[a-zA-Z0-9_\-]+$/g, '')
                 .trimEnd();
+
+            const replyingTo: string | undefined = (legacy ? value : value.legacy)?.in_reply_to_screen_name ?? undefined;
+
+            if (!replyingTo) {
+                return text;
+            }
+
+            return text
+                .replace(new RegExp(`^\\@${replyingTo}`, 'i'), '')
+                .trimStart();
         }
 
         const editControl = value.edit_control?.edit_control_initial ?? value.edit_control;
+        const fullText = value.note_tweet?.note_tweet_results?.result?.text || value.legacy?.full_text || value.full_text || '';
         const source = value.source.match(/>(.*?)</)?.at(1) || value.source || 'Twitter Web App';
-        const text = getText(value, !!opts.legacy);
+        const text = getText(value, fullText, !!opts.legacy);
 
         if (opts.legacy) {
             const media = await Promise.all(
@@ -132,6 +149,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                     remainingCount: 0,
                     tweetIds: [value.id_str]
                 },
+                fullText,
                 hasBirdwatchNote: !!value.has_birdwatch_notes,
                 hasGrokChatEmbed: false,
                 hasQuotedTweet: !!value.is_quote_status,
@@ -156,6 +174,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                 ], ReplyPermission.Everyone),
                 replyingTo: !!value.in_reply_to_status_id_str ? {
                     tweetId: value.in_reply_to_status_id_str,
+                    userId: value.in_reply_to_user_id_str,
                     username: value.in_reply_to_screen_name
                 } : undefined,
                 retweeted: !!value.retweeted,
@@ -197,6 +216,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                 remainingCount: Number(editControl?.edits_remaining || 0),
                 tweetIds: editControl?.edit_tweet_ids ?? [value.rest_id]
             },
+            fullText,
             hasBirdwatchNote: !!value.has_birdwatch_notes,
             hasGrokChatEmbed: !!value.grok_share_attachment,
             hasQuotedTweet: !!value.legacy.is_quote_status,
@@ -221,6 +241,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
             ], ReplyPermission.Everyone),
             replyingTo: value.legacy.in_reply_to_status_id_str ? {
                 tweetId: value.legacy.in_reply_to_status_id_str,
+                userId: value.legacy.in_reply_to_user_id_str,
                 username: value.legacy.in_reply_to_screen_name
             } : undefined,
             retweeted: !!value.legacy.retweeted,
@@ -276,20 +297,44 @@ export interface Conversation extends Type<'Conversation'> {
     allTweetIds: string[],
     items: (MaybeTweet | Cursor)[]
 }
-export const Conversation: Wrapped<TweetKind, Model<Conversation>> & Default<Conversation> = {
-    async new(fmt, value) {
+export const Conversation: Wrapped<TweetKind, Model<Conversation, null, { members?: Set<string> }>> & Default<Conversation> = {
+    async new(fmt, value, opts) {
+        let items = await Promise.all(
+            (value.items as any[] || []).map(async item => item.item?.itemContent?.__typename === 'TimelineTimelineCursor'
+                ? await fmt.next(Cursor, item.item?.itemContent)
+                : await fmt.next(MaybeTweet, item.item?.itemContent?.tweet_results?.result, { safe: false })
+            )
+        );
+
+        let members = structuredClone<Set<string>>(opts.members ?? new Set());
+        for (let item of items) {
+            if (item.__typename !== 'Tweet' || !item.replyingTo?.username || !item.text.startsWith('@')) {
+                continue;
+            }
+
+            const username = item.replyingTo.username.toLowerCase();
+            if (!members.has(username)) {
+                members.add(username);
+            }
+
+            while (/^@[a-zA-Z0-9_]/.test(item.text)) {
+                const [, username] = item.text.match(/^@([a-zA-Z0-9_]+)/) ?? [];
+
+                if (username && members.has(username.toLowerCase())) {
+                    item.text = item.text
+                        .replace(new RegExp(`^\\@${username}`, 'i'), '')
+                        .trimStart();
+                    continue;
+                }
+
+                break;
+            }
+        }
+
         return {
             __typename: 'Conversation',
             allTweetIds: value.metadata?.conversationMetadata?.allTweetIds || [],
-            items: await Promise.all(
-                (value.items as any[] || []).map(async item => {
-                    const v = item.item.itemContent;
-
-                    return v.__typename === 'TimelineTimelineCursor'
-                        ? await fmt.next(Cursor, v)
-                        : await fmt.next(MaybeTweet, v.tweet_results.result, { safe: false });
-                })
-            )
+            items
         };
     },
     assert(value) {
