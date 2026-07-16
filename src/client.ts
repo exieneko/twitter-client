@@ -11,7 +11,6 @@ import { log, match } from './utils/index.js';
 import { Query } from './utils/query.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 import { fetchXDocument, request } from './utils/request.js';
-import logger from 'node-color-log';
 
 /**
  * Shorthand for quickly getting only the current slice of a timeline, then discarding the generator. If you want to reuse the generator, call `timeline.next()`
@@ -257,7 +256,7 @@ export class TwitterClient {
      * @see {@link Endpoint}
      */
     async fetch<EP extends Endpoint, In = Parameters<EP['format']>[1], Out = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: EndpointParams<EP>): Promise<TwitterResponse<Out>> {
-        async function wrapper(twitter: TwitterClient) {
+        async function wrapper(twitter: TwitterClient): Promise<TwitterResponse<Out>> {
             const transactionId = await twitter.getTransactionId(endpoint);
 
             const [json, response] = await request<EP, In>(
