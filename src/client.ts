@@ -7,10 +7,11 @@ import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT,
 import { TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, Slice, TweetKind, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs } from './types/index.js';
 import type { Endpoint, EndpointParams, Type } from './types/internal/index.js';
-import { err, log, match, warn } from './utils/index.js';
+import { log, match } from './utils/index.js';
 import { Query } from './utils/query.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 import { fetchXDocument, request } from './utils/request.js';
+import logger from 'node-color-log';
 
 /**
  * Shorthand for quickly getting only the current slice of a timeline, then discarding the generator. If you want to reuse the generator, call `timeline.next()`
@@ -69,7 +70,7 @@ export class TwitterClient {
             try {
                 this.#proxyAgent = new ProxyAgent(options.proxyUrl);
             } catch (error) {
-                err(options, `Error while creating proxy agent with url "${options.proxyUrl}":`, error);
+                log.err(options, `Error while creating proxy agent with url "${options.proxyUrl}":`, error);
             }
         }
 
@@ -90,7 +91,7 @@ export class TwitterClient {
             const transaction = await ClientTransaction.create(document);
             return transaction;
         } catch (error) {
-            err(opts, 'Failed to initialize ClientTransaction', error);
+            log.err(opts, 'Failed to initialize ClientTransaction', error);
         }
     }
 
@@ -109,16 +110,15 @@ export class TwitterClient {
             files: {},
             includeResponse: false,
             language: 'en',
+            logs: 'Errors',
             longTweetBehavior: 'Force',
             proxyUrl: undefined,
-            silent: false,
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
-            verbose: false,
             ...options
         };
 
         const start = hrtime.bigint();
-        log(opts, 'Initializing TwitterClient with options:', options);
+        log.info(opts, 'Initializing TwitterClient with options:', options);
 
         const proxyAgent = options?.proxyUrl ? new ProxyAgent(options.proxyUrl) : undefined;
         const transaction = await this._transaction(opts, proxyAgent);
@@ -126,10 +126,10 @@ export class TwitterClient {
         const client = new this(transaction, tokens, opts, proxyAgent);
 
         const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-        log(client, `Initialized TwitterClient in ${elapsed}ms`);
+        log.info(client, `Initialized TwitterClient in ${elapsed}ms`);
 
         if (client.options.language !== 'en') {
-            warn(client, 'Setting language option to values other than "en" may have unexpected effects');
+            log.warn(client, 'Setting language option to values other than "en" may have unexpected effects');
         }
 
         return client;
@@ -153,7 +153,7 @@ export class TwitterClient {
             return client;
         }
 
-        err(options, 'auth_token and ct0 cookies not found in JSON object');
+        log.err(options, 'auth_token and ct0 cookies not found in JSON object');
     }
 
     /**
@@ -171,7 +171,7 @@ export class TwitterClient {
 
             return await this.fromCookies(json, options);
         } catch (error) {
-            err(options, error);
+            log.err(options, error);
         }
     }
 
@@ -181,7 +181,7 @@ export class TwitterClient {
         const path = endpoint.url.replace(/.*twitter\.com\//, '/');
         const transactionId = await this.#transaction?.generateTransactionId(endpoint.method, path);
 
-        log(this, 'Generated x-client-transaction-id for', endpoint.method, path, `(${transactionId})`);
+        log.info(this, 'Generated x-client-transaction-id for', endpoint.method, path, `(${transactionId})`);
         return transactionId;
     }
 
@@ -223,7 +223,7 @@ export class TwitterClient {
             json.push(obj);
             writeFileSync(this.options.files.data, JSON.stringify(json), 'utf8');
         } catch (error) {
-            err(this, 'Error while dumping JSON:', error);
+            log.err(this, 'Error while dumping JSON:', error);
         }
     }
 

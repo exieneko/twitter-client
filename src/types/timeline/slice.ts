@@ -138,7 +138,7 @@ export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, an
                 } satisfies Entry<ListKind>))
         ];
 
-        return await fmt.next(this, await Promise.all(entries))
+        return await fmt.next(this, await Promise.all(entries));
     },
     async trends(fmt, value) {
         const entries = await Promise.all(

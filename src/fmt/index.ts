@@ -2,7 +2,7 @@ import type { TwitterClient } from '../client.js';
 import { TwitterError } from '../types/index.js';
 import type { Type } from '../types/internal/index.js';
 import type { Model } from '../types/internal/model.js';
-import { err, warn } from '../utils/index.js';
+import { log } from '../utils/index.js';
 
 export class TwitterFormatter {
     params: Map<string, any>;
@@ -24,12 +24,12 @@ export class TwitterFormatter {
             this.errors.push(new TwitterError(error));
         }
 
-        err(this, 'Error occured during parsing:', error);
+        log.err(this, 'Error occured during parsing:', error);
 
         this.depth--;
 
         if (this.depth < 0) {
-            warn(this, `Formatter depth went below 0 (${this.depth})`);
+            log.warn(this, `Formatter depth went below 0 (${this.depth})`);
         }
 
         return error as T;

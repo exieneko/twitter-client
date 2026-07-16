@@ -2,10 +2,10 @@ import { hrtime } from 'node:process';
 import { parseHTML } from 'linkedom';
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
-import { err, log, toSearchParams, warn } from './index.js';
+import { log, toSearchParams } from './index.js';
 import { GLOBAL_HEADERS } from '../consts.js';
 import type { TwitterOptions } from '../types/index.js';
-import type { Endpoint, EndpointKind, EndpointParams } from '../types/internal/index.js';
+import type { Endpoint, EndpointParams } from '../types/internal/index.js';
 
 export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: EndpointParams<EP> | undefined, options: TwitterOptions, { cookies, proxyAgent, transactionId, body }: {
     cookies: Record<string, string>,
@@ -13,8 +13,6 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
     transactionId?: string,
     body?: BodyInit
 }): Promise<[T | E, Response?]> {
-    const start = hrtime.bigint();
-
     const headers: Record<string, string> = {
         ...GLOBAL_HEADERS,
         'accept-language': `${options.language === 'en' ? 'en-US,en' : options.language};q=0.9`,
@@ -58,7 +56,8 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         proxyAgent
     ] as const;
 
-    log(options, endpoint.method, url);
+    log.info(options, endpoint.method, url);
+    const start = hrtime.bigint();
 
     try {
         const response = endpoint.kind() === 'GraphQL'
@@ -66,23 +65,19 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
             : await sendRequest<EP, E>(...requestData, endpoint.kind() === 'Media' ? body : undefined);
 
         if (response instanceof Error) {
-            err(options, response);
+            log.err(options, response);
             return [response as E];
         }
 
         const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
         const logData = [endpoint.method, response.status, `in ${elapsed}ms`];
 
-        if (response.ok) {
-            log(options, ...logData);
-        } else {
-            err(options, ...logData);
-        }
+        log[response.ok ? 'info' : 'err'](options, ...logData);
 
         const data = await response.json();
         return [data as T, response];
     } catch (error) {
-        err(options, error);
+        log.err(options, error);
         return [error as E];
     }
 }
@@ -156,17 +151,16 @@ export async function fetchXDocument(opts: TwitterOptions, dispatcher?: ProxyAge
         'upgrade-insecure-requests': '1'
     };
 
+    log.info(opts, 'GET https://x.com/home');
     const start = hrtime.bigint();
-
-    log(opts, 'GET https://x.com/home');
     const response = await fetch('https://x.com/home', { headers, dispatcher });
     const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
 
     if (!response.ok) {
-        err(opts, response.status, `in ${elapsed}ms`);
+        log.err(opts, response.status, `in ${elapsed}ms`);
         throw new Error(response.status.toString());
     } else {
-        log(opts, response.status, `in ${elapsed}ms`);
+        log.info(opts, response.status, `in ${elapsed}ms`);
     }
 
     const html = await response.text();
