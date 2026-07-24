@@ -35,21 +35,21 @@ export interface TwitterOptions {
      * Set which domain to send requests to
      * 
      * @default 'twitter.com'
-     * @since v1.0.0-rc.0
+     * @since 1.0.0-rc.0
      */
     domain: 'twitter.com' | 'x.com',
     /**
      * Twitter client language. English is currently the only supported language
      * 
      * @default 'en'
-     * @since v1.0.0-rc.0
+     * @since 1.0.0-rc.0
      */
     language: string,
     /**
      * File paths to store data
      * 
      * @default {}
-     * @since v1.0.0-rc.0
+     * @since 1.0.0-rc.0
      */
     files: {
         /**
@@ -65,33 +65,33 @@ export interface TwitterOptions {
      * Include the API response as the `response` property on all returned data? This object may include sensitive information like the set-cookie header
      * 
      * @default false
-     * @since v1.0.0-rc.0
+     * @since 1.0.0-rc.0
      */
     includeResponse: boolean,
     /**
      * Which logs to show in the console
      * 
      * @default ClientLogOptions.Errors
-     * @since v1.0.0-rc.1
+     * @since 1.0.0-rc.0
      */
     logs: ClientLogOptions,
     /**
      * How to handle when a tweet's text length exceeds 280 characters
      * 
      * @default LongTweetBehavior.Force
-     * @since v1.0.0-rc.0
+     * @since 1.0.0-rc.0
      */
     longTweetBehavior: LongTweetBehavior,
     /**
      * Optional http proxy url
-     * @since v1.0.0-rc.0
+     * @since 1.0.0-rc.0
      */
     proxyUrl?: string,
     /**
      * User-Agent header to send with requests
      * 
      * @default 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
-     * @since v1.0.0-rc.0
+     * @since 1.0.0-rc.0
      */
     userAgent: string
 }

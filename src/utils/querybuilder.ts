@@ -12,7 +12,7 @@
  * 
  * @class
  * @deprecated replaced by `Query` interface
- * @since v0.7.0
+ * @since 0.7.0
  */
 export class QueryBuilder {
     #parts: string[] = [];
