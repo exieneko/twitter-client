@@ -1,5 +1,5 @@
+import { FormatterError, TwitterError } from './errors.js';
 import type { TwitterClient } from '../client.js';
-import { TwitterError } from '../types/index.js';
 import type { Type } from '../types/internal/index.js';
 import type { Model } from '../types/internal/model.js';
 import { log } from '../utils/index.js';
@@ -7,77 +7,56 @@ import { log } from '../utils/index.js';
 export class TwitterFormatter {
     params: Map<string, any>;
     client: TwitterClient;
-    depth: number = 0;
-    errors: TwitterError[] = [];
+    depth = 0;
+    errors: TwitterError[];
 
     constructor(client: TwitterClient, params?: object) {
         this.client = client;
         this.params = new Map(Object.entries(params ?? {}));
+        this.errors = [];
     }
 
 
 
-    private handleError<T>(error: any): T {
-        if (error instanceof TwitterError) {
-            this.errors.push(error);
-        } else {
-            this.errors.push(new TwitterError(error));
-        }
+    private handleError<T>(cause: unknown): T {
+        const error = new FormatterError('Error thrown during formatting', { cause });
+        this.errors.push(error);
 
-        log.err(this, 'Error occured during parsing:', error);
+        log.err(this, error);
 
-        this.depth--;
-
-        if (this.depth < 0) {
-            log.warn(this, `Formatter depth went below 0 (${this.depth})`);
-        }
-
-        return error as T;
+        return {
+            __typename: 'Error',
+            index: this.errors.length - 1
+        } as T;
     }
 
     async format<T>(fn: (fmt: this, value: any) => Promise<T>, value: any): Promise<T | undefined> {
         this.depth++;
 
         try {
-            const result = await fn(this, value);
-            this.depth--;
-            return result;
+            return await fn(this, value);
         } catch (error) {
             return this.handleError(error);
+        } finally {
+            this.depth--;
         }
     }
 
-    async next<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>>(
-        model: M,
-        value: Parameters<M['new']>[1],
-        ...rest: [Parameters<M['new']>[2]] extends [null | undefined]
-            ? []
-        : Required<Parameters<M['new']>[2]> extends Parameters<M['new']>[2]
-            ? [opts?: Parameters<M['new']>[2]]
-            : [opts: Parameters<M['new']>[2]]
-    ): Promise<This> {
+    async next<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>, O = Parameters<M['new']>[2]>(model: M, value: Parameters<M['new']>[1], ...rest: [O] extends [null | undefined] ? [] : Required<O> extends O ? [opts?: O] : [opts: O]): Promise<This> {
         this.depth++;
         const opts = rest[0] ?? {};
 
         try {
             // @ts-ignore
-            const result = await model.new(this, value, opts);
-            this.depth--;
-            return result;
+            return await model.new(this, value, opts);
         } catch (error) {
             return this.handleError(error);
+        } finally {
+            this.depth--;
         }
     }
 
-    async nextIf<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>>(
-        model: M,
-        value: Parameters<M['new']>[1],
-        ...rest: [Parameters<M['new']>[2]] extends [null | undefined]
-            ? []
-        : Required<Parameters<M['new']>[2]> extends Parameters<M['new']>[2]
-            ? [opts?: Parameters<M['new']>[2]]
-            : [opts: Parameters<M['new']>[2]]
-    ): Promise<This | undefined> {
+    async nextIf<M extends Model<any, any, any>, This extends Type = Awaited<ReturnType<M['new']>>, O = Parameters<M['new']>[2]>(model: M, value: Parameters<M['new']>[1], ...rest: [O] extends [null | undefined] ? [] : Required<O> extends O ? [opts?: O] : [opts: O]): Promise<This | undefined> {
         if (typeof value === 'undefined' || value === null) {
             return;
         }

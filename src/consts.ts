@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import { AboutUser, AccountSettings, BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, BirdwatchUser, CommunityKind, DraftTweet, ListKind, MaybeTweet, MediaData, MediaUploadInit, Notification, ScheduledTweet, Slice, Trend, Tweet, TweetBirdwatchNotes, TweetKind, TwitterResponse, Typeahead, UnreadCount, User, UserKind } from './types/index.js';
-import { Endpoint, type EndpointGroup } from './types/internal/index.js';
+import { Endpoint, Range, type EndpointGroup } from './types/internal/index.js';
 import { gql, v11 } from './utils/index.js';
 
 export const PUBLIC_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
@@ -9,7 +9,9 @@ export const OAUTH_KEY = 'Bearer AAAAAAAAAAAAAAAAAAAAAG5LOQEAAAAAbEKsIYYIhrfOQqm
 
 export const UPLOAD_SEGMENT_SIZE = 1 << 20;
 export const MAX_TIMELINE_ITERATIONS = 5;
-export const TWEET_CHARACTER_LIMIT = 280;
+export const TWEET_TEXT_RANGE = new Range('0..=280');
+export const TWEET_MEDIA_RANGE = new Range('0..=4');
+export const TWEET_POLL_RANGE = new Range('2..=4');
 
 export const EMPTY_SLICE: TwitterResponse<Slice<any>> = {
     errors: [],
@@ -648,7 +650,7 @@ export const ENDPOINTS = {
             method: 'get',
             variables: {"command":"INIT"}
         }, async (_, value) => value as MediaUploadInit),
-        append: new Endpoint<unknown>({
+        append: new Endpoint<unknown, { media_id: string, segment_index: number }>({
             url: 'https://upload.twitter.com/1.1/media/upload.json',
             method: 'post',
             variables: {"command":"APPEND"}

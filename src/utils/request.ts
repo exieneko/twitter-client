@@ -1,18 +1,40 @@
-import { hrtime } from 'node:process';
+import { features, hrtime } from 'node:process';
 import { parseHTML } from 'linkedom';
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
 import { log, toSearchParams } from './index.js';
 import { GLOBAL_HEADERS } from '../consts.js';
-import type { TwitterOptions } from '../types/index.js';
+import { ClientError, RequestError, type TwitterOptions } from '../types/index.js';
 import type { Endpoint, EndpointParams } from '../types/internal/index.js';
 
-export async function request<EP extends Endpoint, T, E extends Error = Error>(endpoint: EP, params: EndpointParams<EP> | undefined, options: TwitterOptions, { cookies, proxyAgent, transactionId, body }: {
+/**
+ * Sends a request to an endpoint with the specified data
+ * 
+ * @param opts Options
+ * @returns Tuple containing return data
+ */
+export async function request<EP extends Endpoint, T = never>(opts: {
+    endpoint: EP,
+    params?: EndpointParams<EP>,
     cookies: Record<string, string>,
+    mediaFormData?: BodyInit,
+    options: TwitterOptions,
     proxyAgent?: ProxyAgent,
-    transactionId?: string,
-    body?: BodyInit
-}): Promise<[T | E, Response?]> {
+    transactionId: string
+}): Promise<[T, Response]> {
+    const { endpoint, params, cookies, mediaFormData, options, proxyAgent, transactionId } = opts;
+
+    if (endpoint.kind() !== 'GraphQL') {
+        for (const key in params) {
+            // @ts-ignore
+            if (typeof params[key] === 'undefined') {
+                // @ts-ignore
+                delete params[key];
+            }
+        }
+    }
+
+    const url = endpoint.url.replace('twitter.com', options.domain);
     const headers: Record<string, string> = {
         ...GLOBAL_HEADERS,
         'accept-language': `${options.language === 'en' ? 'en-US,en' : options.language};q=0.9`,
@@ -20,112 +42,75 @@ export async function request<EP extends Endpoint, T, E extends Error = Error>(e
         origin: `https://${options.domain}`,
         referer: `https://${options.domain}/`,
         authorization: endpoint.token,
+        cookie: Object
+            .entries(cookies)
+            .filter(([, v]) => !!v)
+            .map(([k, v]) => `${k}=${v}`)
+            .join('; '),
         'user-agent': options.userAgent,
         'x-twitter-client-language': options.language,
-        'x-csrf-token': cookies.ct0
+        'x-csrf-token': cookies.ct0,
+        'x-client-transaction-id': transactionId
     };
-
-    headers['cookie'] = Object
-        .entries(cookies)
-        .filter(([, v]) => !!v)
-        .map(([k, v]) => `${k}=${v}`)
-        .join('; ');
-
-    if (transactionId) {
-        headers['x-client-transaction-id'] = transactionId;
+    
+    if (endpoint.kind() === 'GraphQL' || endpoint.kind() === 'v2Alt') {
+        headers['content-type'] = 'application/json; charset=utf-8'
+    } else if (endpoint.kind() !== 'Media' && !(endpoint.kind() === 'v1.1' && endpoint.method === 'GET' && !features)) {
+        headers['content-type'] = 'application/x-www-form-urlencoded; charset=utf-8';
     }
 
-    if (endpoint.kind() !== 'Media') {
-        headers['content-type'] = endpoint.kind() === 'GraphQL' || endpoint.kind() === 'v2Alt'
-            ? 'application/json; charset=utf-8'
-            : 'application/x-www-form-urlencoded; charset=utf-8';
-    }
-
-    if (headers['content-type'] && endpoint.method === 'GET' && !endpoint.features && endpoint.kind() === 'v1.1') {
-        delete headers['content-type'];
-    }
-
-
-
-    const url = endpoint.url.replace('twitter.com', options.domain);
-    const requestData = [
-        url,
-        endpoint,
-        params,
-        headers,
-        proxyAgent
-    ] as const;
-
-    log.info(options, endpoint.method, url);
     const start = hrtime.bigint();
 
+    let response: Response;
     try {
-        const response = endpoint.kind() === 'GraphQL'
-            ? await sendGqlRequest<EP, E>(...requestData)
-            : await sendRequest<EP, E>(...requestData, endpoint.kind() === 'Media' ? body : undefined);
+        const variables = { ...endpoint.variables, ...params };
+        const v11Body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
 
-        if (response instanceof Error) {
-            log.err(options, response);
-            return [response as E];
+        let body: BodyInit | undefined = undefined;
+        if (mediaFormData) {
+            body = mediaFormData;
+        } else if (endpoint.method === 'POST' && endpoint.kind() === 'GraphQL') {
+            body = endpoint.post({ variables, features: endpoint.features, queryId: endpoint.url.split('/', 1)[0] });
+        } else if (endpoint.method === 'POST' && endpoint.kind() === 'v2Alt') {
+            body = endpoint.post(variables);
+        } else if (endpoint.method === 'POST') {
+            body = endpoint.post(v11Body);
         }
 
-        const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-        const logData = [endpoint.method, response.status, `in ${elapsed}ms`];
-
-        log[response.ok ? 'info' : 'err'](options, ...logData);
-
-        const data = await response.json();
-        return [data as T, response];
-    } catch (error) {
-        log.err(options, error);
-        return [error as E];
-    }
-}
-
-async function sendGqlRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: EndpointParams<EP> | undefined, headers: Record<string, string>, proxyAgent?: ProxyAgent) {
-    const variables = { ...endpoint.variables, ...params };
-
-    try {
-        return await fetch(endpoint.get(url, toSearchParams({ variables, features: endpoint.features })), {
+        response = await fetch(endpoint.get(url, toSearchParams({ variables, features: endpoint.features })), {
             method: endpoint.method,
             headers,
-            body: endpoint.post({
-                variables,
-                features: endpoint.features,
-                queryId: endpoint.url.split('/', 1)[0]
-            }),
+            body,
             dispatcher: proxyAgent
         });
     } catch (error) {
-        return error as E;
-    }
-}
-
-async function sendRequest<EP extends Endpoint, E extends Error>(url: string, endpoint: EP, params: EndpointParams<EP> | undefined, headers: Record<string, any>, proxyAgent?: ProxyAgent, mediaFormData?: BodyInit) {
-    for (const key in params) {
-        // @ts-ignore
-        if (typeof params[key] === 'undefined') {
-            // @ts-ignore
-            delete params[key];
-        }
+        throw new RequestError(`Failed to send request to "${url}"`, { endpoint, params, cause: error });
     }
 
-    const body = new URLSearchParams({ ...endpoint.variables, ...params }).toString();
+    const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
 
+    let bytes: Uint8Array<ArrayBufferLike>;
     try {
-        return await fetch(((endpoint.method === 'GET' && body) || mediaFormData) ? `${url}?${body}` : url, {
-            method: endpoint.method,
-            headers,
-            body: mediaFormData
-                ? mediaFormData
-            : endpoint.method === 'POST' && endpoint.kind() === 'v2Alt'
-                ? endpoint.post({ ...endpoint.variables, ...params })
-                : endpoint.post(body),
-            dispatcher: proxyAgent
-        });
+        bytes = await response.bytes();
     } catch (error) {
-        return error as E;
+        throw new RequestError('Failed to get response data due to Divine intervention', { endpoint, params, cause: error });
     }
+
+    log[response.ok ? 'info' : 'err'](options, endpoint.method, response.status, `in ${elapsed}ms (transferred: ${bytes.byteLength}B)`);
+
+    let data;
+    try {
+        const text = new TextDecoder().decode(bytes);
+        data = JSON.parse(text);
+    } catch (error) {
+        if (error instanceof TypeError) {
+            throw new ClientError('TextDecoder failed to decode response bytes to string', { cause: error });
+        }
+
+        throw new ClientError('Received response data is not valid JSON', { cause: error });
+    }
+
+    return [data as T, response];
 }
 
 /**

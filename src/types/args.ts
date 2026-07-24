@@ -242,7 +242,7 @@ export interface TweetVoteArgs {
     cardUri: string,
     /** Card name */
     cardName: string,
-    /** 1-based index of the selected choice (1-4) */
+    /** 0-based index of the selected choice (0-3) */
     choice: number
 }
 

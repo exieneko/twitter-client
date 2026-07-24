@@ -1,6 +1,10 @@
 import { Conversation, Cursor, CursorDirection, ListKind, Notification, Trend, TweetKind, UserKind, type Entry, type TimelineSegment } from '../index.js';
-import type { Default, Model, Type, WithMethods } from '../internal/index.js';
+import type { AsyncConstructor, Default, Model, Type } from '../internal/index.js';
 import { ENDPOINTS } from '../../consts.js';
+
+type SliceMethods<T extends readonly (readonly [string, Type, (Record<string, any> | undefined | null)?])[]> = {
+    [P in T[number] as P[0]]: AsyncConstructor<Slice<P[1]>, any[], P[2] extends Record<string, any> ? P[2] : null>
+};
 
 export interface SliceCursors {
     previous: string,
@@ -23,7 +27,7 @@ export interface Slice<T extends Type> extends Type<'Slice'> {
      */
     cursors: Partial<SliceCursors>
 }
-export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, any> }> & WithMethods<[
+export const Slice: Model<Slice<Type>, Entry<Type>[], { body?: Record<string, any> }> & SliceMethods<[
     ['discover', TweetKind | Trend, { root: Record<string, any> }],
     ['lists', ListKind, { type: 'Default' | 'Discovery' }],
     ['notifications', Notification],

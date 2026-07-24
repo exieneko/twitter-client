@@ -1,59 +1,25 @@
 import type { Enum } from './internal/index.js';
 import { match } from '../utils/index.js';
 
-/**
- * Primary identifier of Twitter errors
- * 
- * @enum
- */
-export const TwitterErrorCode = {
-    TweetAlreadyLiked: 139,
-    AutomatedRequest: 226,
-    RateLimitReached: 344,
-    MissingCSRF: 353,
-
-    /**
-     * Fallback
-     * 
-     * @default
-     */
-    Unknown: 0,
-    /** Feature is not implemented */
-    NotImplemented: 1001,
-    IncorrectAssertion: 1002,
-    /** Tweet exceeds 280 characters and options to proceed are turned off */
-    InvalidTweetTextLength: 1010,
-    /** Tweet media array length exceeds 4 */
-    InvalidMediaCount: 1011,
-    InvalidPollChoicesCount: 1012,
-    InvalidVoteIndex: 1013
-} as const;
-export type TwitterErrorCode = Enum<typeof TwitterErrorCode>;
-
-/**
- * @enum
- */
-export const TwitterErrorKind = {
-    Validation: 'Validation',
-    Permissions: 'Permissions',
-    TypeError: 'TypeError',
-    Other: 'Other',
-    Unknown: 'Unknown'
-} as const;
-export type TwitterErrorKind = Enum<typeof TwitterErrorKind>;
+interface TwitterErrorOptions extends ErrorOptions {
+    /** Additional optional data shown in some error messages */
+    data?: any[],
+    stack?: string,
+    path?: string[]
+}
 
 /**
  * Error returned by the Twitter API or thrown during parsing
  * 
  * @class
  */
-export class TwitterError extends Error {
+class TwitterError extends Error {
     public static DEFAULT_NAME = 'Unknown';
     public static DEFAULT_MESSAGE = 'An unknown error occured';
 
     code: TwitterErrorCode = TwitterErrorCode.Unknown;
     kind: TwitterErrorKind = TwitterErrorKind.Unknown;
-    name: string = TwitterError.DEFAULT_NAME;
+    name: string = 'TwitterError';
     /** Error message in the language selected during client initialization */
     message: string = TwitterError.DEFAULT_MESSAGE;
     stack?: string;
@@ -149,9 +115,43 @@ export class TwitterError extends Error {
     }
 }
 
-export interface TwitterErrorOptions extends ErrorOptions {
-    /** Additional optional data shown in some error messages */
-    data?: any[],
-    stack?: string,
-    path?: string[]
-}
+/**
+ * Primary identifier of Twitter errors
+ * 
+ * @enum
+ */
+const TwitterErrorCode = {
+    TweetAlreadyLiked: 139,
+    AutomatedRequest: 226,
+    RateLimitReached: 344,
+    MissingCSRF: 353,
+
+    /**
+     * Fallback
+     * 
+     * @default
+     */
+    Unknown: 0,
+    /** Feature is not implemented */
+    NotImplemented: 1001,
+    IncorrectAssertion: 1002,
+    /** Tweet exceeds 280 characters and options to proceed are turned off */
+    InvalidTweetTextLength: 1010,
+    /** Tweet media array length exceeds 4 */
+    InvalidMediaCount: 1011,
+    InvalidPollChoicesCount: 1012,
+    InvalidVoteIndex: 1013
+} as const;
+type TwitterErrorCode = Enum<typeof TwitterErrorCode>;
+
+/**
+ * @enum
+ */
+const TwitterErrorKind = {
+    Validation: 'Validation',
+    Permissions: 'Permissions',
+    TypeError: 'TypeError',
+    Other: 'Other',
+    Unknown: 'Unknown'
+} as const;
+type TwitterErrorKind = Enum<typeof TwitterErrorKind>;

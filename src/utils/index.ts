@@ -1,7 +1,7 @@
 import logger from 'node-color-log';
 import { TwitterClient } from '../client.js';
 import { TwitterFormatter } from '../fmt/index.js';
-import { TwitterError, TwitterErrorCode, type ClientLogOptions, type TwitterOptions } from '../types/index.js';
+import { ValidationError, type ClientLogOptions, type TwitterOptions } from '../types/index.js';
 import type { Type } from '../types/internal/index.js';
 
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][]): V | undefined;
@@ -32,9 +32,17 @@ export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (
 
 
 export function assert<T extends U, U extends Type>(value: U, desiredType: U['__typename'] | U['__typename'][]): T {
-    if (typeof desiredType === 'string' ? value.__typename !== desiredType : !desiredType.includes(value.__typename)) {
-        throw new TwitterError(TwitterErrorCode.IncorrectAssertion, {
-            data: [value.__typename, desiredType]
+    if (typeof desiredType === 'string' && value.__typename !== desiredType) {
+        throw new ValidationError(`Failed to assert type ${value.__typename} as ${desiredType}`, {
+            field: '__typename',
+            value: value.__typename,
+            expected: [desiredType]
+        });
+    } else if (Array.isArray(desiredType) && !desiredType.includes(value.__typename)) {
+        throw new ValidationError(`Failed to assert type ${value.__typename} as any of: ${desiredType.join(', ')}`, {
+            field: '__typename',
+            value: value.__typename,
+            expected: desiredType
         });
     }
 
@@ -62,7 +70,7 @@ export function toSearchParams(obj: object) {
         return '';
     }
 
-    return '?' + Object.entries(obj)
+    return Object.entries(obj)
         .filter(([, value]) => value !== undefined)
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(typeof value === 'string' ? value : JSON.stringify(value))}`)
         .join('&');

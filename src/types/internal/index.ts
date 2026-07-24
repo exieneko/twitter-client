@@ -4,6 +4,7 @@ import type { TwitterFormatter } from '../../fmt/index.js';
 
 export * from './endpoint.js';
 export * from './model.js';
+export * from './range.js';
 
 export type AsyncConstructor<This extends Type, T = Record<string, any>, Opts extends Record<string, any> | null = null> = [Opts] extends [null]
     ? (fmt: TwitterFormatter, value: T) => Promise<This>

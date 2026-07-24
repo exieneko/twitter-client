@@ -1,6 +1,6 @@
 export * from './args.js';
 export * from './client.js';
-export * from './error.js';
+// export * from './error.js';
 
 export * from './account.js';
 export * from './birdwatch.js';
@@ -17,3 +17,4 @@ export * from './search.js';
 export * from './user.js';
 
 export * from '../fmt/index.js';
+export * from '../fmt/errors.js';

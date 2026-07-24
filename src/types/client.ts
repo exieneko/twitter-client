@@ -1,5 +1,5 @@
 import { Response } from 'undici';
-import type { TwitterError } from './error.js';
+import type { TwitterError } from '../fmt/errors.js';
 import type { Enum } from './internal/index.js';
 
 /**

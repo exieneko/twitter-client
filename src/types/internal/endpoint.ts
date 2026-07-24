@@ -36,7 +36,7 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> imp
 
     get(url: string, body?: string) {
         if (this.method === 'GET' && body && body.length > 0) {
-            return url + body;
+            return url + '?' + body;
         }
 
         return url;
@@ -63,6 +63,17 @@ export class Endpoint<T = any, P extends object = {}, V extends object = {}> imp
         }
 
         return 'v1.1';
+    }
+
+    toJSON(): EndpointOptions<V> {
+        return {
+            url: this.url,
+            method: this.method.toLowerCase() as Lowercase<typeof this.method>,
+            variables: this.variables,
+            features: this.features,
+            token: this.token,
+            requiresTransactionId: this.requiresTransactionId
+        };
     }
 }
 

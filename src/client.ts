@@ -1,11 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { hrtime } from 'node:process';
-import { FormData, ProxyAgent } from 'undici';
+import { FormData, ProxyAgent, Response } from 'undici';
 import { ClientTransaction } from 'x-client-transaction-id';
 
-import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_CHARACTER_LIMIT, UPLOAD_SEGMENT_SIZE } from './consts.js';
+import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_MEDIA_RANGE, TWEET_POLL_RANGE, TWEET_TEXT_RANGE, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { TwitterFormatter } from './fmt/index.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, Slice, TweetKind, TweetOrder, TwitterError, TwitterErrorCode, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, Slice, TweetKind, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs, ValidationError, ApiError, RequestError, TwitterError, FormatterError, ClientError, DivineInterventionError } from './types/index.js';
 import type { Endpoint, EndpointParams, Type } from './types/internal/index.js';
 import { log, match } from './utils/index.js';
 import { Query } from './utils/query.js';
@@ -43,7 +43,7 @@ export async function slice<T extends Type>(timeline: Timeline<T>): Promise<Twit
  */
 export class TwitterClient {
     #proxyAgent?: ProxyAgent;
-    #transaction?: ClientTransaction;
+    #transaction: ClientTransaction;
     #cookies: Record<string, string>;
     options: TwitterOptions;
     /**
@@ -53,45 +53,19 @@ export class TwitterClient {
      */
     self?: User;
 
-    constructor(transaction: ClientTransaction | undefined, tokens: TwitterTokens, options: TwitterOptions, proxyAgent?: ProxyAgent) {
+    constructor(transaction: ClientTransaction, tokens: TwitterTokens, options: TwitterOptions, proxyAgent?: ProxyAgent) {
+        const lang = options.language.toLowerCase().startsWith('en-') ? 'en' : options.language;
+
+        this.#proxyAgent = proxyAgent;
         this.#transaction = transaction;
         this.#cookies = {
             auth_token: tokens.authToken,
             ct0: tokens.csrf,
             d_prefs: btoa('2:1,consent_version:2,text_version:1000'),
-            lang: options.language
+            lang
         };
-        this.options = options;
-
-        if (proxyAgent) {
-            this.#proxyAgent = proxyAgent;
-        } else if (options.proxyUrl) {
-            try {
-                this.#proxyAgent = new ProxyAgent(options.proxyUrl);
-            } catch (error) {
-                log.err(options, `Error while creating proxy agent with url "${options.proxyUrl}":`, error);
-            }
-        }
-
-        if (this.options.language.toLowerCase().startsWith('en-')) {
-            this.options.language = 'en';
-        }
-    }
-
-    /**
-     * Fetches the x.com homepage and creates a `ClientTransaction` object, which is used to generate the `x-client-transaction-id` header for endpoints that require it
-     * 
-     * @returns Promise resolving to a `ClientTransaction`
-     * @since v1.0.0-rc.0
-     */
-    static async _transaction(opts: TwitterOptions, proxyAgent?: ProxyAgent): Promise<ClientTransaction | undefined> {
-        try {
-            const document = await fetchXDocument(opts, proxyAgent);
-            const transaction = await ClientTransaction.create(document);
-            return transaction;
-        } catch (error) {
-            log.err(opts, 'Failed to initialize ClientTransaction', error);
-        }
+        this.options = structuredClone(options);
+        this.options.language = lang;
     }
 
     /**
@@ -101,6 +75,7 @@ export class TwitterClient {
      * @param tokens Your Twitter account's login tokens
      * @param [options] Additional options
      * @returns Promise resolving to `TwitterClient`
+     * @throws {ClientError} if `ProxyAgent` or `ClientTransaction` can't be created
      * @since v1.0.0-rc.0
      */
     static async new(tokens: TwitterTokens, options?: Partial<TwitterOptions>): Promise<TwitterClient> {
@@ -116,16 +91,31 @@ export class TwitterClient {
             ...options
         };
 
-        const start = hrtime.bigint();
         log.info(opts, 'Initializing TwitterClient with options:', options);
 
-        const proxyAgent = options?.proxyUrl ? new ProxyAgent(options.proxyUrl) : undefined;
-        const transaction = await this._transaction(opts, proxyAgent);
+        let proxyAgent: ProxyAgent | undefined = undefined;
+        if (options?.proxyUrl) {
+            try {
+                proxyAgent = new ProxyAgent(options.proxyUrl);
+            } catch (error) {
+                log.err(opts, 'Failed to initialize ProxyAgent', error);
 
-        const client = new this(transaction, tokens, opts, proxyAgent);
+                throw new ClientError(`Failed to initialize ProxyAgent with URL "${options.proxyUrl}"`, { cause: error });
+            }
+        }
 
-        const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-        log.info(client, `Initialized TwitterClient in ${elapsed}ms`);
+        let client: TwitterClient;
+        try {
+            const document = await fetchXDocument(opts, proxyAgent);
+            const transaction = await ClientTransaction.create(document);
+            client = new this(transaction, tokens, opts, proxyAgent);
+        } catch (error) {
+            log.err(opts, 'Failed to initialize ClientTransaction', error);
+
+            throw new ClientError('Failed to initialize ClientTransaction', {
+                cause: error instanceof TypeError ? new ClientError('Failed to get Twitter HTML document', { cause: error }) : error
+            });
+        }
 
         if (client.options.language !== 'en') {
             log.warn(client, 'Setting language option to values other than "en" may have unexpected effects');
@@ -139,20 +129,41 @@ export class TwitterClient {
      * 
      * @param json Object containing cookies that should be loaded
      * @param [options] Additional options
-     * @returns Promise resolving to `TwitterClient` or `undefined` if `json` doesn't contain the required cookies
+     * @returns Promise resolving to `TwitterClient` or `undefined` if `json` doesn't contain the required cookies\
+     * @throws {ValidationError} if `json` is not an object, or either `auth_token` or `ct0` is missing
+     * @throws {ClientError} if `TwitterClient.new` throws
      * @since v1.0.0-rc.1
      */
-    static async fromCookies(json: Record<string, string>, options?: Partial<TwitterOptions>): Promise<TwitterClient | undefined> {
-        if (typeof json.auth_token === 'string' && typeof json.ct0 === 'string') {
-            const client = await this.new({
-                authToken: json.auth_token,
-                csrf: json.ct0
-            }, options);
-            client.addTokens(Object.entries(json).map(v => v.join('=')));
-            return client;
+    static async fromCookies(json: Record<string, string>, options?: Partial<TwitterOptions>): Promise<TwitterClient> {
+        if (!json || typeof json !== 'object') {
+            throw new ValidationError('Cookies json is not a valid object', {
+                field: '*',
+                value: json,
+                expected: 'object'
+            });
         }
 
-        log.err(options, 'auth_token and ct0 cookies not found in JSON object');
+        if (typeof json.auth_token !== 'string') {
+            throw new ValidationError('Auth token is not a valid string', {
+                field: 'auth_token',
+                value: json.auth_token,
+                expected: 'string'
+            });
+        } else if (typeof json.ct0 !== 'string') {
+            throw new ValidationError('CSRF token is not a valid string', {
+                field: 'ct0',
+                value: json.ct0,
+                expected: 'string'
+            });
+        }
+
+        const client = await this.new({
+            authToken: json.auth_token,
+            csrf: json.ct0
+        }, options);
+
+        client.addTokens(Object.entries(json).map(v => v.join('=')));
+        return client;
     }
 
     /**
@@ -160,27 +171,32 @@ export class TwitterClient {
      * 
      * @param filePath Path to the file containing your cookies
      * @param [options] Additional options
-     * @returns Promise resolving to `TwitterClient` or `undefined` if `filePath` doesn't exist, can't be parsed as JSON, or if `TwitterClient.fromCookies` call fails
+     * @returns Promise resolving to `TwitterClient`
+     * @throws {ClientError} if `TwitterClient.new` throws or if `filePath` can't be opened and parsed as JSON
+     * @throws {ValidationError} if `TwitterClient.fromCookies` throws
      * @since v1.0.0-rc.1
      */
-    static async fromCookiesFile(filePath: string, options?: Partial<TwitterOptions>): Promise<TwitterClient | undefined> {
+    static async fromCookiesFile(filePath: string, options?: Partial<TwitterOptions>): Promise<TwitterClient> {
         try {
             const content = readFileSync(filePath, 'utf8');
             const json = JSON.parse(content);
 
             return await this.fromCookies(json, options);
         } catch (error) {
-            log.err(options, error);
+            if (error instanceof TwitterError) {
+                throw error;
+            }
+
+            throw new ClientError(`Error was thrown while reading or parsing "${filePath}"`, { cause: error });
         }
     }
 
 
 
-    private async getTransactionId(endpoint: Endpoint): Promise<string | undefined> {
+    private async getTransactionId(endpoint: Endpoint) {
         const path = endpoint.url.replace(/.*twitter\.com\//, '/');
-        const transactionId = await this.#transaction?.generateTransactionId(endpoint.method, path);
+        const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
 
-        log.info(this, 'Generated x-client-transaction-id for', endpoint.method, path, `(${transactionId})`);
         return transactionId;
     }
 
@@ -201,29 +217,25 @@ export class TwitterClient {
             return;
         }
 
-        try {
-            let obj: TwitterResponse<T> = { data: structuredClone(data.data), errors: structuredClone(data.errors) };
+        let obj: TwitterResponse<T> = { data: structuredClone(data.data), errors: structuredClone(data.errors) };
 
-            let json: any[] = [];
+        let json: any[] = [];
 
-            if (existsSync(this.options.files.data)) {
-                const content = readFileSync(this.options.files.data, 'utf8');
-                try {
-                    json = JSON.parse(content);
-                } catch {
-                    json = [];
-                }
-            }
-
-            if (!Array.isArray(json)) {
+        if (existsSync(this.options.files.data)) {
+            const content = readFileSync(this.options.files.data, 'utf8');
+            try {
+                json = JSON.parse(content);
+            } catch {
                 json = [];
             }
-
-            json.push(obj);
-            writeFileSync(this.options.files.data, JSON.stringify(json), 'utf8');
-        } catch (error) {
-            log.err(this, 'Error while dumping JSON:', error);
         }
+
+        if (!Array.isArray(json)) {
+            json = [];
+        }
+
+        json.push(obj);
+        writeFileSync(this.options.files.data, JSON.stringify(json), 'utf8');
     }
 
     private dumpCookies() {
@@ -255,62 +267,67 @@ export class TwitterClient {
      * @returns Expected awaited return type of the target endpoint's `format` method
      * @see {@link Endpoint}
      */
-    async fetch<EP extends Endpoint, In = Parameters<EP['format']>[1], Out = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: EndpointParams<EP>): Promise<TwitterResponse<Out>> {
-        async function wrapper(twitter: TwitterClient): Promise<TwitterResponse<Out>> {
-            const transactionId = await twitter.getTransactionId(endpoint);
+    async fetch<EP extends Endpoint, T = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: EndpointParams<EP>): Promise<TwitterResponse<T>> {
+        type U = Parameters<EP['format']>[1];
 
-            const [json, response] = await request<EP, In>(
+        let json: U, r: Response;
+        try {
+            [json, r] = await request<EP, U>({
                 endpoint,
                 params,
-                twitter.options,
-                {
-                    cookies: twitter.#cookies,
-                    proxyAgent: twitter.#proxyAgent,
-                    transactionId
-                }
-            );
+                cookies: this.#cookies,
+                options: this.options,
+                proxyAgent: this.#proxyAgent,
+                transactionId: await this.getTransactionId(endpoint)
+            });
+        } catch (error) {
+            return {
+                errors: [error instanceof TwitterError ? error : new DivineInterventionError('Request function threw an unknown error', { cause: error })]
+            };
+        }
 
-            if (json instanceof Error) {
-                return {
-                    errors: [new TwitterError(json)],
-                    response: twitter.options.includeResponse ? response : undefined
-                };
-            } else if (json && typeof json === 'object' && 'errors' in json && !('data' in json) && Array.isArray(json.errors)) {
-                return {
-                    errors: TwitterError.from(json.errors),
-                    response: twitter.options.includeResponse ? response : undefined
-                };
-            } else if (!json) {
-                return {
-                    errors: [new TwitterError()],
-                    response: twitter.options.includeResponse ? response : undefined
-                };
-            }
+        const response = this.options.includeResponse ? r : undefined;
+        let errors: TwitterError[] = [];
 
-            if (response) {
-                twitter.addTokens(response.headers.getSetCookie());
-                twitter.dumpCookies();
-            }
+        if (!json || Object.entries(json).length === 0) {
+            return {
+                errors: [new DivineInterventionError('Received data is empty')],
+                response
+            };
+        }
+
+        if (typeof json === 'object' && 'errors' in json && Array.isArray(json.errors)) {
+            errors = json
+                .errors
+                .filter(error => typeof error === 'object' && 'message' in error)
+                .map(error => new ApiError(error.message, { ...error }));
+        }
+
+        if (response) {
+            this.addTokens(response.headers.getSetCookie());
 
             try {
-                const fmt = new TwitterFormatter(twitter, params);
-                const result = await fmt.format<Out>(endpoint.format, json);
-
-                return {
-                    data: result,
-                    errors: fmt.errors,
-                    response: twitter.options.includeResponse ? response : undefined
-                };
-            } catch (error: any) {
-                return {
-                    errors: [new TwitterError(error)],
-                    response: twitter.options.includeResponse ? response : undefined
-                };
+                this.dumpCookies();
+            } catch (error) {
+                errors.push(new ClientError(`Failed to dump cookies to "${this.options.files.cookies}"`, { cause: error }));
             }
         }
 
-        const result = await wrapper(this);
-        this.dump(result);
+        const fmt = new TwitterFormatter(this, params);
+        const data = await fmt.format<T>(endpoint.format, json);
+
+        let result: TwitterResponse<T> = {
+            data,
+            errors: [...fmt.errors, ...errors],
+            response
+        };
+
+        try {
+            this.dump(result);
+        } catch (error) {
+            result.errors.push(new ClientError(`Failed to dump JSON data to "${this.options.files.data}"`, { cause: error }));
+        }
+
         return result;
     }
 
@@ -1067,33 +1084,22 @@ export class TwitterClient {
      * 
      * Additional thread tweets will be created with individual requests, as Twitter doesn't have an official way of handling this
      * 
-     * Note: this endpoint is protected by Twitter and may be unsafe to fetch repeatedly. Read {@link https://github.com/exieneko/twitter-client#how-to-protect-your-account|the README} for more information
-     * 
      * @param args {@link TweetCreateArgs}
      * @param [thread] Additional tweets
      * @returns Tweet
      * @since v0.1.0
      */
-    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>>;
+    async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>> {
+        const text = args.text ?? '';
 
-    /**
-     * Creates a new tweet with the specified content
-     * 
-     * Note: this endpoint is protected by Twitter and may be unsafe to fetch repeatedly. Read {@link https://github.com/exieneko/twitter-client#how-to-protect-your-account|the README} for more information
-     * 
-     * @param text Tweet text
-     * @returns Tweet
-     * @since v0.1.0
-     */
-    async createTweet(text: string): Promise<TwitterResponse<Tweet>>;
-
-    async createTweet(argsOrText: string | TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>> {
-        const args: TweetCreateArgs = typeof argsOrText === 'string' ? {} : argsOrText;
-        const text = (typeof argsOrText === 'string' ? argsOrText : argsOrText.text) || '';
-
-        if (text.length > TWEET_CHARACTER_LIMIT && this.options.longTweetBehavior === 'Fail') {
+        if (!TWEET_TEXT_RANGE.contains(text.length) && this.options.longTweetBehavior === 'Fail') {
             return {
-                errors: [new TwitterError(TwitterErrorCode.InvalidTweetTextLength, { data: [text.length] })]
+                errors: [new ValidationError('Tweet text is too long', {
+                    field: 'text',
+                    value: text.length,
+                    expected: [TWEET_TEXT_RANGE],
+                    cause: new RangeError(`text.length ${text.length} out of range: ${TWEET_TEXT_RANGE}`)
+                })]
             };
         }
 
@@ -1103,24 +1109,34 @@ export class TwitterClient {
             [ReplyPermission.Following, 'ByInvitation']
         ] as const);
 
-        if (text.length > TWEET_CHARACTER_LIMIT && (this.options.longTweetBehavior === 'NoteTweet' || this.options.longTweetBehavior === 'NoteTweetUnchecked')) {
+        if (!TWEET_TEXT_RANGE.contains(text.length) && (this.options.longTweetBehavior === 'NoteTweet' || this.options.longTweetBehavior === 'NoteTweetUnchecked')) {
             return {
-                errors: [new TwitterError(TwitterErrorCode.NotImplemented)]
+                errors: [new FormatterError('Not implemented')]
             };
         }
 
-        if (args.mediaIds?.length && args.mediaIds.length > 4) {
+        if (args.mediaIds && !TWEET_MEDIA_RANGE.contains(args.mediaIds.length)) {
             return {
-                errors: [new TwitterError(TwitterErrorCode.InvalidMediaCount, { data: [args.mediaIds.length] })]
+                errors: [new ValidationError('Too many media attachements', {
+                    field: 'mediaIds',
+                    value: args.mediaIds.length,
+                    expected: [TWEET_MEDIA_RANGE],
+                    cause: new RangeError(`mediaIds.length (${args.mediaIds.length}) out of range: ${TWEET_MEDIA_RANGE}`)
+                })]
             };
         }
 
         let cardUri: string | undefined = undefined;
 
         if (args.card?.kind === 'Poll') {
-            if (args.card.choices.length < 2 || args.card.choices.length > 4) {
+            if (!TWEET_POLL_RANGE.contains(args.card.choices.length)) {
                 return {
-                    errors: [new TwitterError(TwitterErrorCode.InvalidPollChoicesCount, { data: [args.card.choices.length] })]
+                    errors: [new ValidationError(args.card.choices.length < TWEET_POLL_RANGE.start ? 'Too few poll choices' : 'Too many poll choices', {
+                        field: 'card',
+                        value: args.card.choices.length,
+                        expected: [TWEET_POLL_RANGE],
+                        cause: new RangeError(`card.choices.length (${args.card.choices.length}) out of range: ${TWEET_POLL_RANGE}`)
+                    })]
                 };
             }
 
@@ -1170,7 +1186,7 @@ export class TwitterClient {
             },
             reply: !!args.replyTo ? {
                 exclude_reply_user_ids: [],
-                in_reply_to_tweet_id: args.replyTo.toString()
+                in_reply_to_tweet_id: args.replyTo
             } : undefined,
             semantic_annotation_ids: [],
             tweet_text: text
@@ -1511,9 +1527,14 @@ export class TwitterClient {
      * @since v0.1.0
      */
     async vote(args: TweetVoteArgs): Promise<TwitterResponse<boolean>> {
-        if (args.choice < 1 || args.choice > 4) {
+        if (!TWEET_POLL_RANGE.contains(args.choice)) {
             return {
-                errors: [new TwitterError(TwitterErrorCode.InvalidVoteIndex, { data: [args.choice] })]
+                errors: [new ValidationError('Invalid', {
+                    field: 'choice',
+                    value: args.choice,
+                    expected: [TWEET_POLL_RANGE],
+                    cause: new RangeError(`choice out of range: ${TWEET_POLL_RANGE}`)
+                })]
             };
         }
 
@@ -2003,11 +2024,17 @@ export class TwitterClient {
             let formData = new FormData();
             formData.append('media', new Blob([data], { type: contentType }));
 
+            const endpoint = ENDPOINTS.media_upload.append;
+
             // media upload appends use the request function directly because this.fetch isn't set up to accept FormData bodies
-            return await request<typeof ENDPOINTS.media_upload.append, never>(ENDPOINTS.media_upload.append, { media_id: id, segment_index: index }, this.options, {
+            return await request<typeof endpoint>({
+                endpoint: endpoint,
+                params: { media_id: id, segment_index: index },
                 cookies: this.#cookies,
+                mediaFormData: formData,
+                options: this.options,
                 proxyAgent: this.#proxyAgent,
-                body: formData
+                transactionId: await this.getTransactionId(endpoint)
             });
         };
 
@@ -2017,8 +2044,12 @@ export class TwitterClient {
             media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
         });
 
-        if (errors.length) {
+        if (errors.length && !init) {
             return { errors };
+        } else if (!init) {
+            return {
+                errors: [DivineInterventionError.UNKNOWN]
+            };
         }
 
         const chunkSize = args.segmentSizeOverride || UPLOAD_SEGMENT_SIZE;
@@ -2027,28 +2058,40 @@ export class TwitterClient {
         const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
 
         for (const [index, chunk] of chunks.entries()) {
-            const [e, response] = await append(init!.media_id_string, chunk, index, args.contentType);
-
-            if (e instanceof Error) {
+            let response: Response;
+            try {
+                [, response] = await append(init.media_id_string, chunk, index, args.contentType);
+            } catch (error) {
                 return {
-                    errors: [new TwitterError(e)]
+                    errors: [error instanceof TwitterError ? error : new DivineInterventionError('Request function threw an unknown error', { cause: error })]
                 };
-            } else if (!response?.ok) {
+            }
+
+            if (!response.ok) {
                 return {
-                    errors: [new TwitterError(0)]
+                    errors: [new RequestError('An unknown error occured while appending new media segment', {
+                        endpoint: ENDPOINTS.media_upload.append,
+                        params: { media_id: init.media_id_string, segment_index: index }
+                    })],
+                    response: this.options.includeResponse ? response : undefined
                 };
             }
 
             callback?.(chunk, index, chunksNeeded);
         }
 
-        const final = await this.fetch(ENDPOINTS.media_upload.finalize, { media_id: init!.media_id_string });
+        const final = await this.fetch(ENDPOINTS.media_upload.finalize, { media_id: init.media_id_string });
 
+        let altTextErrors: TwitterError[] = [];
         if (!!final.data && !!args.altText) {
-            this.addAltText(init!.media_id_string, args.altText);
+            ({ errors: altTextErrors } = await this.addAltText(init!.media_id_string, args.altText));
         }
 
-        return final;
+        return {
+            data: final.data,
+            errors: [...final.errors, ...altTextErrors],
+            response: final.response
+        };
     }
 
     /**
