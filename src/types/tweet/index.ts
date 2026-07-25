@@ -354,27 +354,35 @@ export const Conversation: Wrapped<TweetKind, Model<Conversation, null, { member
  */
 export interface TweetTombstone extends Type<'TweetTombstone'> {
     /** Reason for the tweet's unavailability */
-    reason: TweetUnavailableReason
+    reason: TweetUnavailableReason,
+    message?: string
 }
 export const TweetTombstone: Wrapped<TweetKind, Model<TweetTombstone, string | undefined>> & Default<TweetTombstone> = {
     async new(_, value) {
+        if (!value) {
+            return this.default();
+        }
+
+        const text = value.toLowerCase();
+
         return {
             __typename: 'TweetTombstone',
-            reason: value?.includes('estimates your age')
-                ? TweetUnavailableReason.AgeVerificationRequired
-            : value?.includes('limits who can view their')
-                ? TweetUnavailableReason.AuthorProtected
-            : value?.includes('suspended')
-                ? TweetUnavailableReason.AuthorSuspended
-            : value?.includes('no longer exists')
-                ? TweetUnavailableReason.AuthorUnavailable
-            : value?.includes('violated')
-                ? TweetUnavailableReason.ViolatedRules
-            : value?.includes('withheld')
-                ? TweetUnavailableReason.Withheld
-            : value?.includes('deleted')
-                ? TweetUnavailableReason.Deleted
-                : TweetUnavailableReason.Unavailable
+            reason: text?.includes('estimates your age')
+                ? 'AgeVerificationRequired'
+            : text?.includes('limits who can view')
+                ? 'AuthorProtected'
+            : text?.includes('suspended')
+                ? 'AuthorSuspended'
+            : text?.includes('no longer exists')
+                ? 'AuthorUnavailable'
+            : text?.includes('violated')
+                ? 'ViolatedRules'
+            : text?.includes('withheld')
+                ? 'Withheld'
+            : text?.includes('deleted')
+                ? 'Deleted'
+                : 'Unavailable',
+            message: value
         };
     },
     assert(value) {
@@ -383,7 +391,7 @@ export const TweetTombstone: Wrapped<TweetKind, Model<TweetTombstone, string | u
     default() {
         return {
             __typename: 'TweetTombstone',
-            reason: TweetUnavailableReason.Unavailable
+            reason: 'Unavailable'
         };
     }
 };
@@ -411,20 +419,7 @@ export type TweetKind = MaybeTweet | Retweet | Conversation;
 export const TweetKind: Model<TweetKind, MaybeType, LegacyOpts> & Default<TweetKind> = {
     async new(fmt, value, opts) {
         if (!value) {
-            return {
-                __typename: 'TweetTombstone',
-                reason: TweetUnavailableReason.Unavailable
-            };
-        }
-
-        if (value.__typename === 'TweetUnavailable') {
-            return {
-                __typename: 'TweetTombstone',
-                reason: match(value.reason, [
-                    // TODO
-                    ['Suspended', TweetUnavailableReason.AuthorSuspended]
-                ], TweetUnavailableReason.Unavailable)
-            };
+            return await fmt.next(TweetTombstone, value);
         }
 
         if (opts.legacy && !!value.retweeted_status_id_str) {
@@ -435,12 +430,12 @@ export const TweetKind: Model<TweetKind, MaybeType, LegacyOpts> & Default<TweetK
 
         const tweet = value.__typename === 'TweetWithVisibilityResults' ? value.tweet : value;
 
-        if (tweet.legacy.retweeted_status_result?.result) {
-            return await fmt.next(Retweet, tweet.legacy.retweeted_status_result.result);
+        if (tweet.__typename === 'TweetUnavailable' || tweet.__typename === 'TweetTombstone') {
+            return await fmt.next(TweetTombstone, tweet.tombstone?.text?.text);
         }
 
-        if (tweet.__typename === 'TweetUnavailable' || tweet.__typename === 'TweetTombstone') {
-            return await fmt.next(TweetTombstone, tweet.tombstone?.text?.text?.toLowerCase());
+        if (tweet.legacy.retweeted_status_result?.result) {
+            return await fmt.next(Retweet, tweet.legacy.retweeted_status_result.result);
         }
 
         return await fmt.next(Tweet, tweet);
