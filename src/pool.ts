@@ -31,15 +31,15 @@ export class TwitterPool {
     }
 
     private static async _accounts(tokens: TwitterTokens[], options?: Partial<TwitterOptions>): Promise<Account[]> {
-        return await Promise.all(
+        return (await Promise.all(
             tokens.map(async (tokens, index) => ({
                 id: index,
-                client: await TwitterClient.new(tokens, options),
+                client: await TwitterClient.new(tokens, options) as TwitterClient,
                 rateLimitMax: this.INITIAL_RATE_LIMIT,
                 rateLimitRemaining: this.INITIAL_RATE_LIMIT,
                 rateLimitResetAt: new Date()
             } satisfies Account))
-        );
+        )).filter(account => account.client instanceof TwitterClient);
     }
 
 
