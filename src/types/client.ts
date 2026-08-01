@@ -5,7 +5,7 @@ import type { Enum } from './internal/index.js';
 /**
  * Response object returned by all methods on `TwitterClient`
  */
-export interface TwitterResponse<T> {
+export interface TwitterResponse<T extends object> {
     data?: T,
     /**
      * Errors returned by Twitter and thrown during parsing

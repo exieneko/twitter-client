@@ -30,11 +30,19 @@ export class TwitterFormatter {
         } as T;
     }
 
-    async format<T>(fn: (fmt: this, value: any) => Promise<T>, value: any): Promise<T | undefined> {
+    async format<T>(fn: (fmt: this, value: any) => T | Promise<T>, value: any): Promise<T | undefined> {
         this.depth++;
 
         try {
-            return await fn(this, value);
+            const result = await fn(this, value);
+
+            if (typeof result === 'boolean') {
+                return { ok: result } as T;
+            } else if (typeof result !== 'object') {
+                return { value: result } as T;
+            }
+
+            return result;
         } catch (error) {
             return this.handleError(error);
         } finally {

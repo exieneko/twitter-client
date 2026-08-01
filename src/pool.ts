@@ -54,7 +54,7 @@ export class TwitterPool {
         }
     }
 
-    private async client<T>(fn: (client: TwitterClient) => Promise<TwitterResponse<T>>) {
+    private async client<T extends object>(fn: (client: TwitterClient) => Promise<TwitterResponse<T>>) {
         this.resetRateLimits();
         this.#accounts.sort((a, b) => b.rateLimitRemaining - a.rateLimitRemaining);
 

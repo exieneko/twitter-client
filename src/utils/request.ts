@@ -13,14 +13,14 @@ import type { Endpoint, EndpointParams } from '../types/internal/index.js';
  * @param opts Options
  * @returns Tuple containing return data
  */
-export async function request<EP extends Endpoint, T = never>(opts: {
-    endpoint: EP,
-    params?: EndpointParams<EP>,
+export async function request<E extends Endpoint, T = never>(opts: {
+    endpoint: E,
+    params?: EndpointParams<E>,
     cookies: Record<string, string>,
     mediaFormData?: BodyInit,
     options: TwitterOptions,
     proxyAgent?: ProxyAgent,
-    transactionId: string
+    transactionId?: string
 }): Promise<[T, Response]> {
     const { endpoint, params, cookies, mediaFormData, options, proxyAgent, transactionId } = opts;
 
@@ -42,19 +42,18 @@ export async function request<EP extends Endpoint, T = never>(opts: {
         origin: `https://${options.domain}`,
         referer: `https://${options.domain}/`,
         authorization: endpoint.token,
-        cookie: Object
-            .entries(cookies)
-            .filter(([, v]) => !!v)
-            .map(([k, v]) => `${k}=${v}`)
-            .join('; '),
+        cookie: Object.entries(cookies).filter(([, v]) => !!v).map(([k, v]) => `${k}=${v}`).join('; '),
         'user-agent': options.userAgent,
         'x-twitter-client-language': options.language,
-        'x-csrf-token': cookies.ct0,
-        'x-client-transaction-id': transactionId
+        'x-csrf-token': cookies.ct0
     };
+
+    if (transactionId) {
+        headers['x-client-transaction-id'] = transactionId;
+    }
     
     if (endpoint.kind() === 'GraphQL' || endpoint.kind() === 'v2Alt') {
-        headers['content-type'] = 'application/json; charset=utf-8'
+        headers['content-type'] = 'application/json; charset=utf-8';
     } else if (endpoint.kind() !== 'Media' && !(endpoint.kind() === 'v1.1' && endpoint.method === 'GET' && !features)) {
         headers['content-type'] = 'application/x-www-form-urlencoded; charset=utf-8';
     }

@@ -1,5 +1,4 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { hrtime } from 'node:process';
 import { FormData, ProxyAgent, Response } from 'undici';
 import { ClientTransaction } from 'x-client-transaction-id';
 
@@ -210,11 +209,15 @@ export class TwitterClient {
 
 
 
-    private async getTransactionId(endpoint: Endpoint) {
-        const path = endpoint.url.replace(/.*twitter\.com\//, '/');
-        const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
+    private async generateTransactionId(endpoint: Endpoint<any>) {
+        try {
+            const path = endpoint.url.replace(/.*twitter\.com\//, '/');
+            const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
 
-        return transactionId;
+            return transactionId;
+        } catch (error) {
+            log.err(this, `Failed to generate x-client-transaction-id header for ${endpoint.method} ${endpoint.url}:`, error);
+        }
     }
 
     protected addTokens(cookies: string[]) {
@@ -229,7 +232,7 @@ export class TwitterClient {
         }
     }
 
-    private dump<T>(data: TwitterResponse<T>) {
+    private dump<T extends object>(data: TwitterResponse<T>) {
         if (!this.options.files.data) {
             return;
         }
@@ -264,7 +267,7 @@ export class TwitterClient {
     }
 
     /**
-     * Main method responsible for interacting with the Twitter API. Calling this function with a valid `Endpoint` as a target will send a request to that endpoint and expect data back
+     * Sends a request to the Twitter API, with the data provided in `endpoint`
      * 
      * If set, `params`, will be appended to the body of the request, the type of which is inferred from the pathname and method of the endpoint. This object is sent to the API as is, so the keys must have the name Twitter expects
      * 
@@ -280,22 +283,22 @@ export class TwitterClient {
      * );
      * 
      * @param endpoint Target endpoint
-     * @param params Dynamic parameters to send to the endpoint
-     * @returns Expected awaited return type of the target endpoint's `format` method
+     * @param [params] Dynamic parameters to send to the endpoint
+     * @returns Promise resolving to the expected return type of the target endpoint's `format` property
      * @see {@link Endpoint}
      */
-    async fetch<EP extends Endpoint, T = Awaited<ReturnType<EP['format']>>>(endpoint: EP, params?: EndpointParams<EP>): Promise<TwitterResponse<T>> {
-        type U = Parameters<EP['format']>[1];
+    async fetch<E extends Endpoint, T extends object = Awaited<ReturnType<E['format']>> extends boolean ? { ok: boolean } : Awaited<ReturnType<E['format']>> extends object ? Awaited<ReturnType<E['format']>> : { value: Awaited<ReturnType<E['format']>> }>(endpoint: E, params?: EndpointParams<E>): Promise<TwitterResponse<T>> {
+        type U = Parameters<E['format']>[1];
 
         let json: U, r: Response;
         try {
-            [json, r] = await request<EP, U>({
+            [json, r] = await request<E, U>({
                 endpoint,
                 params,
                 cookies: this.#cookies,
                 options: this.options,
                 proxyAgent: this.#proxyAgent,
-                transactionId: await this.getTransactionId(endpoint)
+                transactionId: await this.generateTransactionId(endpoint)
             });
         } catch (error) {
             return {
@@ -326,7 +329,7 @@ export class TwitterClient {
             try {
                 this.dumpCookies();
             } catch (error) {
-                errors.push(new ClientError(`Failed to dump cookies to "${this.options.files.cookies}"`, { cause: error }));
+                errors.push(new ClientError(`Failed to dump cookies to ${this.options.files.cookies}`, { cause: error }));
             }
         }
 
@@ -342,7 +345,7 @@ export class TwitterClient {
         try {
             this.dump(result);
         } catch (error) {
-            result.errors.push(new ClientError(`Failed to dump JSON data to "${this.options.files.data}"`, { cause: error }));
+            result.errors.push(new ClientError(`Failed to dump JSON data to ${this.options.files.data}`, { cause: error }));
         }
 
         return result;
@@ -1179,7 +1182,7 @@ export class TwitterClient {
                 return { errors };
             }
 
-            cardUri = uri;
+            cardUri = uri.value;
         }
 
         const { errors, data: tweet } = await this.fetch(ENDPOINTS.CreateTweet, {
@@ -1543,7 +1546,7 @@ export class TwitterClient {
      * @returns Success status
      * @since 0.1.0
      */
-    async vote(args: TweetVoteArgs): Promise<TwitterResponse<boolean>> {
+    async vote(args: TweetVoteArgs) {
         if (!TWEET_POLL_RANGE.contains(args.choice)) {
             return {
                 errors: [new ValidationError('Invalid', {
@@ -2045,13 +2048,16 @@ export class TwitterClient {
 
             // media upload appends use the request function directly because this.fetch isn't set up to accept FormData bodies
             return await request<typeof endpoint>({
-                endpoint: endpoint,
-                params: { media_id: id, segment_index: index },
+                endpoint,
+                params: {
+                    media_id: id,
+                    segment_index: index
+                },
                 cookies: this.#cookies,
                 mediaFormData: formData,
                 options: this.options,
                 proxyAgent: this.#proxyAgent,
-                transactionId: await this.getTransactionId(endpoint)
+                transactionId: await this.generateTransactionId(endpoint)
             });
         };
 
