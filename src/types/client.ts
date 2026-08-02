@@ -1,6 +1,7 @@
 import { Response } from 'undici';
 import type { TwitterError } from '../fmt/errors.js';
 import type { Enum } from './internal/index.js';
+import type { Flags } from '../flags.js';
 
 /**
  * Response object returned by all methods on `TwitterClient`
@@ -83,13 +84,25 @@ export interface TwitterOptions {
      */
     longTweetBehavior: LongTweetBehavior,
     /**
+     * Override data sent with requests
+     * 
+     * @default {}
+     * @since 1.0.0-rc.1
+     */
+    overrides: {
+        flags?: Flags,
+        headers?: Record<string, string>
+    },
+    /**
      * Optional http proxy url
+     * 
      * @since 1.0.0-rc.0
      */
     proxyUrl?: string,
     /**
      * User-Agent header to send with requests
      * 
+     * @deprecated Replaced by `overrides.headers`
      * @default 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
      * @since 1.0.0-rc.0
      */

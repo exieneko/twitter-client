@@ -13,6 +13,8 @@ export const TWEET_TEXT_RANGE = new Range('0..=280');
 export const TWEET_MEDIA_RANGE = new Range('0..=4');
 export const TWEET_POLL_RANGE = new Range('2..=4');
 
+export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
+
 export const EMPTY_SLICE: TwitterResponse<Slice<any>> = {
     errors: [],
     data: Slice.default()

@@ -1,11 +1,12 @@
-import { features, hrtime } from 'node:process';
+import { hrtime } from 'node:process';
 import { parseHTML } from 'linkedom';
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
 import { log, toSearchParams } from './index.js';
-import { GLOBAL_HEADERS } from '../consts.js';
+import { GLOBAL_HEADERS, USER_AGENT } from '../consts.js';
 import { ApiError, ClientError, RequestError, type TwitterOptions } from '../types/index.js';
 import type { Endpoint, EndpointParams } from '../types/internal/index.js';
+import type { Flags } from '../flags.js';
 
 /**
  * Sends a request to an endpoint with the specified data
@@ -35,7 +36,7 @@ export async function request<E extends Endpoint, T = never>(opts: {
     }
 
     const url = endpoint.url.replace('twitter.com', options.domain);
-    const headers: Record<string, string> = {
+    let headers: Record<string, string> = {
         ...GLOBAL_HEADERS,
         'accept-language': `${options.language === 'en' ? 'en-US,en' : options.language};q=0.9`,
         host: endpoint.url.replace(/^https:\/\//, '').replace('twitter.com', options.domain).replace(/\.com\/.*/, '.com'),
@@ -43,7 +44,7 @@ export async function request<E extends Endpoint, T = never>(opts: {
         referer: `https://${options.domain}/`,
         authorization: endpoint.token,
         cookie: Object.entries(cookies).filter(([, v]) => !!v).map(([k, v]) => `${k}=${v}`).join('; '),
-        'user-agent': options.userAgent,
+        'user-agent': options.userAgent || USER_AGENT,
         'x-twitter-client-language': options.language,
         'x-csrf-token': cookies.ct0
     };
@@ -54,8 +55,25 @@ export async function request<E extends Endpoint, T = never>(opts: {
     
     if (endpoint.kind() === 'GraphQL' || endpoint.kind() === 'v2Alt') {
         headers['content-type'] = 'application/json; charset=utf-8';
-    } else if (endpoint.kind() !== 'Media' && !(endpoint.kind() === 'v1.1' && endpoint.method === 'GET' && !features)) {
+    } else if (endpoint.kind() !== 'Media' && !(endpoint.kind() === 'v1.1' && endpoint.method === 'GET' && !endpoint.features)) {
         headers['content-type'] = 'application/x-www-form-urlencoded; charset=utf-8';
+    }
+
+    if (options.overrides.headers) {
+        headers = { ...headers, ...options.overrides.headers };
+    }
+
+    let features = endpoint.features;
+
+    if (endpoint.kind() === 'GraphQL' && features && options.overrides.flags) {
+        for (const k in options.overrides.flags) {
+            const key = k as keyof Flags;
+            const value = options.overrides.flags[key];
+
+            if (typeof value === 'boolean' && key in features) {
+                features[key] = value;
+            }
+        }
     }
 
     const start = hrtime.bigint();
@@ -69,14 +87,14 @@ export async function request<E extends Endpoint, T = never>(opts: {
         if (mediaFormData) {
             body = mediaFormData;
         } else if (endpoint.method === 'POST' && endpoint.kind() === 'GraphQL') {
-            body = endpoint.post({ variables, features: endpoint.features, queryId: endpoint.url.split('/', 1)[0] });
+            body = endpoint.post({ variables, features, queryId: endpoint.url.split('/', 1)[0] });
         } else if (endpoint.method === 'POST' && endpoint.kind() === 'v2Alt') {
             body = endpoint.post(variables);
         } else if (endpoint.method === 'POST') {
             body = endpoint.post(v11Body);
         }
 
-        response = await fetch(endpoint.get(url, toSearchParams({ variables, features: endpoint.features })), {
+        response = await fetch(endpoint.get(url, toSearchParams({ variables, features })), {
             method: endpoint.method,
             headers,
             body,
@@ -108,7 +126,7 @@ export async function request<E extends Endpoint, T = never>(opts: {
         }
 
         // sometimes returned data for the translation.json endpoint is 2 JSON objects in 2 separate lines instead of in an array, so don't throw yet if that's the case
-        if (!endpoint.url.endsWith('/translation.json') || text.length < 2) {
+        if (!url.endsWith('/translation.json') || text.length < 2) {
             throw new ClientError('Received response data is not valid JSON', { cause: error });
         }
 

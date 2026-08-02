@@ -84,7 +84,7 @@ export class TwitterClient {
             language: 'en',
             logs: 'Errors',
             longTweetBehavior: 'Force',
-            proxyUrl: undefined,
+            overrides: {},
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
             ...options
         };
@@ -578,7 +578,7 @@ export class TwitterClient {
      * @param tweetId Id of the tweet to create the bat signal on
      * @param args {@link BirdwatchCreateBatSignalArgs}
      * @returns Bat signal id
-     * @since v1.0.0-rc.1
+     * @since 1.0.0-rc.1
      */
     async createBatSignal(tweetId: string, args: BirdwatchCreateBatSignalArgs) {
         return await this.fetch(ENDPOINTS.BirdwatchCreateBatSignal, { tweet_id: tweetId, source_link: args.sourceTweetUrl, suggestion: args.text });
@@ -589,7 +589,7 @@ export class TwitterClient {
      * 
      * @param tweetId Id of the tweet with your bat signal on it
      * @returns Success status
-     * @since v1.0.0-rc.1
+     * @since 1.0.0-rc.1
      */
     async deleteBatSignal(tweetId: string) {
         return await this.fetch(ENDPOINTS.BirdwatchDeleteBatSignal, { tweet_id: tweetId });
@@ -600,7 +600,7 @@ export class TwitterClient {
      * 
      * @param tweetId Tweet id
      * @returns Bat signal
-     * @since v1.0.0-rc.1
+     * @since 1.0.0-rc.1
      */
     async getBatSignal(tweetId: string) {
         return await this.fetch(ENDPOINTS.BirdwatchFetchBatSignal, { tweet_id: tweetId });
@@ -1555,7 +1555,7 @@ export class TwitterClient {
      * 
      * @param tweetId Tweet id
      * @returns Success status
-     * @since v1.0.0-rc.1
+     * @since 1.0.0-rc.1
      */
     async downvote(tweetId: string) {
         return await this.fetch(ENDPOINTS.DownvoteTweet, { tweetId });
@@ -1566,7 +1566,7 @@ export class TwitterClient {
      * 
      * @param tweetId Tweet id
      * @returns Success status
-     * @since v1.0.0-rc.1
+     * @since 1.0.0-rc.1
      */
     async undownvote(tweetId: string) {
         return await this.fetch(ENDPOINTS.UndoDownvoteTweet, { tweetId });
