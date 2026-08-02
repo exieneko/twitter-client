@@ -4,7 +4,7 @@ import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
 import { log, toSearchParams } from './index.js';
 import { GLOBAL_HEADERS } from '../consts.js';
-import { ClientError, RequestError, type TwitterOptions } from '../types/index.js';
+import { ApiError, ClientError, RequestError, type TwitterOptions } from '../types/index.js';
 import type { Endpoint, EndpointParams } from '../types/internal/index.js';
 
 /**
@@ -97,16 +97,27 @@ export async function request<E extends Endpoint, T = never>(opts: {
 
     log[response.ok ? 'info' : 'err'](options, endpoint.method, response.status, `in ${elapsed}ms (transferred: ${bytes.byteLength}B)`);
 
+    let text = '';
     let data;
     try {
-        const text = new TextDecoder().decode(bytes);
+        text = new TextDecoder().decode(bytes);
         data = JSON.parse(text);
     } catch (error) {
         if (error instanceof TypeError) {
             throw new ClientError('TextDecoder failed to decode response bytes to string', { cause: error });
         }
 
-        throw new ClientError('Received response data is not valid JSON', { cause: error });
+        // sometimes returned data for the translation.json endpoint is 2 JSON objects in 2 separate lines instead of in an array, so don't throw yet if that's the case
+        if (!endpoint.url.endsWith('/translation.json') || text.length < 2) {
+            throw new ClientError('Received response data is not valid JSON', { cause: error });
+        }
+
+        try {
+            const data = JSON.parse(text.trimEnd().split('\n', 2)[1]);
+            throw new ApiError(data.message, { code: data.code });
+        } catch (error) {
+            throw new ClientError('Received response data is not valid JSON', { cause: error });
+        }
     }
 
     return [data as T, response];
