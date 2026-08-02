@@ -4,7 +4,7 @@ import { ClientTransaction } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_MEDIA_RANGE, TWEET_POLL_RANGE, TWEET_TEXT_RANGE, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { TwitterFormatter } from './fmt/index.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, Slice, TweetKind, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs, ValidationError, ApiError, RequestError, TwitterError, FormatterError, ClientError, DivineInterventionError } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, Slice, TweetKind, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs, ValidationError, ApiError, RequestError, TwitterError, FormatterError, ClientError, DivineInterventionError, BirdwatchCreateBatSignalArgs, TranslateArgs } from './types/index.js';
 import type { Endpoint, EndpointParams, Type } from './types/internal/index.js';
 import { log, match } from './utils/index.js';
 import { Query } from './utils/query.js';
@@ -456,6 +456,16 @@ export class TwitterClient {
     }
 
     /**
+     * Get the data saver settings set for this device
+     * 
+     * @param device Device id (eg `Windows/Firefox`)
+     * @returns Data saver settings
+     */
+    async getDataSaverSettings(device: string) {
+        return await this.fetch(ENDPOINTS.DataSaverMode, { device_id: device });
+    }
+
+    /**
      * Update data on your profile
      * 
      * @param args {@link UpdateProfileArgs}
@@ -560,6 +570,40 @@ export class TwitterClient {
      */
     async unrateBirdwatchNote(noteId: string) {
         return await this.fetch(ENDPOINTS.BirdwatchDeleteRating, { note_id: noteId });
+    }
+
+    /**
+     * Create a birdwatch bat signal on a tweet. Requires a verified phone number
+     * 
+     * @param tweetId Id of the tweet to create the bat signal on
+     * @param args {@link BirdwatchCreateBatSignalArgs}
+     * @returns Bat signal id
+     * @since v1.0.0-rc.1
+     */
+    async createBatSignal(tweetId: string, args: BirdwatchCreateBatSignalArgs) {
+        return await this.fetch(ENDPOINTS.BirdwatchCreateBatSignal, { tweet_id: tweetId, source_link: args.sourceTweetUrl, suggestion: args.text });
+    }
+
+    /**
+     * Delete a created bat signal on a tweet
+     * 
+     * @param tweetId Id of the tweet with your bat signal on it
+     * @returns Success status
+     * @since v1.0.0-rc.1
+     */
+    async deleteBatSignal(tweetId: string) {
+        return await this.fetch(ENDPOINTS.BirdwatchDeleteBatSignal, { tweet_id: tweetId });
+    }
+
+    /**
+     * Get bat signal data on a tweet
+     * 
+     * @param tweetId Tweet id
+     * @returns Bat signal
+     * @since v1.0.0-rc.1
+     */
+    async getBatSignal(tweetId: string) {
+        return await this.fetch(ENDPOINTS.BirdwatchFetchBatSignal, { tweet_id: tweetId });
     }
 
 
@@ -1129,11 +1173,18 @@ export class TwitterClient {
             [ReplyPermission.Following, 'ByInvitation']
         ] as const);
 
-        if (!TWEET_TEXT_RANGE.contains(text.length) && (this.options.longTweetBehavior === 'NoteTweet' || this.options.longTweetBehavior === 'NoteTweetUnchecked')) {
+        if (!TWEET_TEXT_RANGE.contains(text.length) && this.options.longTweetBehavior === 'Fail') {
             return {
-                errors: [new FormatterError('Not implemented')]
-            };
+                errors: [new ValidationError('Tweet text is too long', {
+                    field: 'text',
+                    value: text.length,
+                    expected: [TWEET_TEXT_RANGE],
+                    cause: new RangeError(`text.length ${text.length} out of range: ${TWEET_TEXT_RANGE}`)
+                })]
+            }
         }
+
+        const shouldCreateNoteTweet = !TWEET_TEXT_RANGE.contains(text.length) && (this.options.longTweetBehavior === 'NoteTweet' || this.options.longTweetBehavior === 'NoteTweetUnchecked');
 
         if (args.mediaIds && !TWEET_MEDIA_RANGE.contains(args.mediaIds.length)) {
             return {
@@ -1185,7 +1236,7 @@ export class TwitterClient {
             cardUri = uri.value;
         }
 
-        const { errors, data: tweet } = await this.fetch(ENDPOINTS.CreateTweet, {
+        const { errors, data: tweet } = await this.fetch(ENDPOINTS[shouldCreateNoteTweet ? 'CreateNoteTweet' : 'CreateTweet'], {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
             card_uri: cardUri,
             conversation_control: mode ? { mode } : undefined,
@@ -1350,15 +1401,19 @@ export class TwitterClient {
     }
 
     /**
-     * Translate a tweet to `language` using Grok
+     * Translate a tweet, user description, or birdwatch note to `language` using Grok
      * 
-     * @param id Tweet id
-     * @param [language] Desired language. Defaults to client language if omitted
+     * @param id Item id
+     * @param [args] {@link TranslateArgs}
      * @returns Translated text
      * @since 1.0.0-rc.0
      */
-    async translateTweet(id: string, language?: string) {
-        return await this.fetch(ENDPOINTS.grok_translation, { dst_lang: language ?? this.options.language, id });
+    async translate(id: string, args?: TranslateArgs) {
+        return await this.fetch(ENDPOINTS.grok_translation, {
+            content_type: args?.type === 'Description' ? 'BIO' : args?.type === 'BirdwatchNote' ? 'COMMUNITY_NOTE' : 'POST',
+            dst_lang: args?.language ?? this.options.language,
+            id
+        });
     }
 
     /**
@@ -1493,6 +1548,28 @@ export class TwitterClient {
      */
     async unretweet(tweetId: string) {
         return await this.fetch(ENDPOINTS.DeleteRetweet, { source_tweet_id: tweetId });
+    }
+
+    /**
+     * Downvote a tweet
+     * 
+     * @param tweetId Tweet id
+     * @returns Success status
+     * @since v1.0.0-rc.1
+     */
+    async downvote(tweetId: string) {
+        return await this.fetch(ENDPOINTS.DownvoteTweet, { tweetId });
+    }
+
+    /**
+     * Remove a downvote from a tweet
+     * 
+     * @param tweetId Tweet id
+     * @returns Success status
+     * @since v1.0.0-rc.1
+     */
+    async undownvote(tweetId: string) {
+        return await this.fetch(ENDPOINTS.UndoDownvoteTweet, { tweetId });
     }
 
     /**

@@ -31,14 +31,17 @@ export interface User extends Type<'User'> {
     canSuperFollow: boolean,
     createdAt: string,
     description: string,
+    descriptionTranslation?: {
+        text: string,
+        /** Destination language */
+        language: string
+    },
     /** Fan status of an account */
     fanAccountKind?: FanAccountKind,
     /** Amount of followers the user has */
     followersCount: number,
     /** Amount of users the user is following */
     followingCount: number,
-    /** `true` if this user follows you */
-    isFollowedBy: boolean,
     /** `true` if this user is marked as an automated account */
     isAutomated: boolean,
     /** `true` if you've blocked this user */
@@ -49,8 +52,12 @@ export interface User extends Type<'User'> {
     isFollowed: boolean,
     /** `true` if you've requested to follow this user */
     isFollowRequested: boolean,
+    /** `true` if this user follows you */
+    isFollowedBy: boolean,
     /** `true` if you've muted this user */
     isMuted: boolean,
+    isSuperFollowed: boolean,
+    isSuperFollowedBy: boolean,
     isTranslatable: boolean,
     job?: string,
     location?: string,
@@ -114,6 +121,8 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = 
                 isFollowRequested: !!value.follow_request_sent,
                 isFollowedBy: !!value.followed_by,
                 isMuted: !!value.muting,
+                isSuperFollowed: false,
+                isSuperFollowedBy: false,
                 isTranslatable: false,
                 location: value.location || undefined,
                 name: value.name,
@@ -160,7 +169,7 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = 
             affiliatesCount: value.business_account?.affiliates_count || 0,
             affiliateLabel,
             avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
-            bannerUrl: value.legacy.profile_banner_url,
+            bannerUrl: value.banner.image_url ?? value.legacy?.profile_banner_url,
             birthday: value.legacy_extended_profile?.birthdate ? {
                 day: value.legacy_extended_profile.birthdate.day,
                 month: value.legacy_extended_profile.birthdate.month,
@@ -170,35 +179,44 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = 
             canMediaTag: !!value.media_permissions.can_media_tag,
             canSuperFollow: !!value.super_follow_eligible,
             createdAt: new Date(value.core.created_at).toISOString(),
-            description: ((value.profile_bio?.description ?? value.legacy.description ?? '') as string).replace(
+            description: ((value.profile_bio?.description ?? value.legacy?.description ?? '') as string).replace(
                 /\bhttps:\/\/t\.co\/[a-zA-Z0-9]+/,
-                sub => value.legacy.entities.description?.urls?.find((x: any) => x.url === sub)?.expanded_url.replace(/\/$/, '') || sub
+                sub => value.legacy?.entities.description?.urls?.find((x: any) => x.url === sub)?.expanded_url.replace(/\/$/, '') || sub
             ),
-            fanAccountKind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None' ? undefined : value.parody_commentary_fan_label as FanAccountKind,
-            followersCount: value.legacy.followers_count,
-            followingCount: value.legacy.friends_count,
+            descriptionTranslation: value.grok_translated_bio_with_availability?.data?.translation?.text ? {
+                text: value.grok_translated_bio_with_availability.data.translation,
+                language: value.grok_translated_bio_with_availability.data.destination_language || 'zxx'
+            } : undefined,
+            fanAccountKind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None'
+                ? undefined
+                : value.parody_commentary_fan_label as FanAccountKind,
+            followersCount: value.relationship_counts?.followers || value.legacy?.followers_count,
+            followingCount: value.relationship_counts?.following || value.legacy?.friends_count,
             isAutomated,
-            isBlocked: !!value.legacy.blocking,
-            isBlockedBy: !!value.legacy.blocked_by,
+            isBlocked: !!value.relationship_perspectives.blocking,
+            isBlockedBy: !!value.relationship_perspectives.blocked_by,
             isFollowed: !!value.relationship_perspectives.following,
-            isFollowRequested: !!value.legacy.follow_request_sent,
+            isFollowRequested: !!value.follow_request_sent || !!value.legacy?.follow_request_sent,
             isFollowedBy: !!value.relationship_perspectives.followed_by,
             isMuted: !!value.relationship_perspectives.muting,
-            isTranslatable: !!value.is_profile_translatable,
+            isSuperFollowed: !!value.super_following,
+            isSuperFollowedBy: !!value.super_followed_by,
+            isTranslatable: !!value.grok_translated_post_with_availability?.is_available || !!value.is_profile_translatable,
             job: value.professional?.category?.at(0)?.name,
-            location: !!value.location.location ? value.location.location : undefined,
+            location: value.location?.location,
             name: value.core.name,
-            pinnedTweetId: value.legacy.pinned_tweet_ids_str?.at(0),
+            pinnedTweetId: (value.pinned_items?.tweet_ids_str || value.legacy?.pinned_tweet_ids_str)?.at(0),
             protected: !!value.privacy.protected,
             superFollowingCount: value.creator_subscriptions_count || 0,
             superFollowingHidden: !!value.has_hidden_subscriptions_on_profile,
-            tweetsCount: value.legacy.statuses_count,
-            mediaCount: value.legacy.media_count,
-            likesCount: value.legacy.favourites_count,
-            listedCount: value.legacy.listed_count,
+            tweetsCount: value.tweets_count?.tweets || value.legacy?.statuses_count,
+            mediaCount: value.tweets_count?.media_tweets || value.legacy?.media_count,
+            likesCount: value.action_counts?.favorites_count || value.legacy?.favourites_count,
+            // this property probably doesn't exist anymore
+            listedCount: value.legacy?.listed_count,
             highlightedTweetsCount: Number(value.highlights_info?.highlighted_tweets || 0),
             username: value.core.screen_name,
-            url: value.legacy.entities.url?.urls?.at?.(0)?.expanded_url?.replace(/^http:\/\//, 'https://')?.replace(/\/$/, ''),
+            url: (value.profile_bio.entities ?? value.legacy?.entities)?.url?.urls?.[0].expanded_url.replace(/^http:\/\//, 'https://').replace(/\/$/, ''),
             verification: {
                 kind: verificationKind,
                 isVerified: verified,
@@ -207,8 +225,8 @@ export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = 
                     : undefined,
                 verifiedWithId: !!value.verification_info?.is_identity_verified
             },
-            wantRetweets: !!value.legacy.want_retweets,
-            wantNotifications: !!value.legacy.notifications
+            wantRetweets: !!value.legacy?.want_retweets,
+            wantNotifications: !!value.notifications_settings.notifications_enabled || !!value.legacy?.notifications
         };
     },
     assert(value) {

@@ -1,5 +1,5 @@
 import * as flags from './flags.js';
-import { AboutUser, AccountSettings, BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, BirdwatchUser, CommunityKind, DraftTweet, ListKind, MaybeTweet, MediaData, MediaUploadInit, Notification, ScheduledTweet, Slice, Trend, Tweet, TweetBirdwatchNotes, TweetKind, TwitterResponse, Typeahead, UnreadCount, User, UserKind } from './types/index.js';
+import { AboutUser, AccountSettings, BirdwatchBatSignal, BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, BirdwatchUser, CommunityKind, DataSaverSettings, DraftTweet, ListKind, MaybeTweet, MediaData, MediaUploadInit, Notification, ScheduledTweet, Slice, Trend, Tweet, TweetBirdwatchNotes, TweetKind, TwitterResponse, Typeahead, UnreadCount, User, UserKind } from './types/index.js';
 import { Endpoint, Range, type EndpointGroup } from './types/internal/index.js';
 import { gql, v11 } from './utils/index.js';
 
@@ -51,10 +51,10 @@ export const ENDPOINTS = ({
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline
     }, (fmt, value) => Slice.users(fmt, value.data.viewer.muting_timeline.timeline.instructions)),
-    DataSaverMode: new Endpoint<unknown, { device_id: string }>({
+    DataSaverMode: new Endpoint<DataSaverSettings, { device_id: string }>({
         url: gql('xF6sXnKJfS2AOylzxRjf6A/DataSaverMode'),
         method: 'GET'
-    }, (_, value) => value),
+    }, (fmt, value) => fmt.next(DataSaverSettings, value.data.viewer?.dataUsageSettings)),
     account_settings: new Endpoint<AccountSettings>({
         url: v11('account/settings.json'),
         method: 'GET',
@@ -120,21 +120,26 @@ export const ENDPOINTS = ({
         url: gql('OpvCOyOoQClUND66zDzrnA/BirdwatchDeleteRating'),
         method: 'POST'
     }, (_, value) => value.data.birdwatchnote_rating_delete === 'Done'),
-    BirdwatchCreateBatSignal: new Endpoint<unknown>({
+    BirdwatchCreateBatSignal: new Endpoint<string | undefined, { tweet_id: string, source_link: string, suggestion: string }>({
         url: gql('oCnZiCgsZJe8WEOKuS-xZw/BirdwatchCreateBatSignal'),
         method: 'POST'
-    }, (_, value) => value),
+    }, (_, value) => value.data.birdwatchbatsignal_create?.signal_id),
+    BirdwatchDeleteBatSignal: new Endpoint<boolean, { tweet_id: string }>({
+        url: gql('yQF40wfWdHfXeKL4ZVklcw/BirdwatchDeleteBatSignal'),
+        method: 'POST'
+    }, (_, value) => value.data.birdwatchbatsignal_delete === 'Done'),
+    BirdwatchFetchBatSignal: new Endpoint<BirdwatchBatSignal, { tweet_id: string }>({
+        url: gql('7LFdey6iP2bf5f2_aN80Ng/BirdwatchFetchBatSignal'),
+        method: 'GET'
+    }, (fmt, value) => fmt.next(BirdwatchBatSignal, value.data.birdwatch_bat_signal_by_rest_id)),
     // TODO
     BirdwatchCreateNote: new Endpoint<unknown, {}>({
         url: gql('odkLI4pLj5oHv34ZYlzDag/BirdwatchCreateNote'),
         method: 'POST'
     }, (_, value) => value),
+    // TODO
     BirdwatchDeleteNote: new Endpoint<unknown, {}>({
         url: gql('IKS_qrShkDyor6Ri1ahd9g/BirdwatchDeleteNote'),
-        method: 'POST'
-    }, (_, value) => value),
-    BirdwatchDeleteBatSignal: new Endpoint<unknown, {}>({
-        url: gql('yQF40wfWdHfXeKL4ZVklcw/BirdwatchDeleteBatSignal'),
         method: 'POST'
     }, (_, value) => value),
     BirdwatchEditNotificationSettings: new Endpoint<boolean, { settings: 'All' | 'Week' | 'Month' | 'Never' }>({
@@ -707,6 +712,14 @@ export const ENDPOINTS = ({
         url: gql('xVW9j3OqoBRY9d6_2OONEg/UnmentionUserFromConversation'),
         method: 'POST'
     }, (_, value) => value.data.unmention_user === 'Done'),
+    AddContentDisclosure: new Endpoint<boolean, { tweet_id: string, advertising_disclosure: { is_paid_promotion: boolean }, ai_generated_disclosure: { has_ai_generated_media: boolean } }>({
+        url: gql('D1nwFlsu_qHsX92YzoRaaA/AddContentDisclosure'),
+        method: 'POST'
+    }, (_, value) => value.tweet_add_content_disclosure_put === 'Done'),
+    DeleteContentDisclosure: new Endpoint<boolean, { tweet_id: string }>({
+        url: gql('YeIV-eqGwEZXDtYaDsJz2Q/DeleteContentDisclosure'),
+        method: 'POST'
+    }, (_, value) => value.tweet_add_content_disclosure_delete === 'Done'),
     mutes_conversations_create: new Endpoint<boolean, { tweet_id: string }>({
         url: v11('mutes/conversations/create.json'),
         method: 'POST',

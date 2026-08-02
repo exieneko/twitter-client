@@ -143,15 +143,20 @@ export const BroadcastCard: Wrapped<CardKind, Model<BroadcastCard, Record<string
  * @todo
  */
 export interface Audiospace extends CardBase, Type<'Audiospace'> {
-    author: User
+    author: User,
+    audiowaves: number[],
+    /** Duration in milliseconds */
+    duration: number
 }
-export const Audiospace: Wrapped<CardKind, Model<Audiospace, Record<string, any>, CardOpts>> = {
-    async new(fmt, value, _) {
+export const Audiospace: Wrapped<CardKind, Model<Audiospace, null, CardOpts & { tweet: Record<string, any> }>> = {
+    async new(fmt, value, { tweet }) {
         return {
             __typename: 'Audiospace',
             author: await fmt.next(User, value.user_refs_results?.at(0)?.result, { legacy: true }),
+            audiowaves: tweet.voiceInfo.audiowaveValues ?? [],
             cardName: value.name,
-            cardUrl: value.url
+            cardUrl: value.url,
+            duration: tweet.voiceInfo.totalDurationMillis || 0
         };
     },
     assert(value) {
@@ -161,8 +166,8 @@ export const Audiospace: Wrapped<CardKind, Model<Audiospace, Record<string, any>
 
 // TODO: this is stupid
 export type CardKind = Audiospace | BroadcastCard | Embed | Poll;
-export const CardKind: Model<CardKind> = {
-    async new(fmt, value) {
+export const CardKind: Model<CardKind, null, { tweet: Record<string, any> }> = {
+    async new(fmt, value, { tweet }) {
         const get: BVGetter = (bindingValues: { key: string, value: { boolean_value?: boolean, string_value?: string, image_value?: CardImage } }[], key: string) => {
             return bindingValues.find(v => v.key === key)?.value;
         };
@@ -170,8 +175,8 @@ export const CardKind: Model<CardKind> = {
         const bv = value.binding_values;
         const opts: CardOpts = { bv, get };
 
-        if (value.name.includes(':audiospace')) {
-            return await fmt.next(Audiospace, value, opts);
+        if (value.name.includes(':audiospace') || 'voiceInfo' in tweet) {
+            return await fmt.next(Audiospace, value, { ...opts, tweet });
         } else if (value.name.includes(':broadcast')) {
             return await fmt.next(BroadcastCard, value, opts);
         } else if (value.name.includes(':poll')) {

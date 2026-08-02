@@ -84,6 +84,22 @@ export const AccountSettings: Model<AccountSettings> = {
     }
 };
 
+export interface DataSaverSettings extends Type<'DataSaverSettings'> {
+    dataSaverMode: boolean,
+    videoAutoplay: VideoAutoplay
+}
+export const DataSaverSettings: Model<DataSaverSettings> = {
+    async new(_, value) {
+        return {
+            __typename: 'DataSaverSettings',
+            dataSaverMode: value.dataSaverMode,
+            videoAutoplay: value.videoAutoplay
+        };
+    }
+};
+
+
+
 /**
  * Privacy option
  * 
@@ -95,3 +111,12 @@ export const InboxPrivacy = {
     Verified: 'Verified'
 } as const;
 export type InboxPrivacy = Enum<typeof InboxPrivacy>;
+
+/**
+ * @enum
+ */
+export const VideoAutoplay = {
+    Always: 'Always',
+    Never: 'Never'
+} as const;
+export type VideoAutoplay = Enum<typeof VideoAutoplay>;

@@ -105,6 +105,11 @@ export interface BirdwatchRateNoteArgs {
     source?: BirdwatchNoteSource
 }
 
+export interface BirdwatchCreateBatSignalArgs {
+    sourceTweetUrl: string,
+    text: string
+}
+
 /**
  * Order options for community tweets
  * 
@@ -317,6 +322,36 @@ export interface TweetGetArgs extends CursorOnly, OrderBy<TweetOrder> {}
 export interface UnsentTweetsGetArgs {
     ascending?: boolean
 }
+
+/**
+ * Arguments for getting a translation
+ */
+export interface TranslateArgs {
+    /**
+     * Type of the item being translated
+     * 
+     * @default TranslationItemType.Tweet
+     */
+    type?: TranslationItemType,
+    /**
+     * Desired language. Defaults to client language if omitted
+     * 
+     * @default this.options.language
+     */
+    language?: string
+}
+
+/**
+ * Items that can be translated
+ * 
+ * @enum
+ */
+export const TranslationItemType = {
+    Tweet: 'Tweet',
+    Description: 'Description',
+    BirdwatchNote: 'BirdwatchNote'
+} as const;
+export type TranslationItemType = Enum<typeof TranslationItemType>;
 
 /**
  * Arguments for uploading a new media

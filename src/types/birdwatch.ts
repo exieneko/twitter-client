@@ -161,6 +161,24 @@ interface HelpfulnessCount {
 
 
 
+export interface BirdwatchBatSignal extends Type<'BirdwatchBatSignal'> {
+    createdAt?: string,
+    hasLiveNote: boolean,
+    sourceLink?: string
+}
+export const BirdwatchBatSignal: Model<BirdwatchBatSignal> = {
+    async new(_, value) {
+        return {
+            __typename: 'BirdwatchBatSignal',
+            createdAt: 'created_at' in value ? new Date(value.created_at).toISOString() : undefined,
+            hasLiveNote: !!value.has_live_note,
+            sourceLink: value.source_link
+        };
+    }
+};
+
+
+
 /**
  * Status of a Birdwatch note
  * 

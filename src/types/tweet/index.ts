@@ -15,6 +15,11 @@ export interface Tweet extends Type<'Tweet'> {
         id: string,
         /** The full text of the note */
         text: string,
+        translation?: {
+            text: string,
+            /** Destination language */
+            language: string
+        },
         language: string,
         /** `true` is the note is written in a different language than the client language, and is a reasonable length */
         isTranslatable: boolean,
@@ -22,7 +27,7 @@ export interface Tweet extends Type<'Tweet'> {
         isPublic: boolean
     },
     /** `true` if you bookmarked this tweet */
-    bookmarked: boolean,
+    isBookmarked: boolean,
     /** Amount of users that bookmarked this tweet */
     bookmarksCount: number,
     /** Card content of the tweet. Can be an embed, poll, audiospace, etc */
@@ -34,6 +39,8 @@ export interface Tweet extends Type<'Tweet'> {
         isSponsored: boolean
     },
     createdAt: string,
+    /** `true` if you downvoted this tweet */
+    isDownvoted: boolean,
     editing: {
         isAllowed: boolean,
         allowedUntil?: string,
@@ -58,7 +65,7 @@ export interface Tweet extends Type<'Tweet'> {
     isVisibilityRestricted: boolean,
     language: string,
     /** `true` if you liked this tweet */
-    liked: boolean,
+    isLiked: boolean,
     /** Amount of users that liked the tweet */
     likesCount: number,
     media: TweetMedia[],
@@ -82,7 +89,7 @@ export interface Tweet extends Type<'Tweet'> {
         /** Username of the user this tweet is in reply to */
         username: string
     },
-    retweeted: boolean,
+    isRetweeted: boolean,
     /** Amount of users that retweeted the tweet */
     retweetsCount: number,
     /** Text content of the tweet stripped on unnecessary data */
@@ -137,13 +144,14 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                 __typename: 'Tweet',
                 id: value.id_str,
                 author: await fmt.next(User, opts.globalObjects.users[value.user_id_str], { legacy: true }),
-                bookmarked: !!value.bookmarked,
+                isBookmarked: !!value.bookmarked,
                 bookmarksCount: value.bookmark_count || 0,
                 createdAt: new Date(value.created_at).toISOString(),
                 contentDisclosures: {
                     isAiGenerated: false,
                     isSponsored: false
                 },
+                isDownvoted: false,
                 editing: {
                     isAllowed: false,
                     remainingCount: 0,
@@ -157,7 +165,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                 isTranslatable: !!value.translatable,
                 isVisibilityRestricted: false,
                 language: value.lang || 'zxx',
-                liked: !!value.favorited,
+                isLiked: !!value.favorited,
                 likesCount: value.favorite_count || 0,
                 media,
                 source,
@@ -177,7 +185,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                     userId: value.in_reply_to_user_id_str,
                     username: value.in_reply_to_screen_name
                 } : undefined,
-                retweeted: !!value.retweeted,
+                isRetweeted: !!value.retweeted,
                 retweetsCount: value.retweet_count || 0,
                 text
             };
@@ -197,19 +205,26 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                 text: (value.birdwatch_pivot.subtitle.entities as { fromIndex: number, toIndex: number, ref: { url: string } }[])
                     .toSorted((a, b) => b.fromIndex - a.fromIndex)
                     .reduce((acc, e) => acc.slice(0, e.fromIndex) + e.ref.url + acc.slice(e.toIndex), value.birdwatch_pivot.subtitle.text),
-                language: value.birdwatch_pivot.note.language || 'en',
+                translation: value.birdwatch_pivot.note.grok_translated_community_note_with_availability.is_available ? {
+                    text: value.birdwatch_pivot.note.grok_translated_community_note_with_availability.translation,
+                    language: value.birdwatch_pivot.note.grok_translated_community_note_with_availability.destination_language || 'zxx'
+                } : undefined,
+                language: value.birdwatch_pivot.note.language || 'zxx',
                 isTranslatable: !!value.birdwatch_pivot.note.is_community_note_translatable,
                 isPublic: value.birdwatch_pivot.visualStyle === 'Default' || value.birdwatch_pivot.title.includes('added context')
             } : undefined,
-            bookmarked: !!value.legacy.bookmarked,
+            isBookmarked: !!value.legacy.bookmarked,
             bookmarksCount: value.legacy.bookmark_count || 0,
-            card: await fmt.nextIf(CardKind, value.card?.legacy),
+            card: 'card' in value || ('voiceInfo' in value && value.legacy.extended_entities.media.length > 0)
+                ? await fmt.next(CardKind, value.card.legacy)
+                : undefined,
             community: await fmt.nextIf(CommunityKind, value.author_community_relationship?.community_results?.result),
             createdAt: new Date(value.legacy.created_at).toISOString(),
             contentDisclosures: {
                 isAiGenerated: !!value.content_disclosure?.ai_generated_disclosure?.has_ai_generated_media,
                 isSponsored: !!value.content_disclosure?.advertising_disclosure?.is_paid_promotion
             },
+            isDownvoted: !!value.downvote_perspective?.is_downvoted,
             editing: {
                 isAllowed: !!editControl?.is_edit_eligible,
                 allowedUntil: new Date(Number(editControl?.editable_until_msecs || 0)).toISOString(),
@@ -224,7 +239,7 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
             isTranslatable: !!value.is_translatable,
             isVisibilityRestricted: value.tweetInterstitial?.__typename === 'ContextualTweetInterstitial',
             language: value.legacy.lang || 'zxx',
-            liked: !!value.legacy.favorited,
+            isLiked: !!value.legacy.favorited,
             likesCount: value.legacy.favorite_count || 0,
             media,
             source,
@@ -244,10 +259,10 @@ export const Tweet: Wrapped<TweetKind, Model<Tweet, null, LegacyOpts>> = {
                 userId: value.legacy.in_reply_to_user_id_str,
                 username: value.legacy.in_reply_to_screen_name
             } : undefined,
-            retweeted: !!value.legacy.retweeted,
+            isRetweeted: !!value.legacy.retweeted,
             retweetsCount: value.legacy.retweet_count || 0,
             text,
-            translation: typeof value.grok_translated_post_with_availability?.data?.translation?.length === 'string' ? {
+            translation: value.grok_translated_post_with_availability?.data?.translation?.length ? {
                 text: value.grok_translated_post_with_availability.data.translation,
                 language: value.grok_translated_post_with_availability.data.destination_language || 'zxx'
             } : undefined,

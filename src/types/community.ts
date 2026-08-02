@@ -40,6 +40,9 @@ export interface Community extends Type<'Community'> {
 }
 export const Community: Wrapped<CommunityKind, Model<Community>> = {
     async new(fmt, value) {
+        const creatorName = value.creator_results.result.core.screen_name;
+        const { data: creator } = await fmt.client.getUser(creatorName, { byUsername: true });
+
         return {
             __typename: 'Community',
             id: value.id_str,
@@ -47,7 +50,7 @@ export const Community: Wrapped<CommunityKind, Model<Community>> = {
             canJoin: value.join_policy === 'Open',
             canInvite: value.invites_policy === 'MemberInvitesAllowed' && !value.invites_result?.__typename.includes('Unavailable'),
             createdAt: new Date(value.created_at).toISOString(),
-            creator: await fmt.next(User, value.creator_results?.result),
+            creator: User.assert(creator!),
             description: value.description || '',
             isMember: !!value.is_member,
             membersCount: value.member_count || 0,
