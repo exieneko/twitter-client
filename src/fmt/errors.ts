@@ -1,9 +1,16 @@
-import type { Range, Endpoint, EndpointParams } from '../types/internal/index.js';
+import type { Range, Endpoint, EndpointParams, RequiredBy } from '../types/internal/index.js';
+import type { Logger } from '../utils/log.js';
+
+export interface TwitterErrorOptions extends ErrorOptions {
+    log?: Logger
+}
 
 export abstract class TwitterError extends Error {
-    constructor(message: string, options?: ErrorOptions) {
+    constructor(message: string, options?: TwitterErrorOptions) {
         super(message, options);
         this.name = new.target.name;
+
+        options?.log?.error(this);
     }
 
     toJSON(): object {
@@ -32,25 +39,25 @@ export class DivineInterventionError extends TwitterError {
 export class ClientError extends TwitterError {
     cause: unknown;
 
-    constructor(message: string, options: Required<ErrorOptions>) {
+    constructor(message: string, options: RequiredBy<TwitterErrorOptions, 'cause'>) {
         super(message, options);
         this.cause = options.cause;
     }
 }
 
-export interface RequestErrorOptions<EP extends Endpoint> extends ErrorOptions {
-    endpoint: EP,
-    params?: EndpointParams<EP>
+export interface RequestErrorOptions<E extends Endpoint> extends TwitterErrorOptions {
+    endpoint: E,
+    params?: EndpointParams<E>
 }
 
 /**
  * Same as `ClientError`, but also contains data about the endpoint and parameters being sent
  */
-export class RequestError<EP extends Endpoint> extends ClientError implements RequestErrorOptions<EP> {
-    readonly endpoint: EP;
-    readonly params?: EndpointParams<EP>;
+export class RequestError<E extends Endpoint> extends ClientError implements Omit<RequestErrorOptions<E>, 'log'> {
+    readonly endpoint: E;
+    readonly params?: EndpointParams<E>;
 
-    constructor(message: string, options: RequestErrorOptions<EP>) {
+    constructor(message: string, options: RequestErrorOptions<E>) {
         super(message, { cause: options.cause });
         this.endpoint = options.endpoint;
         this.params = options.params;
@@ -65,7 +72,7 @@ export class RequestError<EP extends Endpoint> extends ClientError implements Re
     }
 }
 
-export interface ApiErrorOptions extends ErrorOptions {
+export interface ApiErrorOptions extends TwitterErrorOptions {
     code: number,
     kind: string,
     path?: string[]
@@ -74,7 +81,7 @@ export interface ApiErrorOptions extends ErrorOptions {
 /**
  * Error returned by the Twitter API in the response data
  */
-export class ApiError extends TwitterError implements ApiErrorOptions {
+export class ApiError extends TwitterError implements Omit<ApiErrorOptions, 'log'> {
     readonly code: number;
     readonly kind: string;
     readonly path?: string[];
@@ -99,7 +106,7 @@ export class ApiError extends TwitterError implements ApiErrorOptions {
 /**
  * Item representing an invalid field in a `ValidationError`
  */
-export interface ValidationErrorOptions<T, U = T> extends ErrorOptions {
+export interface ValidationErrorOptions<T, U = T> extends TwitterErrorOptions {
     field: string,
     value: T,
     expected: (T extends number ? T | U | Range : T | U)[] | 'string' | 'number' | 'bigint' | 'boolean' | 'undefined' | 'object' | 'function'
@@ -108,7 +115,7 @@ export interface ValidationErrorOptions<T, U = T> extends ErrorOptions {
 /**
  * Validation error thrown client side. Will prevent a request from being sent
  */
-export class ValidationError<T, U = T> extends TwitterError implements ValidationErrorOptions<T, U> {
+export class ValidationError<T, U = T> extends TwitterError implements Omit<ValidationErrorOptions<T, U>, 'log'> {
     readonly field: ValidationErrorOptions<T, U>['field'];
     readonly value: ValidationErrorOptions<T, U>['value'];
     readonly expected: ValidationErrorOptions<T, U>['expected'];

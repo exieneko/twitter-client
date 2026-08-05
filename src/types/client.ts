@@ -33,6 +33,15 @@ export interface TwitterTokens {
  */
 export interface TwitterOptions {
     /**
+     * Debug level expressed as a number
+     * 
+     * Right to left: errors, warnings, info, debug, trace
+     * 
+     * @default 0b00011
+     * @since 1.0.0-rc.1
+     */
+    debug: number,
+    /**
      * Set which domain to send requests to
      * 
      * @default 'twitter.com'
@@ -70,13 +79,6 @@ export interface TwitterOptions {
      */
     includeResponse: boolean,
     /**
-     * Which logs to show in the console
-     * 
-     * @default ClientLogOptions.Errors
-     * @since 1.0.0-rc.0
-     */
-    logs: ClientLogOptions,
-    /**
      * How to handle when a tweet's text length exceeds 280 characters
      * 
      * @default LongTweetBehavior.Force
@@ -106,7 +108,7 @@ export interface TwitterOptions {
      * @default 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
      * @since 1.0.0-rc.0
      */
-    userAgent: string
+    userAgent?: string
 }
 
 /**
@@ -125,22 +127,3 @@ export const LongTweetBehavior = {
     NoteTweetUnchecked: 'NoteTweetUnchecked'
 } as const;
 export type LongTweetBehavior = Enum<typeof LongTweetBehavior>;
-
-/**
- * @enum
- */
-export const ClientLogOptions = {
-    /** Don't show any logs */
-    Silent: 'Silent',
-    /**
-     * Only show errors and warnings
-     * 
-     * @default
-     */
-    Errors: 'Errors',
-    /** Show more logs */
-    Verbose: 'Verbose',
-    /** Show all logs, including debug logs */
-    Debug: 'Debug'
-} as const;
-export type ClientLogOptions = Enum<typeof ClientLogOptions>;

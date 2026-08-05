@@ -322,6 +322,8 @@ export const Conversation: Wrapped<TweetKind, Model<Conversation, null, { member
         );
 
         let members = structuredClone<Set<string>>(opts.members ?? new Set());
+        fmt.client.log?.debug('Conversation members here:', members);
+
         for (let item of items) {
             if (item.__typename !== 'Tweet' || !item.replyingTo?.username || !item.text.startsWith('@')) {
                 continue;
@@ -335,14 +337,13 @@ export const Conversation: Wrapped<TweetKind, Model<Conversation, null, { member
             while (/^@[a-zA-Z0-9_]/.test(item.text)) {
                 const [, username] = item.text.match(/^@([a-zA-Z0-9_]+)/) ?? [];
 
-                if (username && members.has(username.toLowerCase())) {
-                    item.text = item.text
-                        .replace(new RegExp(`^\\@${username}`, 'i'), '')
-                        .trimStart();
-                    continue;
+                if (!username || !members.has(username.toLowerCase())) {
+                    break;
                 }
 
-                break;
+                item.text = item.text
+                    .replace(new RegExp(`^\\@${username}`, 'i'), '')
+                    .trimStart();
             }
         }
 

@@ -1,7 +1,4 @@
-import logger from 'node-color-log';
-import { TwitterClient } from '../client.js';
-import { TwitterFormatter } from '../fmt/index.js';
-import { ValidationError, type ClientLogOptions, type TwitterOptions } from '../types/index.js';
+import { ValidationError } from '../types/index.js';
 import type { Type } from '../types/internal/index.js';
 
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][]): V | undefined;
@@ -75,37 +72,3 @@ export function toSearchParams(obj: object) {
         .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(typeof value === 'string' ? value : JSON.stringify(value))}`)
         .join('&');
 }
-
-
-
-type TwitterInstance = TwitterFormatter | TwitterClient | Partial<TwitterOptions>;
-
-function logLevel(value: TwitterInstance | undefined): ClientLogOptions {
-    if (value instanceof TwitterFormatter) return value.client.options.logs;
-    if (value instanceof TwitterClient) return value.options.logs;
-    if (typeof value === 'object') return value.logs ?? 'Errors';
-    return 'Errors';
-}
-
-export const log = {
-    debug(client: TwitterInstance | undefined, ...data: any[]) {
-        if (logLevel(client) === 'Debug') {
-            logger.debug(...data);
-        }
-    },
-    info(client: TwitterInstance | undefined, ...data: any[]) {
-        if (logLevel(client) === 'Verbose' || logLevel(client) === 'Debug') {
-            logger.info(...data);
-        }
-    },
-    warn(client: TwitterInstance | undefined, ...data: any[]) {
-        if (logLevel(client) !== 'Silent') {
-            logger.warn(...data);
-        }
-    },
-    err(client: TwitterInstance | undefined, ...data: any[]) {
-        if (logLevel(client) !== 'Silent') {
-            logger.error(...data);
-        }
-    }
-};

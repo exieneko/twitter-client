@@ -27,6 +27,7 @@ type OptionalUndefined<T extends object | undefined> = {
 };
 
 export type EndpointParams<E extends Endpoint> = OptionalUndefined<E['_params']>;
+export type RequiredBy<T extends object, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>;
 export type PartialBy<T extends object, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export type MaybeType<T extends string = string> = (Type<T> & Record<string, any>) | undefined;
 

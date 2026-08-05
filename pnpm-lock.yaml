@@ -11,9 +11,6 @@ importers:
       linkedom:
         specifier: ^0.18.13
         version: 0.18.13
-      node-color-log:
-        specifier: ^14.0.0
-        version: 14.0.0
       undici:
         specifier: ^8.7.0
         version: 8.7.0
@@ -231,10 +228,6 @@ packages:
       canvas:
         optional: true
 
-  node-color-log@14.0.0:
-    resolution: {integrity: sha512-vGZzpRBVzXsQO9o0CZvIrbqDu/X8IpC2W9eEkb5Q+o4TI4IpGS25QAKC4m2116A26UpX1AJ7rGZv+A9VgjkCrA==}
-    engines: {node: '>=14'}
-
   nth-check@3.0.1:
     resolution: {integrity: sha512-GX0gsdbGVCgnRgbeGaubfjpBXyYRWOOCVeYh08bSQvDZqxz5ndXs1OTfAt/h36G1xvI94YIspsI0sVFqAV9+RQ==}
     engines: {node: '>=20.19.0'}
@@ -397,8 +390,6 @@ snapshots:
       html-escaper: 3.0.3
       htmlparser2: 10.1.0
       uhyphen: 0.2.0
-
-  node-color-log@14.0.0: {}
 
   nth-check@3.0.1:
     dependencies:

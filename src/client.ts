@@ -6,7 +6,8 @@ import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_MEDIA_RANGE, TWE
 import { TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, ReplyPermission, Slice, TweetKind, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListKind, type MediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type TwitterTokens, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserKind, type UserTweetsGetArgs, SearchOrder, SearchArgs, ValidationError, ApiError, RequestError, TwitterError, FormatterError, ClientError, DivineInterventionError, BirdwatchCreateBatSignalArgs, TranslateArgs } from './types/index.js';
 import type { Endpoint, EndpointParams, Type } from './types/internal/index.js';
-import { log, match } from './utils/index.js';
+import { match } from './utils/index.js';
+import { Logger } from './utils/log.js';
 import { Query } from './utils/query.js';
 import type { QueryBuilder } from './utils/querybuilder.js';
 import { fetchXDocument, request } from './utils/request.js';
@@ -52,11 +53,13 @@ export class TwitterClient {
      */
     self?: User;
 
-    constructor(transaction: ClientTransaction, tokens: TwitterTokens, options: TwitterOptions, proxyAgent?: ProxyAgent) {
+    protected log?: Logger;
+
+    constructor(tokens: TwitterTokens, options: TwitterOptions, additionalOptions: { log?: Logger, proxyAgent?: ProxyAgent, transaction: ClientTransaction }) {
         const lang = options.language.toLowerCase().startsWith('en-') ? 'en' : options.language;
 
-        this.#proxyAgent = proxyAgent;
-        this.#transaction = transaction;
+        this.#proxyAgent = additionalOptions.proxyAgent;
+        this.#transaction = additionalOptions.transaction;
         this.#cookies = {
             auth_token: tokens.authToken,
             ct0: tokens.csrf,
@@ -65,6 +68,7 @@ export class TwitterClient {
         };
         this.options = structuredClone(options);
         this.options.language = lang;
+        this.log = additionalOptions?.log;
     }
 
     /**
@@ -78,27 +82,32 @@ export class TwitterClient {
      */
     static async new(tokens: TwitterTokens, options?: Partial<TwitterOptions>): Promise<TwitterClient | TwitterError> {
         const opts: TwitterOptions = {
+            debug: 3,
             domain: 'twitter.com',
             files: {},
             includeResponse: false,
             language: 'en',
-            logs: 'Errors',
             longTweetBehavior: 'Force',
             overrides: {},
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
             ...options
         };
 
-        log.info(opts, 'Initializing TwitterClient with options:', options);
+        if (opts.userAgent) {
+            opts.overrides.headers ||= {};
+            opts.overrides.headers['user-agent'] ||= opts.userAgent;
+        }
+
+        const log = opts.debug > 0 ? new Logger(opts.debug) : undefined;
+
+        log?.debug('Initializing TwitterClient with options:', options);
 
         let proxyAgent: ProxyAgent | undefined = undefined;
         if (options?.proxyUrl) {
             try {
                 proxyAgent = new ProxyAgent(options.proxyUrl);
+                log?.debug(`HTTP proxy ready (${options.proxyUrl})`);
             } catch (error) {
-                log.err(opts, 'Failed to initialize ProxyAgent', error);
-
-                return new ClientError(`Failed to initialize ProxyAgent with URL "${options.proxyUrl}"`, { cause: error });
+                return new ClientError(`Failed to initialize ProxyAgent with URL "${options.proxyUrl}"`, { cause: error, log });
             }
         }
 
@@ -106,17 +115,17 @@ export class TwitterClient {
         try {
             const document = await fetchXDocument(opts, proxyAgent);
             const transaction = await ClientTransaction.create(document);
-            client = new this(transaction, tokens, opts, proxyAgent);
+            log?.debug('ClientTransaction ready');
+
+            client = new this(tokens, opts, { log, proxyAgent, transaction });
         } catch (error) {
-            log.err(opts, 'Failed to initialize ClientTransaction', error);
+            if (error instanceof Error) {
+                log?.error('Failed to initialize ClientTransaction:', error);
+            }
 
             return new ClientError('Failed to initialize ClientTransaction', {
                 cause: error instanceof TypeError ? new ClientError('Failed to get Twitter HTML document', { cause: error }) : error
             });
-        }
-
-        if (client.options.language !== 'en') {
-            log.warn(client, 'Setting language option to values other than "en" may have unexpected effects');
         }
 
         return client;
@@ -216,7 +225,9 @@ export class TwitterClient {
 
             return transactionId;
         } catch (error) {
-            log.err(this, `Failed to generate x-client-transaction-id header for ${endpoint.method} ${endpoint.url}:`, error);
+            if (error instanceof Error) {
+                this.log?.error(`Failed to generate x-client-transaction-id header for ${endpoint.method} ${endpoint.url}:`, error);
+            }
         }
     }
 
@@ -298,11 +309,12 @@ export class TwitterClient {
                 cookies: this.#cookies,
                 options: this.options,
                 proxyAgent: this.#proxyAgent,
-                transactionId: await this.generateTransactionId(endpoint)
+                transactionId: await this.generateTransactionId(endpoint),
+                log: this.log
             });
         } catch (error) {
             return {
-                errors: [error instanceof TwitterError ? error : new DivineInterventionError('Request function threw an unknown error', { cause: error })]
+                errors: [error instanceof TwitterError ? error : new DivineInterventionError('Request function threw an unknown error', { cause: error, log: this.log })]
             };
         }
 
@@ -311,7 +323,7 @@ export class TwitterClient {
 
         if (!json || Object.entries(json).length === 0) {
             return {
-                errors: [new DivineInterventionError('Received data is empty')],
+                errors: [new DivineInterventionError('Received data is empty', { log: this.log })],
                 response
             };
         }

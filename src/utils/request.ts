@@ -1,10 +1,12 @@
 import { hrtime } from 'node:process';
+import { styleText } from 'node:util';
 import { parseHTML } from 'linkedom';
 import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
-import { log, toSearchParams } from './index.js';
+import { match, toSearchParams } from './index.js';
+import type { Logger } from './log.js';
 import { GLOBAL_HEADERS, USER_AGENT } from '../consts.js';
-import { ApiError, ClientError, RequestError, type TwitterOptions } from '../types/index.js';
+import { ApiError, ClientError, RequestError, TwitterError, type TwitterOptions } from '../types/index.js';
 import type { Endpoint, EndpointParams } from '../types/internal/index.js';
 import type { Flags } from '../flags.js';
 
@@ -21,9 +23,10 @@ export async function request<E extends Endpoint, T = never>(opts: {
     mediaFormData?: BodyInit,
     options: TwitterOptions,
     proxyAgent?: ProxyAgent,
-    transactionId?: string
+    transactionId?: string,
+    log?: Logger
 }): Promise<[T, Response]> {
-    const { endpoint, params, cookies, mediaFormData, options, proxyAgent, transactionId } = opts;
+    const { endpoint, params, cookies, mediaFormData, options, proxyAgent, transactionId, log } = opts;
 
     if (endpoint.kind() !== 'GraphQL') {
         for (const key in params) {
@@ -44,7 +47,7 @@ export async function request<E extends Endpoint, T = never>(opts: {
         referer: `https://${options.domain}/`,
         authorization: endpoint.token,
         cookie: Object.entries(cookies).filter(([, v]) => !!v).map(([k, v]) => `${k}=${v}`).join('; '),
-        'user-agent': options.userAgent || USER_AGENT,
+        'user-agent': USER_AGENT,
         'x-twitter-client-language': options.language,
         'x-csrf-token': cookies.ct0
     };
@@ -59,8 +62,21 @@ export async function request<E extends Endpoint, T = never>(opts: {
         headers['content-type'] = 'application/x-www-form-urlencoded; charset=utf-8';
     }
 
+    log?.info('[HTTP]', endpoint.method, url);
+
     if (options.overrides.headers) {
-        headers = { ...headers, ...options.overrides.headers };
+        let add = 0;
+        let overwrite = 0;
+
+        for (const key in options.overrides.headers) {
+            if (key in headers) {
+                add++;
+            } else {
+                overwrite++;
+            }
+
+            headers[key] = options.overrides.headers[key];
+        }
     }
 
     let features = endpoint.features;
@@ -75,6 +91,8 @@ export async function request<E extends Endpoint, T = never>(opts: {
             }
         }
     }
+
+    log?.debug('[HTTP]', 'Request headers:', headers);
 
     const start = hrtime.bigint();
 
@@ -101,7 +119,7 @@ export async function request<E extends Endpoint, T = never>(opts: {
             dispatcher: proxyAgent
         });
     } catch (error) {
-        throw new RequestError(`Failed to send request to "${url}"`, { endpoint, params, cause: error });
+        throw new RequestError(`Failed to send request to "${url}"`, { endpoint, params, cause: error, log });
     }
 
     const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
@@ -110,10 +128,27 @@ export async function request<E extends Endpoint, T = never>(opts: {
     try {
         bytes = await response.bytes();
     } catch (error) {
-        throw new RequestError('Failed to get response data due to Divine intervention', { endpoint, params, cause: error });
-    }
+        throw new RequestError('Failed to get response bytes', { endpoint, params, cause: error, log });
+    } finally {
+        bytes ||= new Uint8Array();
 
-    log[response.ok ? 'info' : 'err'](options, endpoint.method, response.status, `in ${elapsed}ms (transferred: ${bytes.byteLength}B)`);
+        const statusText = response.statusText || match(response.status, [
+            [200, 'OK'],
+            [201, 'Created'],
+            [400, 'Bad Request'],
+            [401, 'Unauthorized'],
+            [403, 'Forbidden'],
+            [404, 'Not Found'],
+            [500, 'Internal Server Error']
+        ], '');
+
+        const transferred = bytes.byteLength >= 1024 * 2
+            ? (bytes.byteLength / 1024).toFixed(2) + 'KiB'
+            : bytes.byteLength + 'B';
+
+        log?.debug('[HTTP]', 'Response headers:', response.headers.entries());
+        log?.[response.ok ? 'info' : 'error']('[HTTP]', endpoint.method, url, '\n\t' + styleText([response.ok ? 'green' : 'red', 'bold'], `${response.status} ${statusText}`), `\n\ttransferred ${transferred}`, `\n\tin ${elapsed}ms`);
+    }
 
     let text = '';
     let data;
@@ -121,20 +156,26 @@ export async function request<E extends Endpoint, T = never>(opts: {
         text = new TextDecoder().decode(bytes);
         data = JSON.parse(text);
     } catch (error) {
+        if (error instanceof Error) {
+            log?.error(error);
+        }
+
         if (error instanceof TypeError) {
             throw new ClientError('TextDecoder failed to decode response bytes to string', { cause: error });
         }
 
+        const err = new ClientError('Received response data is not valid JSON', { cause: error });
+
         // sometimes returned data for the translation.json endpoint is 2 JSON objects in 2 separate lines instead of in an array, so don't throw yet if that's the case
         if (!url.endsWith('/translation.json') || text.length < 2) {
-            throw new ClientError('Received response data is not valid JSON', { cause: error });
+            throw err;
         }
 
         try {
             const data = JSON.parse(text.trimEnd().split('\n', 2)[1]);
             throw new ApiError(data.message, { code: data.code });
         } catch (error) {
-            throw new ClientError('Received response data is not valid JSON', { cause: error });
+            throw err;
         }
     }
 
@@ -146,11 +187,11 @@ export async function request<E extends Endpoint, T = never>(opts: {
  * 
  * @see https://github.com/Lqm1/x-client-transaction-id/blob/main/utils.ts
  */
-export async function fetchXDocument(opts: TwitterOptions, dispatcher?: ProxyAgent) {
+export async function fetchXDocument(options: TwitterOptions, dispatcher?: ProxyAgent) {
     const headers = {
         ...GLOBAL_HEADERS,
         accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'accept-language': opts.language,
+        'accept-language': options.language,
         pragma: 'no-cache',
         priority: 'u=0, i',
         'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
@@ -160,22 +201,11 @@ export async function fetchXDocument(opts: TwitterOptions, dispatcher?: ProxyAge
         'sec-fetch-mode': 'navigate',
         'sec-fetch-site': 'none',
         'sec-fetch-user': '?1',
-        'user-agent': opts.userAgent,
+        'user-agent': options.overrides.headers?.['user-agent'] || options.userAgent || USER_AGENT,
         'upgrade-insecure-requests': '1'
     };
 
-    log.info(opts, 'GET https://x.com/home');
-    const start = hrtime.bigint();
     const response = await fetch('https://x.com/home', { headers, dispatcher });
-    const elapsed = Math.floor(Number(hrtime.bigint() - start) / 1e6);
-
-    if (!response.ok) {
-        log.err(opts, response.status, `in ${elapsed}ms`);
-        throw new Error(response.status.toString());
-    } else {
-        log.info(opts, response.status, `in ${elapsed}ms`);
-    }
-
     const html = await response.text();
     return parseHTML(html).window.document;
 }
