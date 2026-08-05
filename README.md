@@ -28,12 +28,6 @@ const twitter = await TwitterClient.new({
     // options
     proxyUrl: 'http://127.0.0.1:8888'
 });
-
-// handle a possible error
-if (twitter instanceof Error) {
-    console.log('error:', twitter);
-    return;
-}
 ```
 
 ## Examples

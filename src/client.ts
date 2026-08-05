@@ -78,9 +78,10 @@ export class TwitterClient {
      * @param tokens Your Twitter account's login tokens
      * @param [options] Additional options
      * @returns Promise resolving to `TwitterClient`
+     * @throws {ClientError} if `ProxyAgent` or `ClientTransaction` can't be created
      * @since 1.0.0-rc.0
      */
-    static async new(tokens: TwitterTokens, options?: Partial<TwitterOptions>): Promise<TwitterClient | TwitterError> {
+    static async new(tokens: TwitterTokens, options?: Partial<TwitterOptions>): Promise<TwitterClient> {
         const opts: TwitterOptions = {
             debug: 3,
             domain: 'twitter.com',
@@ -107,7 +108,7 @@ export class TwitterClient {
                 proxyAgent = new ProxyAgent(options.proxyUrl);
                 log?.debug(`HTTP proxy ready (${options.proxyUrl})`);
             } catch (error) {
-                return new ClientError(`Failed to initialize ProxyAgent with URL "${options.proxyUrl}"`, { cause: error, log });
+                throw new ClientError(`Failed to initialize ProxyAgent with URL "${options.proxyUrl}"`, { cause: error, log });
             }
         }
 
@@ -123,26 +124,12 @@ export class TwitterClient {
                 log?.error('Failed to initialize ClientTransaction:', error);
             }
 
-            return new ClientError('Failed to initialize ClientTransaction', {
+            throw new ClientError('Failed to initialize ClientTransaction', {
                 cause: error instanceof TypeError ? new ClientError('Failed to get Twitter HTML document', { cause: error }) : error
             });
         }
 
         return client;
-    }
-
-    /**
-     * Async constructor for `TwitterClient` that will not 
-     * 
-     * @constructor
-     * @param tokens Your Twitter account's login tokens
-     * @param [options] Additional options
-     * @returns Promise resolving to `TwitterClient`
-     * @throws {ClientError} if `ProxyAgent` or `ClientTransaction` can't be created
-     * @since 1.0.0-rc.0
-     */
-    static async newUnchecked(tokens: TwitterTokens, options?: Partial<TwitterOptions>): Promise<TwitterClient> {
-        return await this.new(tokens, options) as TwitterClient;
     }
 
     /**
