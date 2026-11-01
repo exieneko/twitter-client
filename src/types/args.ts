@@ -168,10 +168,7 @@ export interface SearchArgs extends CursorOnly {
 /**
  * Arguments for searching tweets
  */
-export interface SearchTweetArgs extends SearchArgs, OrderBy<SearchOrder> {
-    /** @deprecated Replaced by `orderBy` */
-    kind?: SearchOrder
-}
+export interface SearchTweetArgs extends SearchArgs, OrderBy<SearchOrder> {}
 
 /**
  * Home timeline order

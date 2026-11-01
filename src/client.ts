@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { FormData, ProxyAgent, Response } from 'undici';
+import { FormData, ProxyAgent, type Response } from 'undici';
 import { ClientTransaction } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_MEDIA_RANGE, TWEET_POLL_RANGE, TWEET_TEXT_RANGE, UPLOAD_SEGMENT_SIZE } from './consts.js';
@@ -10,7 +10,6 @@ import type { Endpoint, EndpointParams, Type } from './types/utils.js';
 import { match } from './utils/index.js';
 import { Logger } from './utils/log.js';
 import { Query } from './utils/query.js';
-import type { QueryBuilder } from './utils/querybuilder.js';
 import { fetchXDocument, request } from './utils/request.js';
 
 /**
@@ -89,20 +88,13 @@ export class TwitterClient {
             debug: 3,
             domain: 'twitter.com',
             files: {},
-            includeResponse: false,
             language: 'en',
             longTweetBehavior: LongTweetBehavior.Force,
             overrides: {},
             ...options
         };
 
-        if (opts.userAgent) {
-            opts.overrides.headers ||= {};
-            opts.overrides.headers['user-agent'] ||= opts.userAgent;
-        }
-
         const log = opts.debug > 0 ? new Logger(opts.debug) : undefined;
-
         log?.debug('Initializing TwitterClient with options:', options);
 
         if (!tokens || typeof tokens !== 'object') {
@@ -268,9 +260,9 @@ export class TwitterClient {
     async fetch<E extends Endpoint, T extends object = Awaited<ReturnType<E['format']>> extends boolean ? { ok: boolean } : Awaited<ReturnType<E['format']>> extends object ? Awaited<ReturnType<E['format']>> : { value: Awaited<ReturnType<E['format']>> }>(endpoint: E, params?: EndpointParams<E>): Promise<TwitterResponse<T>> {
         type U = Parameters<E['format']>[1];
 
-        let json: U, r: Response;
+        let json: U, response: Response;
         try {
-            [json, r] = await request<E, U>({
+            [json, response] = await request<E, U>({
                 endpoint,
                 params,
                 cookies: this.#cookies,
@@ -285,7 +277,6 @@ export class TwitterClient {
             };
         }
 
-        const response = this.options.includeResponse ? r : undefined;
         let errors: TwitterError[] = [];
 
         if (!json || Object.entries(json).length === 0) {
@@ -611,12 +602,12 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since 0.6.0
      */
-    async* searchBookmarks(query: string | Query | QueryBuilder, args?: CursorOnly): Timeline<TweetResult> {
+    async* searchBookmarks(query: string | Query, args?: CursorOnly): Timeline<TweetResult> {
         yield* this.getSlice(args, args => this.searchBookmarksSlice(query, args));
         return EMPTY_SLICE;
     }
 
-    protected async searchBookmarksSlice(query: string | Query | QueryBuilder, args?: CursorOnly) {
+    protected async searchBookmarksSlice(query: string | Query, args?: CursorOnly) {
         return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: Query.parse(query), ...args });
     }
 
@@ -1057,15 +1048,8 @@ export class TwitterClient {
      * @yields Slice of tweets
      * @since 0.1.0
      */
-    async* search(query: string | Query | QueryBuilder, args?: SearchTweetArgs): Timeline<TweetResult> {
-        const orderBy: SearchOrder = args?.orderBy === SearchOrder.Latest || args?.orderBy === SearchOrder.Relevant
-            ? args.orderBy
-        : args?.kind === SearchOrder.Latest || args?.kind === SearchOrder.Relevant
-            ? args.kind
-            : SearchOrder.Relevant;
-
-        delete args?.kind;
-
+    async* search(query: string | Query, args?: SearchTweetArgs): Timeline<TweetResult> {
+        const orderBy: SearchOrder = args?.orderBy === SearchOrder.Latest || args?.orderBy === SearchOrder.Relevant ? args.orderBy : SearchOrder.Relevant;
         yield* this.getSlice({ ...args, orderBy }, args => this.searchSlice(query, args));
         return EMPTY_SLICE;
     }
@@ -1096,7 +1080,7 @@ export class TwitterClient {
         return EMPTY_SLICE;
     }
 
-    protected async searchSlice(query: string | Query | QueryBuilder, args?: SearchTweetArgs): Promise<TwitterResponse<Slice<TweetResult>>> {
+    protected async searchSlice(query: string | Query, args?: SearchTweetArgs): Promise<TwitterResponse<Slice<TweetResult>>> {
         const product = args?.orderBy === SearchOrder.Relevant ? 'Top' : 'Latest';
         return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: Query.parse(query), querySource: args?.source ?? 'typed_query', product, cursor: args?.cursor });
     }
@@ -1784,24 +1768,6 @@ export class TwitterClient {
     }
 
     /**
-     * Get highlighted tweets from a user. Highlighting tweets is a feature only available to verified users
-     * 
-     * @param id User id
-     * @param [args] {@link CursorOnly}
-     * @yields Slice of tweets
-     * @since 0.1.0
-     * @deprecated Use `getUserTweets`
-     */
-    async* getUserHighlightedTweets(id: string, args?: CursorOnly): Timeline<TweetResult> {
-        yield* this.getSlice(args, args => this.getUserHighlightedTweetsSlice(id, args));
-        return EMPTY_SLICE;
-    }
-
-    protected async getUserHighlightedTweetsSlice(id: string, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.UserHighlightsTweets, { userId: id, ...args });
-    }
-
-    /**
      * Get followed users of a user
      * 
      * @param userId User id 
@@ -2162,7 +2128,7 @@ export class TwitterClient {
                         endpoint: ENDPOINTS.media_upload.append,
                         params: { media_id: init.media_id_string, segment_index: index }
                     })],
-                    response: this.options.includeResponse ? response : undefined
+                    response
                 };
             }
 

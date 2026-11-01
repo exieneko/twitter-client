@@ -9,7 +9,7 @@ export interface TwitterResponse<T extends object> {
     data?: T,
     /** Errors returned by Twitter and thrown during parsing */
     errors: TwitterError[],
-    /** Http response received by the server. Always `undefined` unless the `includeResponse` option is enabled */
+    /** Http response received by the server */
     response?: Response
 }
 
@@ -57,13 +57,6 @@ export interface TwitterOptions {
         data?: string
     },
     /**
-     * Include the API response as the `response` property on all returned data? This object may include sensitive information like the set-cookie header
-     * 
-     * @default false
-     * @since 1.0.0-rc.0
-     */
-    includeResponse: boolean,
-    /**
      * How to handle when a tweet's text length exceeds 280 characters
      * 
      * @default LongTweetBehavior.Force
@@ -85,15 +78,7 @@ export interface TwitterOptions {
      * 
      * @since 1.0.0-rc.0
      */
-    proxyUrl?: string,
-    /**
-     * User-Agent header to send with requests
-     * 
-     * @deprecated Replaced by `overrides.headers`
-     * @default 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
-     * @since 1.0.0-rc.0
-     */
-    userAgent?: string
+    proxyUrl?: string
 }
 
 /**

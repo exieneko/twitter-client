@@ -2,7 +2,6 @@ import { slice, TwitterClient } from './client.js';
 import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TweetGetArgs, UserTweetsGetArgs, TwitterResponse, TwitterOptions, SearchTweetArgs } from './types/index.js';
 import type { Account } from './types/utils.js';
 import { Query } from './utils/query.js';
-import { QueryBuilder } from './utils/querybuilder.js';
 
 /**
  * Asyncronous client utilizing `TwitterClient` instances to make requests to the Twitter browser API using several users
@@ -103,7 +102,7 @@ export class TwitterPool {
     }
 
 
-    search(query: string | Query | QueryBuilder, args?: SearchTweetArgs) {
+    search(query: string | Query, args?: SearchTweetArgs) {
         return this.client(c => slice(c.search(query, args)));
     }
 
@@ -161,10 +160,6 @@ export class TwitterPool {
 
     getUserMedia(id: string, args?: CursorOnly) {
         return this.client(c => slice(c.getUserMedia(id, args)));
-    }
-
-    getUserHighlightedTweets(id: string, args?: CursorOnly) {
-        return this.client(c => slice(c.getUserHighlightedTweets(id, args)));
     }
 
     getFollowing(userId: string, args?: CursorOnly) {

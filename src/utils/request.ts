@@ -200,7 +200,7 @@ export async function fetchXDocument(options: TwitterOptions, dispatcher?: Proxy
         'sec-fetch-dest': 'document',
         'sec-fetch-mode': 'navigate',
         'sec-fetch-site': 'none',
-        'user-agent': options.overrides.headers?.['user-agent'] || options.userAgent || USER_AGENT
+        'user-agent': options.overrides.headers?.['user-agent'] || USER_AGENT
     };
 
     const response = await fetch('https://x.com/i/jf', { headers, dispatcher });

@@ -1,5 +1,3 @@
-import { QueryBuilder } from './querybuilder.js';
-
 /**
  * Can be used to build any query with filters supported by Twitter search
  * 
@@ -228,11 +226,9 @@ export interface Query {
     OR?: Query[]
 }
 export const Query = {
-    parse(query: string | Query | QueryBuilder): string {
+    parse(query: string | Query): string {
         if (typeof query === 'string') {
             return query;
-        } else if (query instanceof QueryBuilder) {
-            return query.toString();
         }
 
         const expr = buildExpr(query)
