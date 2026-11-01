@@ -54,15 +54,15 @@ export class TwitterFormatter {
         return result;
     }
 
-    next<F extends AsyncConstructor<This, any, NonNullable<O>>, This = Awaited<ReturnType<F>>, O extends Record<string, any> | undefined = Parameters<F>[2]>(fn: F, value: Parameters<F>[1], ...rest: [O] extends [null | undefined] ? [] : Required<O> extends O ? [opts?: O] : [opts: O]): Promise<This> {
+    async next<F extends AsyncConstructor<This, any, NonNullable<O>>, This = Awaited<ReturnType<F>>, O extends Record<string, any> | undefined = Parameters<F>[2]>(fn: F, value: Parameters<F>[1], ...rest: [O] extends [null | undefined] ? [] : Required<O> extends O ? [opts?: O] : [opts: O]): Promise<Awaited<This>> {
         this.depth++;
         const opts = rest[0] ?? {};
 
         try {
             // @ts-ignore
-            return fn(this, value, opts);
+            return await fn(this, value, opts);
         } catch (error) {
-            return this.handleError(error);
+            return await this.handleError(error);
         } finally {
             this.depth--;
         }
@@ -859,7 +859,7 @@ export const tweet: AsyncConstructor<T.Tweet, Record<string, any>, TweetLegacyOp
 
     const editControl = value.edit_control?.edit_control_initial ?? value.edit_control;
     const fullText = value.note_tweet?.note_tweet_results?.result?.text || value.legacy?.full_text || value.full_text || '';
-    const source = value.source.match(/>(.*?)</)?.at(1) || value.source || 'Twitter Web App';
+    const source = value.source?.match(/>(.*?)</)?.at(1) || value.source || 'Twitter Web App';
     const text = getText(value, fullText, !!opts.legacy);
     const visibilityRestrictionReason = getRestrictionReason((opts.tweetInterstitial ?? opts.softInterventionPivot)?.text?.text || '');
 

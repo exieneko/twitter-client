@@ -31,31 +31,39 @@ export class Logger {
     }
 
     protected displayItem(item: LoggerValue): (string | object)[] {
-        if (item instanceof TwitterError) {
-            const obj = item.toJSON();
-            
-            if ('name' in obj) {
-                delete obj.name;
+        try {
+            if (item instanceof TwitterError) {
+                const obj = item.toJSON();
+                
+                if ('name' in obj) {
+                    delete obj.name;
+                }
+
+                return [item.name, obj];
             }
 
-            return [item.name, obj];
+            if (item instanceof Error) {
+                return [`${item.name}(${this.wrap(item.message)})`];
+            }
+
+            const matches = item?.toString().match(/^\[object ([a-zA-Z0-9_\s\$]*)\]$/);
+            if (item && matches) {
+                const length = Object.entries(item).length;
+
+                return [
+                    matches[1]?.includes(' ') ? `[${matches[1]}](${length})` : `${matches[1]}(${length})`,
+                    inspect(item, { colors: true, compact: false, depth: null }).replace(/^.*(?=\{)/, '')
+                ];
+            }
+
+            return [String(item)];
+        } catch (error) {
+            if (error && typeof error === 'object' && 'message' in error) {
+                return [String(error.message)];
+            }
+
+            return ['???'];
         }
-
-        if (item instanceof Error) {
-            return [`${item.name}(${this.wrap(item.message)})`];
-        }
-
-        const matches = item?.toString().match(/^\[object ([a-zA-Z0-9_\s\$]*)\]$/);
-        if (item && matches) {
-            const length = Object.entries(item).length;
-
-            return [
-                matches[1]?.includes(' ') ? `[${matches[1]}](${length})` : `${matches[1]}(${length})`,
-                inspect(item, { colors: true, compact: false, depth: null }).replace(/^.*(?=\{)/, '')
-            ];
-        }
-
-        return [String(item)];
     }
 
     protected log(level: 'trace' | 'debug' | 'info' | 'warn' | 'error', color: InspectColor, data: LoggerValue[]) {

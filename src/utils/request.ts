@@ -194,19 +194,16 @@ export async function fetchXDocument(options: TwitterOptions, dispatcher?: Proxy
         accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
         'accept-language': options.language,
         pragma: 'no-cache',
-        priority: 'u=0, i',
         'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': '"Windows"',
         'sec-fetch-dest': 'document',
         'sec-fetch-mode': 'navigate',
         'sec-fetch-site': 'none',
-        'sec-fetch-user': '?1',
-        'user-agent': options.overrides.headers?.['user-agent'] || options.userAgent || USER_AGENT,
-        'upgrade-insecure-requests': '1'
+        'user-agent': options.overrides.headers?.['user-agent'] || options.userAgent || USER_AGENT
     };
 
-    const response = await fetch('https://x.com/home', { headers, dispatcher });
+    const response = await fetch('https://x.com/i/jf', { headers, dispatcher });
     const html = await response.text();
     return parseHTML(html).window.document;
 }
