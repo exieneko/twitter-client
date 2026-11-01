@@ -1,8 +1,7 @@
-import type { Model, Type } from './internal/index.js';
-import { match } from '../utils/index.js';
+import type { Type } from './utils.js';
 
 /**
- * Settings for the current user
+ * Settings for the authenticated user
  */
 export interface AccountSettings extends Type<'AccountSettings'> {
     /** `true` if autoplay of videos and gifs is allowed */
@@ -48,62 +47,17 @@ export interface AccountSettings extends Type<'AccountSettings'> {
     },
     username: string
 }
-export const AccountSettings: Model<AccountSettings> = {
-    async new(_, value) {
-        return {
-            __typename: 'AccountSettings',
-            autoplay: !value.autoplay_disabled,
-            country: value.country_code || 'us',
-            displaySensitiveMedia: !!value.display_sensitive_media,
-            dmAllowedFrom: match(value.allow_dms_from, [
-                ['following', InboxPrivacy.Following],
-                ['verified', InboxPrivacy.Verified],
-            ], InboxPrivacy.Everyone),
-            dmGroupsAllowedFrom: match(value.allow_dm_groups_from, [
-                ['following', InboxPrivacy.Following],
-                ['verified', InboxPrivacy.Verified],
-            ], InboxPrivacy.Everyone),
-            dmReceipts: value.dm_receipt_setting !== 'all_disabled',
-            dmQualityFilter: value.dm_quality_filter !== 'disabled',
-            isEu: value.settings_medadata?.is_eu === 'true',
-            isEmailPublic: !!value.discoverable_by_email_address,
-            isNsfw: !!value.nfsw_user || !!value.nsfw_admin,
-            isPhoneNumberPublic: !!value.discoverable_by_mobile_phone,
-            language: value.language,
-            protected: !!value.protected,
-            privacy: {
-                allowPersonalizedAds: !!value.allow_ads_personalization,
-                allowCookies: !!value.use_cookie_personalization,
-                allowSellingYourInformation: !!value.allow_sharing_data_for_third_party_personalization,
-                allowLocationHistory: !!value.allow_location_history_personalization,
-                personalizedTrends: !!value.personalized_trends,
-                showCurrentAudiospacePublicly: !!value.ext_sharing_audiospaces_listening_data_with_followers
-            },
-            username: value.screen_name
-        };
-    }
-};
 
-export interface DataSaverSettings extends Type<'DataSaverSettings'> {
+export interface DataSaverSettings {
     dataSaverMode: boolean,
     videoAutoplay: VideoAutoplay
 }
-export const DataSaverSettings: Model<DataSaverSettings> = {
-    async new(_, value) {
-        return {
-            __typename: 'DataSaverSettings',
-            dataSaverMode: value.dataSaverMode,
-            videoAutoplay: value.videoAutoplay
-        };
-    }
-};
-
-
 
 export enum InboxPrivacy {
     Everyone = 'Everyone',
     Following = 'Following',
-    Verified = 'Verified'
+    Verified = 'Verified',
+    None = 'None'
 }
 
 export enum VideoAutoplay {

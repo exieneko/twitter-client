@@ -1,9 +1,5 @@
-import type { Default, MaybeType, Model, Type, Wrapped } from './internal/index.js';
-import { assert, match } from '../utils/index.js';
+import type { Type } from './utils.js';
 
-/**
- * User
- */
 export interface User extends Type<'User'> {
     id: string,
     /** Amount of affiliates the user has */
@@ -15,19 +11,20 @@ export interface User extends Type<'User'> {
         owner: string,
         imageUrl: string
     },
+    /** Url of the user's avatar. The default avatar url will be used as a fallback in cases where a user may not have an avatar */
     avatarUrl: string,
+    /** Url of the user's banner */
     bannerUrl?: string,
-    /** The user's birthday as an object */
     birthday?: {
         day: number,
         month: number,
         year?: number
     },
-    /** `true` if you can send a direct message to the user */
+    /** Whether the authenticated user can send a direct message to the user */
     canDm: boolean,
-    /** `true` if you can credit a user in a media tweet by tagging them directly in the attachment */
+    /** Whether the authenticated user can tag the user in media attachments */
     canMediaTag: boolean,
-    /** `true` if the user allows others to super-follow them */
+    /** Whether the authenticated user cab super-follow the user (requires the user to have super-follows/subscriptions enabled) */
     canSuperFollow: boolean,
     createdAt: string,
     description: string,
@@ -36,40 +33,33 @@ export interface User extends Type<'User'> {
         /** Destination language */
         language: string
     },
-    /** Fan status of an account */
+    /** Fan account status of the user */
     fanAccountKind?: FanAccountKind,
     /** Amount of followers the user has */
     followersCount: number,
     /** Amount of users the user is following */
     followingCount: number,
-    /** `true` if this user is marked as an automated account */
+    /** Whether the user is marked as an automated account */
     isAutomated: boolean,
-    /** `true` if you've blocked this user */
     isBlocked: boolean,
-    /** `true` if user has blocked you */
     isBlockedBy: boolean,
-    /** `true` if you're following this user */
     isFollowed: boolean,
-    /** `true` if you've requested to follow this user */
     isFollowRequested: boolean,
-    /** `true` if this user follows you */
     isFollowedBy: boolean,
-    /** `true` if you've muted this user */
     isMuted: boolean,
     isSuperFollowed: boolean,
     isSuperFollowedBy: boolean,
+    isSuperFollowingHidden: boolean,
     isTranslatable: boolean,
     job?: string,
     location?: string,
     name: string,
-    /** `id` of the user's pinned tweet, `undefined` if it doesn't exist */
+    /** Id of the user's pinned tweet, if it exists */
     pinnedTweetId?: string,
-    /** `true` if the user's tweets can only be viewed by users that follow them */
+    /** Whether the user's tweets can only be viewed by users that follow them */
     protected: boolean,
     /** Amount of other users the user is super-following */
     superFollowingCount: number,
-    /** `true` if user's user-following is hidden */
-    superFollowingHidden: boolean,
     /** Amount of total tweets the user created */
     tweetsCount: number,
     /** Amount of tweets the user created that contain media */
@@ -86,252 +76,24 @@ export interface User extends Type<'User'> {
     verification: {
         /** Shows the kind of verification the user has */
         kind: VerificationType,
-        /** `true` if the user has a verification chechmark */
+        /** Whether the user has a verification chechmark */
         isVerified: boolean,
         /** When the user was initially verified */
         verifiedSince?: string,
-        /** `true` if the user successfully verified their identity with a legal id */
+        /** Whether the user successfully verified their identity with a legal ID */
         verifiedWithId: boolean
     },
-    /** `true` if retweets of the user should be included in your timelines */
+    /** Whether retweets of the user should be included in timelines of the authenticated user */
     wantRetweets: boolean,
-    /** `true` if tweets of the user should give you notifications */
+    /** Whether tweets of the user should give notifications to the authenticated user */
     wantNotifications: boolean
 }
-export const User: Wrapped<UserKind, Model<User, null, { legacy?: boolean }>> = {
-    async new(_, value, opts) {
-        if (opts.legacy) {
-            return {
-                __typename: 'User',
-                id: value.id_str,
-                affiliatesCount: 0,
-                avatarUrl: value.profile_image_url_https.replace('normal', '400x400'),
-                bannerUrl: value.profile_banner_url || undefined,
-                canDm: !!value.can_dm,
-                canMediaTag: !!value.can_media_tag,
-                canSuperFollow: false,
-                createdAt: new Date(value.created_at).toISOString(),
-                description: value.description || '',
-                followersCount: value.followers_count || 0,
-                followingCount: value.friends_count || 0,
-                isAutomated: false,
-                isBlocked: !!value.blocking,
-                isBlockedBy: !!value.blocked_by,
-                isFollowed: !!value.following,
-                isFollowRequested: !!value.follow_request_sent,
-                isFollowedBy: !!value.followed_by,
-                isMuted: !!value.muting,
-                isSuperFollowed: false,
-                isSuperFollowedBy: false,
-                isTranslatable: false,
-                location: value.location || undefined,
-                name: value.name,
-                protected: !!value.protected,
-                superFollowingCount: 0,
-                superFollowingHidden: false,
-                tweetsCount: value.statuses_count || 0,
-                mediaCount: value.media_count || 0,
-                likesCount: value.favorite_count || 0,
-                listedCount: value.listed_count || 0,
-                highlightedTweetsCount: 0,
-                username: value.screen_name,
-                verification: {
-                    kind: !!value.ext_is_blue_verified ? VerificationType.Blue : VerificationType.Unverified,
-                    isVerified: !!value.ext_is_blue_verified,
-                    verifiedWithId: false
-                },
-                wantRetweets: !!value.want_retweets,
-                wantNotifications: !!value.notification
-            };
-        }
 
-        const isAutomated = value.affiliates_highlighted_label?.label?.userLabelType === 'AutomatedLabel';
-        const affiliateLabel: User['affiliateLabel'] = !!value.affiliates_highlighted_label?.label?.badge?.url && !isAutomated ? {
-            title: value.affiliates_highlighted_label.label.description,
-            owner: value.affiliates_highlighted_label.label.url.url.split('.com/', 2)[1],
-            imageUrl: value.affiliates_highlighted_label.label.badge.url
-        } : undefined;
-
-        const verified = !!value.verification?.verified || !!value.is_blue_verified;
-        const verifiedType = value.verification?.verified_type;
-
-        const verificationKind: VerificationType = match(value.verification?.verified_type, [
-            ['Government', VerificationType.Government],
-            ['Business', VerificationType.Business],
-            [[], VerificationType.BlueAffiliate, !verifiedType && !verified && !!affiliateLabel?.owner && new RegExp(`\\/${affiliateLabel.owner}$`, 'i').test(value.verification_info.reason?.description?.entities?.at(0)?.ref.url)],
-            [[], VerificationType.Unverified, !verifiedType && !verified],
-            [[], VerificationType.Blue, verified]
-        ], VerificationType.Unverified);
-
-        return {
-            __typename: 'User',
-            id: value.rest_id,
-            affiliatesCount: value.business_account?.affiliates_count || 0,
-            affiliateLabel,
-            avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
-            bannerUrl: value.banner.image_url ?? value.legacy?.profile_banner_url,
-            birthday: value.legacy_extended_profile?.birthdate ? {
-                day: value.legacy_extended_profile.birthdate.day,
-                month: value.legacy_extended_profile.birthdate.month,
-                year: value.legacy_extended_profile.birthdate.year
-            } : undefined,
-            canDm: !!value.dm_permissions.can_dm,
-            canMediaTag: !!value.media_permissions.can_media_tag,
-            canSuperFollow: !!value.super_follow_eligible,
-            createdAt: new Date(value.core.created_at).toISOString(),
-            description: ((value.profile_bio?.description ?? value.legacy?.description ?? '') as string).replace(
-                /\bhttps:\/\/t\.co\/[a-zA-Z0-9]+/,
-                sub => value.legacy?.entities.description?.urls?.find((x: any) => x.url === sub)?.expanded_url.replace(/\/$/, '') || sub
-            ),
-            descriptionTranslation: value.grok_translated_bio_with_availability?.data?.translation?.text ? {
-                text: value.grok_translated_bio_with_availability.data.translation,
-                language: value.grok_translated_bio_with_availability.data.destination_language || 'zxx'
-            } : undefined,
-            fanAccountKind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None'
-                ? undefined
-                : value.parody_commentary_fan_label as FanAccountKind,
-            followersCount: value.relationship_counts?.followers || value.legacy?.followers_count,
-            followingCount: value.relationship_counts?.following || value.legacy?.friends_count,
-            isAutomated,
-            isBlocked: !!value.relationship_perspectives.blocking,
-            isBlockedBy: !!value.relationship_perspectives.blocked_by,
-            isFollowed: !!value.relationship_perspectives.following,
-            isFollowRequested: !!value.follow_request_sent || !!value.legacy?.follow_request_sent,
-            isFollowedBy: !!value.relationship_perspectives.followed_by,
-            isMuted: !!value.relationship_perspectives.muting,
-            isSuperFollowed: !!value.super_following,
-            isSuperFollowedBy: !!value.super_followed_by,
-            isTranslatable: !!value.grok_translated_post_with_availability?.is_available || !!value.is_profile_translatable,
-            job: value.professional?.category?.at(0)?.name,
-            location: value.location?.location,
-            name: value.core.name,
-            pinnedTweetId: (value.pinned_items?.tweet_ids_str || value.legacy?.pinned_tweet_ids_str)?.at(0),
-            protected: !!value.privacy.protected,
-            superFollowingCount: value.creator_subscriptions_count || 0,
-            superFollowingHidden: !!value.has_hidden_subscriptions_on_profile,
-            tweetsCount: value.tweets_count?.tweets || value.legacy?.statuses_count,
-            mediaCount: value.tweets_count?.media_tweets || value.legacy?.media_count,
-            likesCount: value.action_counts?.favorites_count || value.legacy?.favourites_count,
-            // this property probably doesn't exist anymore
-            listedCount: value.legacy?.listed_count,
-            highlightedTweetsCount: Number(value.highlights_info?.highlighted_tweets || 0),
-            username: value.core.screen_name,
-            url: (value.profile_bio.entities ?? value.legacy?.entities)?.url?.urls?.[0].expanded_url.replace(/^http:\/\//, 'https://').replace(/\/$/, ''),
-            verification: {
-                kind: verificationKind,
-                isVerified: verified,
-                verifiedSince: verified
-                    ? new Date(Number(value.verification_info?.reason?.verified_since_msec || 0)).toISOString()
-                    : undefined,
-                verifiedWithId: !!value.verification_info?.is_identity_verified
-            },
-            wantRetweets: !!value.legacy?.want_retweets,
-            wantNotifications: !!value.notifications_settings.notifications_enabled || !!value.legacy?.notifications
-        };
-    },
-    assert(value) {
-        return assert(value, 'User');
-    }
-};
-
-/**
- * User that doesn't exist, such as a user that has been suspended deactivated or a username that isn't taken
- */
 export interface UnavailableUser extends Type<'UnavailableUser'> {
     isSuspended: boolean
 }
-export const UnavailableUser: Wrapped<UserKind, Model<UnavailableUser, string | undefined>> & Default<UnavailableUser> = {
-    async new(_, value) {
-        return {
-            __typename: 'UnavailableUser',
-            isSuspended: value === 'UnavailableUser'
-        };
-    },
-    assert(value) {
-        return assert(value, 'UnavailableUser');
-    },
-    default() {
-        return {
-            __typename: 'UnavailableUser',
-            isSuspended: false
-        };
-    }
-};
 
-export type UserKind = User | UnavailableUser;
-export const UserKind: Model<UserKind, MaybeType, { legacy: boolean }> & Default<UserKind> = {
-    async new(fmt, value, opts) {
-        if (!value) {
-            return await fmt.next(UnavailableUser, undefined);
-        }
-
-        if (value.__typename !== 'User') {
-            return await fmt.next(UnavailableUser, value.__typename);
-        }
-
-        return await fmt.next(User, value, opts);
-    },
-    default() {
-        return UnavailableUser.default();
-    }
-};
-
-
-
-/**
- * Additional information about a user
- */
-export interface AboutUser extends Type<'AboutUser'> {
-    id: string,
-    /** URL for the user's profile picture */
-    avatarUrl: string,
-    /** Country the user is based in */
-    basedIn?: string,
-    createdAt: string,
-    name: string,
-    /** `true` if the user's tweets can only be viewed by users that follow them */
-    protected: boolean,
-    verification: User['verification'],
-    /** `true` if the user is using a VPN */
-    vpn: boolean,
-    usernames: {
-        /** Total times this user's username was changed */
-        changedCount: number,
-        current: string,
-        updatedAt?: string
-    }
-}
-export const AboutUser: Model<AboutUser> = {
-    async new(_, value) {
-        return {
-            __typename: 'AboutUser',
-            id: value.rest_id,
-            avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
-            basedIn: value.about_profile?.account_based_in,
-            createdAt: new Date(value.core.created_at).toISOString(),
-            name: value.core.name,
-            protected: !!value.privacy?.protected,
-            verification: {
-                kind: !!value.is_blue_verified ? VerificationType.Blue : VerificationType.Unverified,
-                isVerified: !!value.is_blue_verified,
-                verifiedSince: !!value.verification_info?.reason?.verified_since_msec
-                    ? new Date(Number(value.verification_info.reason.verified_since_msec)).toISOString()
-                    : undefined,
-                verifiedWithId: !!value.verification_info?.is_identity_verified
-            },
-            vpn: !!value.about_profile?.location_accurate,
-            usernames: {
-                changedCount: Number(value.username_changes?.count || 0),
-                current: value.core.screen_name,
-                updatedAt: !!value.username_changes?.last_changed_at
-                    ? new Date(Number(value.username_changes.last_changed_at)).toISOString()
-                    : undefined
-            }
-        };
-    },
-};
-
-
+export type UserResult = User | UnavailableUser;
 
 /**
  * Fan account status
@@ -358,4 +120,26 @@ export enum VerificationType {
     Business = 'Business',
     /** Gray checkmark for official government accounts */
     Government = 'Government'
+}
+
+
+
+export interface AboutUser extends Type<'AboutUser'> {
+    id: string,
+    /** Url of the user's avatar. The default avatar url will be used as a fallback in cases where a user may not have an avatar */
+    avatarUrl: string,
+    /** Country the user is based in */
+    basedIn?: string,
+    createdAt: string,
+    name: string,
+    /** Whether the user's tweets can only be viewed by users that follow them */
+    protected: boolean,
+    verification: User['verification'],
+    /** Whether the user is using a VPN */
+    vpn: boolean,
+    usernames: {
+        changedCount: number,
+        current: string,
+        updatedAt?: string
+    }
 }

@@ -6,8 +6,9 @@ import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 import { match, toSearchParams } from './index.js';
 import type { Logger } from './log.js';
 import { GLOBAL_HEADERS, USER_AGENT } from '../consts.js';
-import { ApiError, ClientError, RequestError, TwitterError, type TwitterOptions } from '../types/index.js';
-import { EndpointType, type Endpoint, type EndpointParams } from '../types/internal/index.js';
+import { ApiError, ClientError, RequestError } from '../fmt/errors.js';
+import type { TwitterOptions } from '../types/index.js';
+import { EndpointType, type Endpoint, type EndpointParams } from '../types/utils.js';
 import type { Flags } from '../flags.js';
 
 /**

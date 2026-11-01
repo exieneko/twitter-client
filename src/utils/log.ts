@@ -1,6 +1,6 @@
 import { inspect, styleText, type InspectColor } from 'node:util';
 import { TwitterError } from '../fmt/errors.js';
-import type { Range } from '../types/internal/range.js';
+import type { Range } from '../types/utils.js';
 
 type LoggerValue = string | number | bigint | boolean | Record<string, any> | Set<LoggerValue> | LoggerValue[] | Range | Error | TwitterError | { toJSON(): object } | undefined;
 

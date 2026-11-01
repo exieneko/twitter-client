@@ -1,34 +1,26 @@
-import type { Default, Model, Type } from './internal/index.js';
-import { match } from '../utils/index.js';
+import type { Type } from './utils.js';
 
-/**
- * Single Birdwatch note
- */
 export interface BirdwatchNote extends Type<'BirdwatchNote'> {
     id: string,
     author: BirdwatchUser,
-    /** `true` if the note is added due to the media content of the tweet */
+    /** The author of this note wants it to be automatically shown on all tweets that include this media */
     byMedia: boolean,
-    /** `true` if the note is added due to a url contained in the tweet */
+    /** The author of this note wants it to be automatically shown on all tweets that include this url */
     byUrl: boolean,
     createdAt: string,
-    /** `true` if the note contains links to trustworthy sources */
     hasTrustworthySources: boolean,
     lang: string,
-    /** Amount of tweets with matching media that will also be Birdwatch noted */
+    /** Amount of tweets that contain media matches where this note will also be shown */
     mediaMatchesCount: number,
-    /** Note's current display status */
     status: BirdwatchNoteStatus,
     /** Tags assigned to the note by the author */
-    tags: ({
-        __typename: 'MisleadingTweet',
+    tags: ((Type<'MisleadingTweet'> & {
         /** The note's claims of why the tweet needs a Birdwatch note */
         tweetMisleadingTags: BirdwatchTweetMisleadingTag[]
-    } | {
-        __typename: 'NoNoteNeeded',
+    }) | (Type<'NoNoteNeeded'> & {
         /** The note's claims of why no notes are needed on this tweet */
         tweetNotMisleadingTags: BirdwatchTweetNotMisleadingTag[]
-    }) & {
+    })) & {
         /** Tags applied to the note that shows its helpfulness, applied by raters */
         noteHelpfulTags: BirdwatchHelpfulTag[],
         /** Tags applied to the note that shows its unhelpfulness, applied by raters */
@@ -37,43 +29,11 @@ export interface BirdwatchNote extends Type<'BirdwatchNote'> {
     text: string,
     tweetId: string
 }
-export const BirdwatchNote: Model<BirdwatchNote> = {
-    async new(fmt, value) {
-        return {
-            __typename: 'BirdwatchNote',
-            id: value.rest_id,
-            author: await fmt.next(BirdwatchUser, value.birdwatch_profile, { isAi: !!value.is_api_author }),
-            byMedia: !!value.is_media_note,
-            byUrl: !!value.is_url_note,
-            createdAt: new Date(value.created_at).toISOString(),
-            hasTrustworthySources: !!value.data_v1.trustworthy_sources,
-            lang: value.language || 'en',
-            mediaMatchesCount: value.media_note_matches_v2?.match_count || Number(value.media_note_matches || 0),
-            status: match(value.rating_status, [
-                ['CurrentlyRatedHelpful', BirdwatchNoteStatus.RatedHelpful],
-                ['CurrentlyRatedNotHelpful', BirdwatchNoteStatus.RatedUnhelpful]
-            ], BirdwatchNoteStatus.Unrated),
-            tags: {
-                ...(value.classification !== 'NotMisleading' ? {
-                    __typename: 'MisleadingTweet',
-                    tweetMisleadingTags: value.data_v1.misleading_tags || []
-                } : {
-                    __typename: 'NoNoteNeeded',
-                    tweetNotMisleadingTags: value.data_v1.not_misleading_tags || []
-                }),
-                noteHelpfulTags: value.helpful_tags || [],
-                noteUnhelpfulTags: value.not_helpful_tags || []
-            },
-            text: value.data_v1.summary?.text || '',
-            tweetId: value.tweet_results.result.rest_id
-        };
-    }
-};
 
 /**
  * All notes on a tweet, both ones in support of showing under the tweet, and ones arguing that a note isn't needed
  */
-export interface TweetBirdwatchNotes extends Type<'TweetBirdwatchNotes'> {
+export interface TweetBirdwatchNotes {
     /** `true` if you can write a note on this tweet */
     canWriteNote: boolean,
     /** Proposed Birdwatch notes */
@@ -81,29 +41,14 @@ export interface TweetBirdwatchNotes extends Type<'TweetBirdwatchNotes'> {
     /** "No note needed" notes */
     notNeededNotes: BirdwatchNote[]
 }
-export const TweetBirdwatchNotes: Model<TweetBirdwatchNotes> & Default<TweetBirdwatchNotes> = {
-    async new(fmt, value) {
-        return {
-            __typename: 'TweetBirdwatchNotes',
-            canWriteNote: !!value.can_user_write_notes_on_post_author,
-            pendingNotes: await Promise.all((value.misleading_birdwatch_notes?.notes as any[] || []).map(note => fmt.next(BirdwatchNote, note))),
-            notNeededNotes: await Promise.all((value.not_misleading_birdwatch_notes?.notes as any[] || []).map(note => fmt.next(BirdwatchNote, note)))
-        };
-    },
-    default() {
-        return {
-            __typename: 'TweetBirdwatchNotes',
-            canWriteNote: false,
-            pendingNotes: [],
-            notNeededNotes: []
-        };
-    }
-};
 
-
+export interface BirdwatchNoteHelpfulnessCount {
+    helpfulCount: number,
+    unhelpfulCount: number
+}
 
 /**
- * A single Birdwatch contributor
+ * A Birdwatch contributor
  */
 export interface BirdwatchUser extends Type<'BirdwatchUser'> {
     alias: string,
@@ -112,80 +57,33 @@ export interface BirdwatchUser extends Type<'BirdwatchUser'> {
     /** Note ratings submitted by this user */
     ratings: {
         /** Amount of rated notes that helped the note reach a non-pending status */
-        successful: HelpfulnessCount,
+        successful: BirdwatchNoteHelpfulnessCount,
         /** Amount of rated notes that went against the final reached status */
-        unsuccessful: HelpfulnessCount,
+        unsuccessful: BirdwatchNoteHelpfulnessCount,
         /** Amount of rated notes that are awaiting more ratings */
         pendingCount: number,
         updatedAt: string
     },
     /** Notes submitted by this user */
-    notes: HelpfulnessCount & {
+    notes: BirdwatchNoteHelpfulnessCount & {
         /** Amount of notes that are awaiting more ratings */
         pendingCount: number,
         updatedAt: string
     }
 }
-export const BirdwatchUser: Model<BirdwatchUser, null, { isAi?: boolean }> = {
-    async new(_, value, opts) {
-        return {
-            __typename: 'BirdwatchUser',
-            alias: value.alias,
-            isAi: !!value.is_api_contributor || !!opts.isAi,
-            ratings: {
-                successful: {
-                    helpfulCount: value.ratings_count?.successful?.helpful_count || 0,
-                    unhelpfulCount: value.ratings_count?.successful?.not_helpful_count || 0
-                },
-                unsuccessful: {
-                    helpfulCount: value.ratings_count?.unsuccessful?.helpful_count || 0,
-                    unhelpfulCount: value.ratings_count?.unsuccessful?.not_helpful_count || 0
-                },
-                pendingCount: value.ratings_count?.awaiting_more_ratings || 0,
-                updatedAt: new Date(value.ratings_count?.last_updated_at).toISOString()
-            },
-            notes: {
-                helpfulCount: value.notes_count?.currently_rated_helpful || 0,
-                unhelpfulCount: value.notes_count?.currently_rated_not_helpful || 0,
-                pendingCount: value.notes_count?.awaiting_more_ratings || 0,
-                updatedAt: new Date(value.notes_count?.last_updated_at).toISOString()
-            }
-        };
-    }
-};
 
-interface HelpfulnessCount {
-    helpfulCount: number,
-    unhelpfulCount: number
-}
-
-
-
-export interface BirdwatchBatSignal extends Type<'BirdwatchBatSignal'> {
+export interface BirdwatchBatSignal {
     createdAt?: string,
     hasLiveNote: boolean,
     sourceLink?: string
 }
-export const BirdwatchBatSignal: Model<BirdwatchBatSignal> = {
-    async new(_, value) {
-        return {
-            __typename: 'BirdwatchBatSignal',
-            createdAt: 'created_at' in value ? new Date(value.created_at).toISOString() : undefined,
-            hasLiveNote: !!value.has_live_note,
-            sourceLink: value.source_link
-        };
-    }
-};
 
 
 
-/**
- * Status of a Birdwatch note
- */
 export enum BirdwatchNoteStatus {
-    /** Note is rated helpful, and is currently shown on at least one tweet */
+    /** Note is rated helpful, and is currently being shown */
     RatedHelpful = 'RatedHelpful',
-    /** Note is rated unhelpful */
+    /** Note is rated unhelpful and is hidden */
     RatedUnhelpful = 'RatedUnhelpful',
     /** Note hasn't received enough, or has received conflicting user ratings to definitively say if it's helpful or not */
     Unrated = 'Unrated'

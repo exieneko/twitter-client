@@ -1,4 +1,4 @@
-import type { Range, Endpoint, EndpointParams, RequiredBy, RangeLike } from '../types/internal/index.js';
+import type { Endpoint, EndpointParams, RequiredBy, RangeLike } from '../types/utils.js';
 import type { Logger } from '../utils/log.js';
 
 export interface TwitterErrorOptions extends ErrorOptions {

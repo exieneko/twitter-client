@@ -1,4 +1,4 @@
-import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, ReplyPermission, Tweet } from './index.js';
+import type { BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, TweetReplyPermission, Tweet } from './index.js';
 
 export interface CursorOnly {
     /** Cursor determining where the timeline should continue from */
@@ -231,7 +231,7 @@ export interface TweetCreateArgs {
     /** Mark this tweet as sensitive? */
     sensitive?: boolean,
     /** Control who can reply to this tweet */
-    replyPermission?: ReplyPermission
+    replyPermission?: TweetReplyPermission
 }
 
 /**

@@ -1,5 +1,5 @@
-import { ValidationError } from '../types/index.js';
-import type { Type } from '../types/internal/index.js';
+import { ValidationError } from '../fmt/errors.js';
+import type { Type } from '../types/utils.js';
 
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][]): V | undefined;
 export function match<K, V>(key: K, cases: [K | K[], V | (() => V), (boolean | (() => boolean))?][], or: V | (() => V)): V;

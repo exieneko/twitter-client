@@ -1,6 +1,6 @@
 import { slice, TwitterClient } from './client.js';
 import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TweetGetArgs, UserTweetsGetArgs, TwitterResponse, TwitterOptions, SearchTweetArgs } from './types/index.js';
-import type { Account } from './types/internal/index.js';
+import type { Account } from './types/utils.js';
 import { Query } from './utils/query.js';
 import { QueryBuilder } from './utils/querybuilder.js';
 

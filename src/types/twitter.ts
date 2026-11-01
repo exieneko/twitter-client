@@ -7,17 +7,11 @@ import type { Flags } from '../flags.js';
  */
 export interface TwitterResponse<T extends object> {
     data?: T,
-    /**
-     * Errors returned by Twitter and thrown during parsing
-     */
+    /** Errors returned by Twitter and thrown during parsing */
     errors: TwitterError[],
-    /**
-     * Http response received by the server. Always `undefined` unless the `includeResponse` is set to true
-     */
+    /** Http response received by the server. Always `undefined` unless the `includeResponse` option is enabled */
     response?: Response
 }
-
-
 
 /**
  * Additional options for `TwitterClient`
@@ -109,11 +103,11 @@ export interface TwitterOptions {
  */
 export enum LongTweetBehavior {
     /** Send the request anyway */
-    Force,
+    Force = 'Force',
     /** Return an error without sending the request */
-    Fail,
+    Fail = 'Fail',
     /** Send the tweet as a note tweet. This requires a verified account. If `TwitterClient.self` is undefined, it will be set before checking for verification */
-    NoteTweet,
+    NoteTweet = 'NoteTweet',
     /** Send the tweet as a note tweet, without checking if your account is verified */
-    NoteTweetUnchecked
+    NoteTweetUnchecked = 'NoteTweetUnchecked'
 }

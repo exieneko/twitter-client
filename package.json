@@ -27,9 +27,9 @@
       "import": "./dist/types/index.js",
       "types": "./dist/types/index.d.ts"
     },
-    "./types/internal": {
-      "import": "./dist/types/internal/index.js",
-      "types": "./dist/types/internal/index.d.ts"
+    "./types/utils": {
+      "import": "./dist/types/utils.js",
+      "types": "./dist/types/utils.d.ts"
     }
   },
   "scripts": {
