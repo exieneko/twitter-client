@@ -33,7 +33,7 @@ export class TwitterPool {
         return (await Promise.all(
             tokens.map(async (tokens, index) => ({
                 id: index,
-                client: await TwitterClient.new(tokens, { ...options, includeResponse: true }) as TwitterClient,
+                client: await TwitterClient.new(tokens, options) as TwitterClient,
                 rateLimitMax: this.INITIAL_RATE_LIMIT,
                 rateLimitRemaining: this.INITIAL_RATE_LIMIT,
                 rateLimitResetAt: new Date()
