@@ -75,6 +75,10 @@ export class TwitterClient {
     /**
      * Async constructor for `TwitterClient`
      * 
+     * Tokens expects `auth_token` and `ct0`, everything else is optional
+     * 
+     * To make initialization easier, consider setting the `files.cookies` option to create a JSON dump of your cookies. You can use `TwitterClient.fromCookiesFile` to create a `TwitterClient` instance from that files
+     * 
      * @constructor
      * @param tokens Object containing any cookies you wish to use
      * @param [options] Additional options

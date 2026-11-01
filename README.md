@@ -9,13 +9,11 @@ A Twitter API client for account automation via the web API. Includes custom typ
 
 ## How to use
 
-### With one account
-
 1. Install the package with `pnpm add @exieneko/twitter-client`
 2. Get your `auth_token` and `ct0` cookies from Twitter
-3. Call `TwitterClient.new()`with your account tokens
+3. Call `TwitterClient.new()` with your account tokens
 
-Alternatively, use `TwitterPool` to evenly spread the requests between any number of accounts. Endpoints with get or modify user data will be unavailable
+Alternatively, use `TwitterPool` to evenly spread the requests between any number of accounts
 
 ```ts
 import { TwitterClient } from '@exieneko/twitter-client';
@@ -23,11 +21,17 @@ import { TwitterClient } from '@exieneko/twitter-client';
 const twitter = await TwitterClient.new({
     // cookies
     auth_token: '...',
-    ct0: '...',
+    ct0: '...'
 }, {
     // options
     proxyUrl: 'http://127.0.0.1:8888'
 });
+```
+
+The `files.cookies` option will write your cookies to a JSON file after every request, making initialization easier:
+
+```ts
+const twitter = await TwitterClient.fromCookiesFile('cookies.json');
 ```
 
 ## Examples
@@ -35,7 +39,7 @@ const twitter = await TwitterClient.new({
 ### Fetching data
 
 ```ts
-const twitter = await TwitterClient.newUnchecked({ ... });
+const twitter = await TwitterClient.new({ ... });
 
 const { errors, data: user } = await twitter.getUser('jack', { byUsername: true });
 
@@ -51,7 +55,7 @@ When the timeline reaches the end, the returned value will be a slice with an em
 ```ts
 import { TwitterClient } from '@exieneko/twitter-client';
 
-const twitter = await TwitterClient.newUnchecked({ ... });
+const twitter = await TwitterClient.new({ ... });
 
 const timeline = twitter.getTimeline();
 const { done, value: { errors, data: slice } } = await timeline.next();
@@ -64,7 +68,7 @@ Or use the `slice` function to get the first slice of the generator and then dis
 ```ts
 import { slice, TwitterClient } from '@exieneko/twitter-client';
 
-const twitter = await TwitterClient.newUnchecked({ ... });
+const twitter = await TwitterClient.new({ ... });
 
 const { errors, data: slice } = await slice(twitter.getTimeline());
 
