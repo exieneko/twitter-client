@@ -183,8 +183,9 @@ export class TwitterClient {
 
     private async generateTransactionId(endpoint: Endpoint<any>) {
         try {
-            const path = endpoint.url.replace(/.*twitter\.com\//, '/');
+            const path = endpoint.url.replace(/^.*(twitter|x)\.com\//, '/');
             const transactionId = await this.#transaction.generateTransactionId(endpoint.method, path);
+            this.log?.debug(`Generated transation id for ${endpoint.method} ${path}: ${transactionId}`);
 
             return transactionId;
         } catch (error) {
