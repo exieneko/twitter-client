@@ -167,14 +167,14 @@ importers:
   .:
     dependencies:
       linkedom:
-        specifier: ^0.18.14
-        version: 0.18.14
+        specifier: ^0.18.15
+        version: 0.18.15
       undici:
         specifier: ^8.12.3
         version: 8.12.3
       x-client-transaction-id:
-        specifier: ^0.3.2
-        version: 0.3.2
+        specifier: ^0.3.3
+        version: 0.3.3
     devDependencies:
       '@types/node':
         specifier: ^26.6.6
@@ -184,9 +184,6 @@ importers:
         version: 7.0.2
 
 packages:
-
-  '@acemir/cssom@0.9.32':
-    resolution: {integrity: sha512-OijrAUu7rrJhSIoHNg6LMPS5e344nwUHA+1EFYYjrh64D+GmytUsfBQjci45TjT+rd5Spsp8B5xsZDT+TgyXXQ==}
 
   '@types/node@26.6.6':
     resolution: {integrity: sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog==}
@@ -323,6 +320,10 @@ packages:
     resolution: {integrity: sha512-DH0Bqq3DNp5tdOReuNyAA+Ev4Y2GS5FMbZpeTLP6C4CDi0h5nL0BmUPChXw3o/qbHLDWHl49sbNqQVY7bMSDdw==}
     engines: {node: '>=20.19.0'}
 
+  cssomnom@0.1.11:
+    resolution: {integrity: sha512-P4RkO1Sq2Ual77xypEmAc4MkM5k2Ha4UwtBPCOpJmXculGCYPgzsU/xnOCy084esZaPePgGkkJg4Il/HE7GS5A==}
+    engines: {node: '>=20.0.0'}
+
   dom-serializer@2.0.0:
     resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
 
@@ -370,8 +371,8 @@ packages:
   htmlparser2@10.1.0:
     resolution: {integrity: sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ==}
 
-  linkedom@0.18.14:
-    resolution: {integrity: sha512-BRUnkOm4YR5vo+qI3j0EbungB0vZPSCue5AdnTQRaxAGSbsOZiBFRO0rh4zlo8qXUhli8pxvnpEXDklMnlq2Rg==}
+  linkedom@0.18.15:
+    resolution: {integrity: sha512-o0w7eD/SvoCao+pUi6dzocCLuMR11g4Tv/et0W2OUzwWmUcewntSzyl+Ua/K+0yKym0Y/Mav3nFAaI5Av5jvZg==}
     engines: {node: '>=16'}
     peerDependencies:
       canvas: '>= 2'
@@ -398,12 +399,10 @@ packages:
     resolution: {integrity: sha512-+fdndUTwBP86cVjihTp21hZHo7d6oj1c/47XPA3lL8mM0XHs+C4EkcjmgRsFnFk2f/UONGDy9ItBItmXsLOQHw==}
     engines: {node: '>=22.19.0'}
 
-  x-client-transaction-id@0.3.2:
-    resolution: {integrity: sha512-DpX8C4wF8S54cSE9X1MJkJbNElhSg5337iW0UMFDJVAVCj+cHePCvS6tj2EQw85UGVf1ywBSTGVckncBONUdDg==}
+  x-client-transaction-id@0.3.3:
+    resolution: {integrity: sha512-Hp7VWtp/23yDOPFl9uCNW7O0QacS3UkUoCDohcwv38rfwTUKgrpbDnl1vlD+Lp6PiaI6unUZRTLunSXAYYHxJg==}
 
 snapshots:
-
-  '@acemir/cssom@0.9.32': {}
 
   '@types/node@26.6.6':
     dependencies:
@@ -481,6 +480,8 @@ snapshots:
 
   css-what@8.0.0: {}
 
+  cssomnom@0.1.11: {}
+
   dom-serializer@2.0.0:
     dependencies:
       domelementtype: 2.3.0
@@ -532,10 +533,10 @@ snapshots:
       domutils: 3.2.2
       entities: 7.0.1
 
-  linkedom@0.18.14:
+  linkedom@0.18.15:
     dependencies:
-      '@acemir/cssom': 0.9.32
       css-select: 7.0.0
+      cssomnom: 0.1.11
       html-escaper: 3.0.3
       htmlparser2: 10.1.0
       uhyphen: 0.2.0
@@ -573,8 +574,8 @@ snapshots:
 
   undici@8.12.3: {}
 
-  x-client-transaction-id@0.3.2:
+  x-client-transaction-id@0.3.3:
     dependencies:
-      linkedom: 0.18.14
+      linkedom: 0.18.15
     transitivePeerDependencies:
       - canvas
