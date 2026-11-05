@@ -70,14 +70,14 @@ export class Endpoint<T = any, P extends object = {}> implements EndpointOptions
 
     post(body?: any): string | undefined {
         if (this.method === 'POST' && body) {
-            if (this.kind() === EndpointType.GraphQL) {
+            if (this.getType() === EndpointType.GraphQL) {
                 return JSON.stringify(body);
             }
             return String(body);
         }
     }
 
-    kind(): EndpointType {
+    getType(): EndpointType {
         if (this.url.includes('upload.twitter.com')) {
             return EndpointType.Media;
         } else if (this.url.includes('/i/api/graphql')) {

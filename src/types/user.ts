@@ -33,8 +33,14 @@ export interface User extends Type<'User'> {
         /** Destination language */
         language: string
     },
+    /**
+     * Fan account status of the user
+     * 
+     * @deprecated use `fanAccountType`
+     */
+    fanAccountKind?: FanAccountType,
     /** Fan account status of the user */
-    fanAccountKind?: FanAccountKind,
+    fanAccountType?: FanAccountType,
     /** Amount of followers the user has */
     followersCount: number,
     /** Amount of users the user is following */
@@ -74,8 +80,14 @@ export interface User extends Type<'User'> {
     /** The full url on the user's profile, `undefined` if empty */
     url?: string,
     verification: {
-        /** Shows the kind of verification the user has */
-        kind: VerificationType,
+        /**
+         * Shows the type of verification the user has
+         * 
+         * @deprecated use `verification.type`
+         * */
+        kind?: VerificationType,
+        /** Shows the type of verification the user has */
+        type: VerificationType,
         /** Whether the user has a verification chechmark */
         isVerified: boolean,
         /** When the user was initially verified */
@@ -98,7 +110,7 @@ export type UserResult = User | UnavailableUser;
 /**
  * Fan account status
  */
-export enum FanAccountKind {
+export enum FanAccountType {
     Fan = 'Fan',
     Parody = 'Parody',
     Commentary = 'Commentary'
@@ -107,7 +119,7 @@ export enum FanAccountKind {
 /**
  * Verification status of a user
  * 
- * @default VerificationKind.Unverified
+ * @default VerificationType.Unverified
  */
 export enum VerificationType {
     /** No verification */

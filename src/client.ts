@@ -1166,7 +1166,7 @@ export class TwitterClient {
 
         let cardUri: string | undefined = undefined;
 
-        if (args.card?.kind === 'Poll') {
+        if (args.card?.type === 'Poll') {
             if (!TWEET_POLL_RANGE.includes(args.card.choices.length)) {
                 return {
                     errors: [new ValidationError(args.card.choices.length < TWEET_POLL_RANGE.start ? 'Too few poll choices' : 'Too many poll choices', {

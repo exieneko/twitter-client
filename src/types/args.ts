@@ -212,7 +212,7 @@ export interface TweetCreateArgs {
     text?: string,
     /** Card content of the tweet */
     card?: {
-        kind: 'Poll',
+        type: 'Poll',
         duration: number,
         choices: {
             text: string,

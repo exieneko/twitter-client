@@ -29,7 +29,7 @@ export async function request<E extends Endpoint, T = never>(opts: {
 }): Promise<[T, Response]> {
     const { endpoint, params, cookies, mediaFormData, options, proxyAgent, transactionId, log } = opts;
 
-    if (endpoint.kind() !== EndpointType.GraphQL) {
+    if (endpoint.getType() !== EndpointType.GraphQL) {
         for (const key in params) {
             // @ts-ignore
             if (typeof params[key] === 'undefined') {
@@ -57,9 +57,9 @@ export async function request<E extends Endpoint, T = never>(opts: {
         headers['x-client-transaction-id'] = transactionId;
     }
     
-    if (endpoint.kind() === EndpointType.GraphQL || endpoint.kind() === EndpointType.v2Alt) {
+    if (endpoint.getType() === EndpointType.GraphQL || endpoint.getType() === EndpointType.v2Alt) {
         headers['content-type'] = 'application/json; charset=utf-8';
-    } else if (endpoint.kind() !== EndpointType.Media && !(endpoint.kind() === EndpointType.v11 && endpoint.method === 'GET' && !endpoint.features)) {
+    } else if (endpoint.getType() !== EndpointType.Media && !(endpoint.getType() === EndpointType.v11 && endpoint.method === 'GET' && !endpoint.features)) {
         headers['content-type'] = 'application/x-www-form-urlencoded; charset=utf-8';
     }
 
@@ -82,7 +82,7 @@ export async function request<E extends Endpoint, T = never>(opts: {
 
     let features = endpoint.features;
 
-    if (endpoint.kind() === EndpointType.GraphQL && features && options.overrides.flags) {
+    if (endpoint.getType() === EndpointType.GraphQL && features && options.overrides.flags) {
         for (const k in options.overrides.flags) {
             const key = k as keyof Flags;
             const value = options.overrides.flags[key];
@@ -105,9 +105,9 @@ export async function request<E extends Endpoint, T = never>(opts: {
         let body: BodyInit | undefined = undefined;
         if (mediaFormData) {
             body = mediaFormData;
-        } else if (endpoint.method === 'POST' && endpoint.kind() === EndpointType.GraphQL) {
+        } else if (endpoint.method === 'POST' && endpoint.getType() === EndpointType.GraphQL) {
             body = endpoint.post({ variables, features, queryId: endpoint.url.split('/', 1)[0] });
-        } else if (endpoint.method === 'POST' && endpoint.kind() === EndpointType.v2Alt) {
+        } else if (endpoint.method === 'POST' && endpoint.getType() === EndpointType.v2Alt) {
             body = endpoint.post(variables);
         } else if (endpoint.method === 'POST') {
             body = endpoint.post(v11Body);

@@ -1192,7 +1192,7 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
             highlightedTweetsCount: 0,
             username: value.screen_name,
             verification: {
-                kind: !!value.ext_is_blue_verified ? T.VerificationType.Blue : T.VerificationType.Unverified,
+                type: !!value.ext_is_blue_verified ? T.VerificationType.Blue : T.VerificationType.Unverified,
                 isVerified: !!value.ext_is_blue_verified,
                 verifiedWithId: false
             },
@@ -1211,7 +1211,7 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
     const verified = !!value.verification?.verified || !!value.is_blue_verified;
     const verifiedType = value.verification?.verified_type;
 
-    const verificationKind: T.VerificationType = match(value.verification?.verified_type, [
+    const verificationType: T.VerificationType = match(value.verification?.verified_type, [
         ['Government', T.VerificationType.Government],
         ['Business', T.VerificationType.Business],
         [[], T.VerificationType.BlueAffiliate, !verifiedType && !verified && !!affiliateLabel?.owner && new RegExp(`\\/${affiliateLabel.owner}$`, 'i').test(value.verification_info.reason?.description?.entities?.at(0)?.ref.url)],
@@ -1243,9 +1243,9 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
             text: value.grok_translated_bio_with_availability.data.translation,
             language: value.grok_translated_bio_with_availability.data.destination_language || 'zxx'
         } : undefined,
-        fanAccountKind: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None'
+        fanAccountType: !value.parody_commentary_fan_label || value.parody_commentary_fan_label === 'None'
             ? undefined
-            : value.parody_commentary_fan_label as T.FanAccountKind,
+            : value.parody_commentary_fan_label as T.FanAccountType,
         followersCount: value.relationship_counts?.followers || value.legacy?.followers_count,
         followingCount: value.relationship_counts?.following || value.legacy?.friends_count,
         isAutomated,
@@ -1274,7 +1274,7 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
         username: value.core.screen_name,
         url: (value.profile_bio.entities ?? value.legacy?.entities)?.url?.urls?.[0].expanded_url.replace(/^http:\/\//, 'https://').replace(/\/$/, ''),
         verification: {
-            kind: verificationKind,
+            type: verificationType,
             isVerified: verified,
             verifiedSince: verified
                 ? new Date(Number(value.verification_info?.reason?.verified_since_msec || 0)).toISOString()
@@ -1313,7 +1313,7 @@ export const aboutUser: AsyncConstructor<T.AboutUser> = async (fmt, value) => {
         name: value.core.name,
         protected: !!value.privacy?.protected,
         verification: {
-            kind: !!value.is_blue_verified ? T.VerificationType.Blue : T.VerificationType.Unverified,
+            type: !!value.is_blue_verified ? T.VerificationType.Blue : T.VerificationType.Unverified,
             isVerified: !!value.is_blue_verified,
             verifiedSince: !!value.verification_info?.reason?.verified_since_msec
                 ? new Date(Number(value.verification_info.reason.verified_since_msec)).toISOString()
