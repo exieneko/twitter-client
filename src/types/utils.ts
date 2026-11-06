@@ -290,3 +290,5 @@ export class Range {
  */
 export type RangeString = `${number | ''}..${number | ''}` | `${number | ''}..=${number}`;
 export type RangeLike = Range | RangeString;
+
+export { type Flags };
