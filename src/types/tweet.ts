@@ -63,7 +63,11 @@ export interface Tweet extends Type<'Tweet'> {
     isLiked: boolean,
     likesCount: number,
     media: TweetMedia[],
-    /** The platform the tweet has posted from */
+    /**
+     * The platform the tweet has posted from
+     * 
+     * @deprecated the Twitter API no longer reports tweet sources. This property will be removed in the future, but it defaults to "Twitter Web App" for now
+     */
     source: string,
     /** Amount of users that are quote tweeting the tweet */
     quoteTweetsCount: number,
