@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import * as f from './fmt/index.js';
-import type { AboutUser, AccountSettings, BirdwatchBatSignal, BirdwatchHelpfulTag, BirdwatchUnhelpfulTag, BirdwatchUser, CommunityResult, DataSaverSettings, DraftTweet, ListResult, TweetMediaData, _MediaUploadInit, Notification, ScheduledTweet, Slice, Trend, Tweet, TweetBirdwatchNotes, TweetResult, TwitterResponse, Typeahead, UnreadCount, User, UserResult, TweetTombstone } from './types/index.js';
+import { type AboutUser, type AccountSettings, type BirdwatchBatSignal, type BirdwatchHelpfulTag, type BirdwatchUnhelpfulTag, type BirdwatchUser, type CommunityResult, type DataSaverSettings, type DraftTweet, type ListResult, type TweetMediaData, type _MediaUploadInit, type Notification, type ScheduledTweet, type Slice, type Trend, type Tweet, type TweetBirdwatchNotes, type TweetResult, type TwitterResponse, type Typeahead, type UnreadCount, type User, type UserResult, type TweetTombstone, LongTweetBehavior, type TwitterOptions } from './types/index.js';
 import { Endpoint, Range, type EndpointGroup } from './types/utils.js';
 import { gql, v11 } from './utils/index.js';
 
@@ -22,6 +22,15 @@ export const EMPTY_SLICE: TwitterResponse<Slice<any>> = {
         entries: [],
         cursors: {}
     }
+};
+
+export const TWITTER_DEFAULT_OPTIONS: TwitterOptions = {
+    debug: 3,
+    domain: 'twitter.com',
+    files: {},
+    language: 'en',
+    longTweetBehavior: LongTweetBehavior.Force,
+    overrides: {}
 };
 
 export const GLOBAL_HEADERS = {

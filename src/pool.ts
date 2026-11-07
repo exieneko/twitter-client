@@ -1,7 +1,13 @@
+import { ProxyAgent } from 'undici';
 import { slice, TwitterClient } from './client.js';
 import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TweetGetArgs, UserTweetsGetArgs, TwitterResponse, TwitterOptions, SearchTweetArgs } from './types/index.js';
 import type { Account } from './types/utils.js';
 import { Query } from './utils/query.js';
+import { Logger } from './utils/log.js';
+import { TWITTER_DEFAULT_OPTIONS } from './consts.js';
+import { ClientError, ValidationError } from './fmt/errors.js';
+import { fetchXDocument } from './utils/request.js';
+import ClientTransaction from 'x-client-transaction-id';
 
 /**
  * Asyncronous client utilizing `TwitterClient` instances to make requests to the Twitter browser API using several users
@@ -13,9 +19,11 @@ export class TwitterPool {
     private static INITIAL_RATE_LIMIT = 500;
 
     #accounts: Account[] = [];
+    readonly options: Readonly<TwitterOptions>;
 
-    private constructor(accounts: Account[]) {
+    private constructor(accounts: Account[], options: TwitterOptions) {
         this.#accounts = accounts;
+        this.options = structuredClone(options);
     }
 
     /**
@@ -23,22 +31,84 @@ export class TwitterPool {
      * 
      * @param tokens Account tokens
      * @returns Promise resolving to `TwitterPool`
+     * @throws {ClientError} if `ProxyAgent` or `ClientTransaction` can't be created, or if no accounts can be initialized
      */
     static async new(tokens: Record<string, string>[], options?: Partial<TwitterOptions>): Promise<TwitterPool> {
-        const accounts = await this._accounts(tokens, options);
-        return new this(accounts);
-    }
+        const opts: TwitterOptions = {
+            ...TWITTER_DEFAULT_OPTIONS,
+            ...options
+        };
 
-    private static async _accounts(tokens: Record<string, string>[], options?: Partial<TwitterOptions>): Promise<Account[]> {
-        return (await Promise.all(
-            tokens.map(async (tokens, index) => ({
+        const log = opts.debug > 0 ? new Logger(opts.debug) : undefined;
+
+        let proxyAgent: ProxyAgent | undefined = undefined;
+        if (opts.proxyUrl) {
+            try {
+                proxyAgent = new ProxyAgent(opts.proxyUrl);
+                log?.debug(`HTTP proxy ready (${opts.proxyUrl})`)
+            } catch (error) {
+                throw new ClientError(`Failed to initialize ProxyAgent with url "${opts.proxyUrl}"`, { cause: error, log });
+            }
+        }
+
+        let transaction: ClientTransaction;
+        try {
+            const document = await fetchXDocument(opts, proxyAgent);
+            transaction = await ClientTransaction.create(document);
+            log?.debug('ClientTransaction ready')
+        } catch (error) {
+            throw new ClientError('Failed to initialize ClientTransaction', {
+                cause: error instanceof TypeError ? new ClientError('Failed to get Twitter HTML document', { cause: error }) : error,
+                log
+            });
+        }
+
+        let accounts: Account[] = [];
+
+        for (let index = 0; index < tokens.length; index++) {
+            if (!tokens[index] || typeof tokens[index] !== 'object') {
+                new ValidationError<unknown>('Invalid tokens object', {
+                    field: '*',
+                    value: tokens[index],
+                    expected: 'object',
+                    log
+                });
+                continue;
+            } else if (!tokens[index].auth_token || typeof tokens[index].auth_token !== 'string') {
+                new ValidationError<unknown>('auth_token cookie is not a valid string', {
+                    field: 'auth_token',
+                    value: tokens[index].auth_token,
+                    expected: 'string',
+                    log
+                });
+                continue;
+            } else if (!tokens[index].ct0 || typeof tokens[index].ct0 !== 'string') {
+                new ValidationError<unknown>('ct0 cookie is not a valid string', {
+                    field: 'ct0',
+                    value: tokens[index].auth_token,
+                    expected: 'string',
+                    log
+                });
+                continue;
+            }
+
+            accounts.push({
                 id: index,
-                client: await TwitterClient.new(tokens, options) as TwitterClient,
+                client: new TwitterClient(tokens[index], opts, { proxyAgent, transaction, log }),
                 rateLimitMax: this.INITIAL_RATE_LIMIT,
                 rateLimitRemaining: this.INITIAL_RATE_LIMIT,
                 rateLimitResetAt: new Date()
-            } satisfies Account))
-        )).filter(account => account.client instanceof TwitterClient);
+            });
+        }
+
+        if (accounts.length === 0) {
+            throw new ClientError('No accounts could be initialized', {
+                cause: new RangeError(`accounts.length 0 out of range: 1..`),
+                log
+            });
+        }
+
+        return new this(accounts, opts);
     }
 
 
@@ -102,6 +172,7 @@ export class TwitterPool {
     }
 
 
+
     search(query: string | Query, args?: SearchTweetArgs) {
         return this.client(c => slice(c.search(query, args)));
     }
@@ -131,7 +202,7 @@ export class TwitterPool {
     getHiddenReplies(tweetId: string) {
         return this.client(c => slice(c.getHiddenReplies(tweetId)));
     }
-    
+
     getLikes(tweetId: string) {
         return this.client(c => slice(c.getLikes(tweetId)));
     }
