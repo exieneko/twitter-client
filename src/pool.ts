@@ -1,6 +1,6 @@
 import { ProxyAgent } from 'undici';
 import { slice, TwitterClient } from './client.js';
-import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TweetGetArgs, UserTweetsGetArgs, TwitterResponse, TwitterOptions, SearchTweetArgs } from './types/index.js';
+import type { ByUsername, CommunityTweetsGetArgs, CursorOnly, BySlug, MediaUploadArgs, TweetGetArgs, UserTweetsGetArgs, TwitterResponse, TwitterOptions, SearchTweetArgs, TranslateArgs } from './types/index.js';
 import type { Account } from './types/utils.js';
 import { Query } from './utils/query.js';
 import { Logger } from './utils/log.js';
@@ -195,14 +195,21 @@ export class TwitterPool {
         return this.client(c => c.getTweetResult(id));
     }
 
-    getTweetResults(ids: (string)[]) {
+    getTweetResults(ids: string[]) {
         return this.client(c => c.getTweetResults(ids));
+    }
+
+    translate(id: string, args?: TranslateArgs) {
+        return this.client(c => c.translate(id, args));
     }
 
     getHiddenReplies(tweetId: string) {
         return this.client(c => slice(c.getHiddenReplies(tweetId)));
     }
 
+    /**
+     * @deprecated this will always be empty since you can only see likes on your own tweets
+     */
     getLikes(tweetId: string) {
         return this.client(c => slice(c.getLikes(tweetId)));
     }
@@ -259,14 +266,23 @@ export class TwitterPool {
 
 
 
+    /**
+     * @deprecated
+     */
     upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => void) {
         return this.client(c => c.upload(media, args, callback));
     }
 
+    /**
+     * @deprecated
+     */
     mediaStatus(id: string) {
         return this.client(c => c.mediaStatus(id));
     }
 
+    /**
+     * @deprecated
+     */
     addAltText(id: string, text: string) {
         return this.client(c => c.addAltText(id, text));
     }
