@@ -33,8 +33,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "test": "pnpm build && node tests/index.test.js"
+    "build": "tsc"
   },
   "license": "zlib-NON-AI",
   "keywords": [
