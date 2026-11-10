@@ -51,23 +51,27 @@ export const GLOBAL_HEADERS = {
     'x-twitter-auth-type': 'OAuth2Session'
 } satisfies Record<string, string>;
 
-// all graphql query ids last updated on 2026-01-02
+/**
+ * All Twitter endpoints in use by the client
+ * 
+ * GraphQL endpoints last updated on 2026-11-09
+ */
 export const ENDPOINTS = ({
     // ACCOUNT
     BlockedAccountsAll: new Endpoint<Slice<UserResult>, { cursor?: string }>({
-        url: gql('5oNXfRkE7HVkDX1Fd1gn3g/BlockedAccountsAll'),
+        url: gql('exDAeZuprdrqzXJu4UiNUQ/BlockedAccountsAll'),
         method: 'GET',
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.viewer.timeline.timeline.instructions)),
     BlockedAccountsImported: new Endpoint<Slice<UserResult>, { cursor?: string }>({
-        url: gql('Lq6zJR3fnCVFtph9fsSepQ/BlockedAccountsImported'),
+        url: gql('WEOd2IcmkM7ECwKhoEPZNg/BlockedAccountsImported'),
         method: 'GET',
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.viewer.timeline.timeline.instructions)),
     MutedAccounts: new Endpoint<Slice<UserResult>, { cursor?: string }>({
-        url: gql('dQiMIEnwsQjKtv-7PHMixQ/MutedAccounts'),
+        url: gql('1heSSJ80TWeDGtoR7-X-iA/MutedAccounts'),
         method: 'GET',
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline
@@ -110,12 +114,12 @@ export const ENDPOINTS = ({
 
     // BIRDWATCH
     BirdwatchFetchGlobalTimeline: new Endpoint<Slice<TweetResult>>({
-        url: gql('eK70QHiJGPn-AbBdcEw1UQ/BirdwatchFetchGlobalTimeline'),
+        url: gql('IJbJ4jU4OvOeYZOIC6eG6w/BirdwatchFetchGlobalTimeline'),
         method: 'GET',
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.viewer.birdwatch_home_page, { type: 'Birdwatch', root: value } as const)),
     BirdwatchFetchNotes: new Endpoint<TweetBirdwatchNotes, { tweet_id: string }>({
-        url: gql('Vpz0CtCnL50ggSoALU-PoQ/BirdwatchFetchNotes'),
+        url: gql('FXliMyVVZbAxaiRcs9USqA/BirdwatchFetchNotes'),
         method: 'GET',
         features: flags.birdwatch
     }, (fmt, value) => fmt.next(f.tweetBirdwatchNotes, value.data.tweet_result_by_rest_id.result)),
@@ -151,11 +155,12 @@ export const ENDPOINTS = ({
     }, (_, value) => value.data.birdwatchbatsignal_delete === 'Done'),
     BirdwatchFetchBatSignal: new Endpoint<BirdwatchBatSignal, { tweet_id: string }>({
         url: gql('7LFdey6iP2bf5f2_aN80Ng/BirdwatchFetchBatSignal'),
-        method: 'GET'
+        method: 'GET',
+        features: { responsive_web_birdwatch_note_request_sources_enabled: true, responsive_web_birdwatch_live_note_enabled: true }
     }, (fmt, value) => fmt.next(f.birdwatchBatSignal, value.data.birdwatch_bat_signal_by_rest_id)),
     // TODO
     BirdwatchCreateNote: new Endpoint<unknown, {}>({
-        url: gql('odkLI4pLj5oHv34ZYlzDag/BirdwatchCreateNote'),
+        url: gql('dZ5t9-LyPZD4kGNP5PEQMQ/BirdwatchCreateNote'),
         method: 'POST'
     }, (_, value) => value),
     // TODO
@@ -172,13 +177,13 @@ export const ENDPOINTS = ({
 
     // BOOKMARKS
     Bookmarks: new Endpoint<Slice<TweetResult>, { cursor?: string }>({
-        url: gql('aqjes8lRHRFG0HUglVTfNg/Bookmarks'),
+        url: gql('fjf5b5Lu82lYMSBRhppK2g/Bookmarks'),
         method: 'GET',
         variables: {"count":50,"includePromotedContent":false},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.bookmark_timeline_v2.timeline.instructions, { type: 'Default' } as const)),
     BookmarkSearchTimeline: new Endpoint<Slice<TweetResult>, { rawQuery: string, cursor?: string }>({
-        url: gql('dzUkTX927TOSBQ3Jin7QqQ/BookmarkSearchTimeline'),
+        url: gql('vLHjqbDv7TPFMBkIIO1nOA/SearchTimeline'),
         method: 'GET',
         variables: {"count":50},
         features: flags.timeline
@@ -213,18 +218,18 @@ export const ENDPOINTS = ({
 
     // COMMUNITY
     CommunityByRestId: new Endpoint<CommunityResult, { communityId: string }>({
-        url: gql('KW2CcDlT6D26JLajPjL5KA/CommunityByRestId'),
+        url: gql('iMDyRADcGz4r9ZrJMpxz1A/CommunityByRestId'),
         method: 'GET',
         features: flags.short
     }, (fmt, value) => fmt.next(f.communityResult, value.data.communityResults.result)),
     CommunityTweetsTimeline: new Endpoint<Slice<TweetResult>, { communityId: string, rankingMode: 'Relevance' | 'Recency', cursor?: string }>({
-        url: gql('dD1uF9vQx0OX-e1rKA4YLw/CommunityTweetsTimeline'),
+        url: gql('bKYFeT4aNUQDMHx4gyXIoQ/CommunityTweetsTimeline'),
         method: 'GET',
         variables: {"count":20,"displayLocation":"Community","withCommunity":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.communityResults.result.ranked_community_timeline.timeline.instructions, { type: 'Default' } as const)),
     CommunityMediaTimeline: new Endpoint<Slice<TweetResult>, { communityId: string, cursor?: string }>({
-        url: gql('9MUOEALCr46-4atDb2nq1A/CommunityMediaTimeline'),
+        url: gql('m_IF9tFIf_iDPaRbree99g/CommunityMediaTimeline'),
         method: 'GET',
         variables: {"count":20,"displayLocation":"Community","withCommunity":true},
         features: flags.timeline
@@ -236,17 +241,17 @@ export const ENDPOINTS = ({
         }
     } as const)),
     JoinCommunity: new Endpoint<boolean, { communityId: string }>({
-        url: gql('aUN7S2onDMr0Mp19QNT3Sw/JoinCommunity'),
+        url: gql('3jItWhb1PKC9lute3hWWXA/JoinCommunity'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.community_join.id_str),
     RequestToJoinCommunity: new Endpoint<boolean, { communityId: string }>({
-        url: gql('bdUGDQcMiz2p_8j9aEqx6A/RequestToJoinCommunity'),
+        url: gql('3jItWhb1PKC9lute3hWWXA/JoinCommunity'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data),
     LeaveCommunity: new Endpoint<boolean, { communityId: string }>({
-        url: gql('pIi88QWEs6LWhfm0-8pXDw/LeaveCommunity'),
+        url: gql('0qehtlwzUschfhKTAv0lKQ/LeaveCommunity'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.community_leave.id_str),
@@ -255,12 +260,12 @@ export const ENDPOINTS = ({
 
     // DISCOVER
     ExplorePage: new Endpoint<Slice<TweetResult | Trend>, { cursor: string }>({
-        url: 'gjznU4bIOCEjvXD5Un47bw/ExplorePage',
+        url: 'CVExg1KY6Ec9BioRBbI8Jg/ExplorePage',
         method: 'GET',
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.discover, value.data.explore_page.body, { root: value })),
     ExploreSidebar: new Endpoint<Slice<Trend>>({
-        url: '1DxH3fBDDjZas50ilYJg9Q/ExploreSidebar',
+        url: 'cM7LCaFTQnUWRA1jMWH6Pg/ExploreSidebar',
         method: 'GET',
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.trends, value.data.explore_sidebar.timeline.instructions)),
@@ -300,78 +305,78 @@ export const ENDPOINTS = ({
 
     // LIST
     ListByRestId: new Endpoint<ListResult, { listId: string }>({
-        url: gql('niz0TtOxL2zIcbq6_NQiNw/ListByRestId'),
+        url: gql('T-YE5ZY0cd0UVtWu8AP04Q/ListByRestId'),
         method: 'GET',
         features: flags.short
     }, (fmt, value) => fmt.next(f.listResult, value.data.list)),
     ListBySlug: new Endpoint<ListResult, { listId: string }>({
-        url: gql('RqkWNDQpOntlxNtJa4RIoQ/ListBySlug'),
+        url: gql('ZX5ei7t018bDaDcy4VWBeA/ListBySlug'),
         method: 'GET',
         features: flags.short
     }, (fmt, value) => fmt.next(f.listResult, value.data.list)),
     ListLatestTweetsTimeline: new Endpoint<Slice<TweetResult>, { listId: string, cursor?: string }>({
-        url: gql('jW040BLUjh8X6Tw2ODQufA/ListLatestTweetsTimeline'),
+        url: gql('UMc_lPEeKz_WiKSY8ZT7yw/ListLatestTweetsTimeline'),
         method: 'GET',
         variables: {"count":40},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.list.tweets_timeline.timeline.instructions, { type: 'Default' } as const)),
     // TODO
     ListsManagementPageTimeline: new Endpoint<unknown>({
-        url: gql('mjBb_n_f5Ci-eIysajMRWQ/ListsManagementPageTimeline'),
+        url: gql('HeY9oqJxWKHSTCoBXaWnHg/ListsManagementPageTimeline'),
         method: 'GET',
         variables: {"count":100},
         features: flags.timeline
     }, (_, value) => value),
     ListsDiscovery: new Endpoint<Slice<ListResult>>({
-        url: gql('WcZy_1yhZQ5zOabw_WElww/ListsDiscovery'),
+        url: gql('qhh973x9m-R6SVBXpJHxdw/ListsDiscovery'),
         method: 'GET',
         variables: {"count":40},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.lists, value.data.list_discovery_list_mixer_timeline.timeline.instructions, { type: 'Discovery' } as const)),
     ListMemberships: new Endpoint<Slice<ListResult>, { cursor?: string }>({
-        url: gql('GIoikAqTnkapG_dkdJuqtw/ListMemberships'),
+        url: gql('UcQucBOWpQ1_KoYuNyrNMw/ListMemberships'),
         method: 'GET',
         variables: {"count":20},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.lists, value.data.user.result.timeline.instructions, { type: 'Default' } as const)),
     ListOwnerships: new Endpoint<Slice<ListResult>, { userId: string, isListMemberTargetUserId: string, cursor?: string }>({
-        url: gql('wwdxqRc7xa5gDN7F0eXgMQ/ListOwnerships'),
+        url: gql('JyQg9kTLrzFPtt8QydtiNA/ListOwnerships'),
         method: 'GET',
         variables: {"count":20},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.lists, value.data.user.result.timeline.instructions, { type: 'Default' } as const)),
     ListMembers: new Endpoint<Slice<UserResult>, { listId: string, cursor?: string }>({
-        url: gql('wGce-45xnc5bs3HVvevC2w/ListMembers'),
+        url: gql('vgA6FHTOKJQ1rJ7iiHc0xw/ListMembers'),
         method: 'GET',
         variables: {"count":40},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.list.members_timeline.timeline.instructions)),
     ListSubscribers: new Endpoint<Slice<UserResult>, { listId: string, cursor?: string }>({
-        url: gql('D4pxLunZzmExmyOfDK4xaA/ListSubscribers'),
+        url: gql('QSCka9VX6mjOARoPtihe0Q/ListSubscribers'),
         method: 'GET',
         variables: {"count":40},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.list.subscribers_timeline.timeline.instructions)),
     ListCreationRecommendedUsers: new Endpoint<Slice<UserResult>, { listId: string, cursor?: string }>({
-        url: gql('14AS0qjIXFzy6rFtzFFFFw/ListCreationRecommendedUsers'),
+        url: gql('tEkcpXd8f-TzE_-mkuOTLw/ListCreationRecommendedUsers'),
         method: 'GET',
         variables: {"count":20},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.list.recommended_users.timeline.instructions)),
     ListEditRecommendedUsers: new Endpoint<Slice<UserResult>, { listId: string, cursor?: string }>({
-        url: gql('akApnVzGgat6D8xZTZK60g/ListEditRecommendedUsers'),
+        url: gql('NS40Y5Fgobu1XJUmT_DQyw/ListEditRecommendedUsers'),
         method: 'GET',
         variables: {"count":20},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.list.recommended_users.timeline.instructions)),
     CombinedLists: new Endpoint<Slice<ListResult>, { userId: string, cursor?: string }>({
-        url: gql('15lgkbq4YMpgnv3Xf8BlXg/CombinedLists'),
+        url: gql('r4OjZGZWNqdV6smWr30C3w/CombinedLists'),
         method: 'GET',
         variables: {"count":100},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.lists, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     CreateList: new Endpoint<ListResult, { name: string, description: string, isPrivate: boolean }>({
-        url: gql('sTuzqjTr8MNpVBb9YF04Mg/CreateList'),
+        url: gql('zdGzorOEOslDL4XEbe2INw/CreateList'),
         method: 'POST',
         features: flags.short
     }, (fmt, value) => fmt.next(f.listResult, value.list)),
@@ -380,46 +385,46 @@ export const ENDPOINTS = ({
         method: 'POST'
     }, (_, value) => value.list_delete === 'Done'),
     UpdateList: new Endpoint<boolean, { listId: string, name: string, description: string, isPrivate: boolean }>({
-        url: gql('dGqf-DouTmK767LtRJ2qeA/UpdateList'),
+        url: gql('oe5s3-_kb6-t8iFv4hLH3A/UpdateList'),
         method: 'POST'
     }, (_, value) => !!value.data.list.id_str),
     EditListBanner: new Endpoint<boolean, { listId: string, mediaId: string }>({
-        url: gql('E_ugomI2WMK7mJCTjRQjFQ/EditListBanner'),
+        url: gql('PSBi0stSrf3-hDy3G_O_0Q/EditListBanner'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.list.id_str),
     DeleteListBanner: new Endpoint<boolean, { listId: string }>({
-        url: gql('3ZIyjR4JXXJ69HdoxlHcVw/DeleteListBanner'),
+        url: gql('my6Lh9X_pvMtrK_c3VjfNA/DeleteListBanner'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.list.id_str),
     ListAddMember: new Endpoint<boolean, { listId: string, userId: string }>({
-        url: gql('V2yIKI9d6o_9D9rJ9-a-2w/ListAddMember'),
+        url: gql('-Kf1YVC1rNKkPvPFk7YXZw/ListAddMember'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.list.id_str),
     ListRemoveMember: new Endpoint<boolean, { listId: string, userId: string }>({
-        url: gql('NYsw9xBA6rSMA3N5sccSJA/ListRemoveMember'),
+        url: gql('_2o1-wSMWGFSi5HUscn1Hw/ListRemoveMember'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.list.id_str),
     ListSubscribe: new Endpoint<boolean, { listId: string }>({
-        url: gql('mF3eCTQUt_j7L60D-1Iztg/ListSubscribe'),
+        url: gql('k5mwUiaPTQ_Hhr8DNXQ5YA/ListSubscribe'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.list_subscribe_v3.id_str),
     ListUnsubscribe: new Endpoint<boolean, { listId: string }>({
-        url: gql('6pbaFvTw2LhLNMkH1PgFIQ/ListUnsubscribe'),
+        url: gql('HwX1NRCSksXzmpolnY0Xhw/ListUnsubscribe'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.list.id_str),
     PinTimeline: new Endpoint<boolean, { pinnedTimelineItem: { id: string, pinned_timeline_type: 'List' } }>({
-        url: gql('udkubIxf_zj2-pkdNGT4Gg/PinTimeline'),
+        url: gql('qaz5JhPxqI3UqAgkTpsGyQ/PinTimeline'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.pin_timeline.updated_pinned_timeline.list.id_str),
     UnpinTimeline: new Endpoint<boolean, { pinnedTimelineItem: { id: string, pinned_timeline_type: 'List' } }>({
-        url: gql('-HDI6pq6p3rQuubVUO2mJw/UnpinTimeline'),
+        url: gql('u_Nxpj-y-PoTFHEM9saz2Q/UnpinTimeline'),
         method: 'POST',
         features: flags.short
     }, (_, value) => !!value.data.unpin_timeline.updated_pinned_timeline.list.id_str),
@@ -436,7 +441,7 @@ export const ENDPOINTS = ({
 
     // NOTIFICATIONS
     NotificationsTimeline: new Endpoint<Slice<Notification>, { timeline_type: 'All' | 'Verified' | 'Mentions', cursor?: string }>({
-        url: gql('2FvqvnMOYuY5EEh--vxdFQ/NotificationsTimeline'),
+        url: gql('XANkUc-HLIcCl8q85rGC2A/NotificationsTimeline'),
         method: 'GET',
         variables: {"count":40},
         features: flags.timeline
@@ -460,7 +465,7 @@ export const ENDPOINTS = ({
 
     // SEARCH
     SearchTimeline: new Endpoint<Slice<TweetResult | UserResult | ListResult>, { rawQuery: string, querySource: 'typed_query' | 'recent_search_click' | 'tdqt', product: 'Top' | 'Latest' | 'People' | 'Media' | 'Lists', cursor?: string }>({
-        url: gql('BGd0T_j7oVwlW5U79tO_0A/SearchTimeline'),
+        url: gql('vLHjqbDv7TPFMBkIIO1nOA/SearchTimeline'),
         method: 'GET',
         variables: {"count":40},
         features: flags.timeline,
@@ -476,33 +481,33 @@ export const ENDPOINTS = ({
 
     // TIMELINE
     HomeLatestTimeline: new Endpoint<Slice<TweetResult>, { seenTweetIds: string[], requestContext?: 'launch', cursor?: string }>({
-        url: gql('m1G65W9TS1-g-AllrKKYDQ/HomeLatestTimeline'),
+        url: gql('IVA5BUbeYPTrpYekQH7jiA/HomeLatestTimeline'),
         method: 'GET',
         variables: {"count":20,"includePromotedContent":false,"latestControlAvailable":true,"withCommunity":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.home.home_timeline_urt.instructions, { type: 'Default' } as const)),
     HomeTimeline: new Endpoint<Slice<TweetResult>, { seenTweetIds: string[], requestContext?: 'launch', cursor?: string }>({
-        url: gql('3b9_7tltt0hJRef-xm_3sw/HomeTimeline'),
+        url: gql('KmJCeZ__ef1fNos7tKN_fg/HomeTimeline'),
         method: 'GET',
         variables: {"count":20,"includePromotedContent":false,"latestControlAvailable":true,"withCommunity":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.home.home_timeline_urt.instructions, { type: 'Default' } as const)),
     GenericTimelineById: {
         default: new Endpoint<Slice<TweetResult>, { timelineId: string, cursor?: string }>({
-            url: gql('BrGScxnisMdTXyeLScaEhQ/GenericTimelineById'),
+            url: gql('UToImY30uYcerTaw8gu21w/GenericTimelineById'),
             method: 'GET',
             variables: {"count":20,"withQuickPromoteEligibilityTweetFields":true},
             features: flags.timeline
         }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.timeline.timeline.instructions, { type: 'Default' } as const)),
         trends: new Endpoint<Slice<Trend>, { timelineId: string, cursor?: string }>({
-            url: gql('BrGScxnisMdTXyeLScaEhQ/GenericTimelineById'),
+            url: gql('UToImY30uYcerTaw8gu21w/GenericTimelineById'),
             method: 'GET',
             variables: {"count":20,"withQuickPromoteEligibilityTweetFields":true},
             features: flags.timeline
         }, (fmt, value) => fmt.next(f.Entries.trends, value.data.timeline.timeline.instructions)),
     },
     // TODO: whatever this thing is requires a new parser
-    inspiration_remote_urt: new Endpoint<string | undefined, { engagement: 'Likes' | 'Replies' | 'Quotes' | 'Bookmarks' | 'Shares' | 'VideoQualityViews', period: 'Daily' | 'Weekly' | 'Monthly', language: string }>({
+    inspiration_remote_urt: new Endpoint<string | undefined, { engagement: 'fjf5b5Lu82lYMSBRhppK2g/Bookmarks' | 'Shares' | 'VideoQualityViews', period: 'Daily' | 'Weekly' | 'Monthly', language: string }>({
         url: 'https://twitter.com/i/jfapi/creators/inspiration/remote/urt',
         method: 'GET'
     }, (_, value) => value as unknown as string),
@@ -514,7 +519,8 @@ export const ENDPOINTS = ({
         batch_compose?: 'BatchFirst' | 'BatchSubsequent',
         card_uri?: string,
         conversation_control?: {
-            mode: 'Community' | 'Verified' | 'ByInvitation'
+            //     Following     Mutuals
+            mode: 'Community' | 'MyNetwork' | 'Verified' | 'ByInvitation'
         },
         content_disclosure?: {
             advertising_promotion?: {
@@ -536,17 +542,30 @@ export const ENDPOINTS = ({
             in_reply_to_tweet_id: string
         },
         semantic_annotation_ids: string[],
+        semantic_annotation_options: {
+            source: 'Timeline' | 'Profile'
+        },
         tweet_text: string
     }>({
-        url: gql('wUgPBh9hEKhMMGlg8uDuFw/CreateTweet'),
+        url: gql('l4hk8uVGvR-a8kzQ4nOhPA/CreateTweet'),
         method: 'POST',
+        variables: {"disallowed_reply_options":null},
         features: flags.tweet
     }, (fmt, value) => fmt.next(f.tweet, value.data.create_tweet?.tweet_results?.result)),
     CreateNoteTweet: new Endpoint<Tweet, {
         batch_compose?: 'BatchFirst' | 'BatchSubsequent',
         card_uri?: string,
         conversation_control?: {
-            mode: 'Community' | 'Verified' | 'ByInvitation'
+            //     Following     Mutuals
+            mode: 'Community' | 'MyNetwork' | 'Verified' | 'ByInvitation'
+        },
+        content_disclosure?: {
+            advertising_promotion?: {
+                is_paid_promotion: boolean
+            },
+            ai_generated_disclosure?: {
+                has_ai_generated_media: boolean
+            }
         },
         media: {
             media_entities: {
@@ -560,9 +579,12 @@ export const ENDPOINTS = ({
             in_reply_to_tweet_id: string
         },
         semantic_annotation_ids: string[],
+        semantic_annotation_options: {
+            source: 'Timeline' | 'Profile'
+        },
         tweet_text: string
     }>({
-        url: gql('WCcsCWTsiPteFwUxjI6OmA/CreateNoteTweet'),
+        url: gql('seOZkIS8AysCGfPo6yYPVA/CreateNoteTweet'),
         method: 'POST',
         features: flags.tweet
     }, (fmt, value) => fmt.next(f.tweet, value.data.notetweet_create?.tweet_results?.result)),
@@ -643,38 +665,38 @@ export const ENDPOINTS = ({
         url: gql('H2elmT2R9DLhWoo0DZFNkA/FetchScheduledTweets'),
         method: 'GET'
     }, (fmt, value) => Promise.all((value.viewer.scheduled_tweet_list as any[] || []).map(tweet => fmt.next(f.scheduledTweet, tweet)))),
-    TweetDetail: new Endpoint<Slice<TweetResult>, { focalTweetId: string, rankingMode: 'Relevance' | 'Recency' | 'Likes', cursor?: string }>({
-        url: gql('559hs_YZNV4IgA3Z6zIIuw/TweetDetail'),
+    TweetDetail: new Endpoint<Slice<TweetResult>, { focalTweetId: string, rankingMode: 'ZjyvI1V9gajq5eclHCObzA/Likes', cursor?: string }>({
+        url: gql('dQDdKtt882nl-Km98FJGSQ/TweetDetail'),
         method: 'GET',
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.threaded_conversation_with_injections_v2.instructions, { type: 'Default' } as const)),
     TweetResultByRestId: new Endpoint<Tweet | TweetTombstone, { tweetId: string }>({
-        url: gql('LkId5Akr61BS6BmOIcffRg/TweetResultByRestId'),
+        url: gql('U8lc5aomF5krJzZ9vJ9wxg/TweetResultByRestId'),
         method: 'GET',
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.tweetOrTombstone, value.data.tweetResult.result)),
     TweetResultsByRestIds: new Endpoint<(Tweet | TweetTombstone)[], { tweetIds: string[] }>({
-        url: gql('Tbh_EBpWw_VUFu5tMYAuNQ/TweetResultsByRestIds'),
+        url: gql('yW_CmYWEKwaOpAEHpNSReg/TweetResultsByRestIds'),
         method: 'GET',
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
         features: flags.timeline
     }, (fmt, value) => Promise.all((value.data.tweetResult as any[] || []).map(tweet => fmt.next(f.tweetOrTombstone, tweet?.result)))),
     ModeratedTimeline: new Endpoint<Slice<TweetResult>, { rootTweetId: string, cursor?: string }>({
-        url: gql('8HiRtnLJ_HTdv_hvztYLIg/ModeratedTimeline'),
+        url: gql('PFe_4rTGtvczfkQ1_rvjNA/ModeratedTimeline'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":false},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.tweet.result.timeline_response.timeline.instructions, { type: 'Default' } as const)),
     Favoriters: new Endpoint<Slice<UserResult>, { tweetId: string, cursor?: string }>({
-        url: gql('JpUz3qfNTiMbhqmJOvVJSw/Favoriters'),
+        url: gql('JGLhZd8aiYqBdjBBcRTwNg/Favoriters'),
         method: 'GET',
         variables: {"count":40,"enableRanking":false,"includePromotedContent":false},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.favoriters_timeline.timeline.instructions)),
     Retweeters: new Endpoint<Slice<UserResult>, { tweetId: string, cursor?: string }>({
-        url: gql('_wJOTLm5HMqNdcr1nGWlyA/Retweeters'),
+        url: gql('VzgCyBwfqzAvPjK2E4U2vA/Retweeters'),
         method: 'GET',
         variables: {"count":40,"enableRanking":false,"includePromotedContent":false},
         features: flags.timeline
@@ -702,7 +724,7 @@ export const ENDPOINTS = ({
         method: 'POST'
     }, (_, value) => !!value.data),
     UndoDownvoteTweet: new Endpoint<boolean, { tweetId: string }>({
-        url: gql('yqhcbdyy59k-FCwOysvvGQ/UndoDownvoteTweet'),
+        url: gql('Iu4kUV4vd_iHMupiHPPrAQ/DownvoteTweet'),
         method: 'POST'
     }, (_, value) => !!value.data),
     ModerateTweet: new Endpoint<boolean, { tweetId: string }>({
@@ -722,7 +744,7 @@ export const ENDPOINTS = ({
         method: 'POST'
     }, (_, value) => value.data.unpin_tweet?.message?.includes('success')),
     ConversationControlChange: new Endpoint<boolean, { tweet_id: string, mode: 'Community' | 'Verified' | 'ByInvitation' }>({
-        url: gql('57WYJNnWH0vM3Ip_gm8B2g/ConversationControlChange'),
+        url: gql('JWeo7tCAhI_HwcuPcL4JrQ/ConversationControlChange'),
         method: 'POST'
     }, (_, value) => value.data.tweet_conversation_control_put === 'Done'),
     ConversationControlDelete: new Endpoint<boolean, { tweet_id: string }>({
@@ -791,22 +813,22 @@ export const ENDPOINTS = ({
 
     // USER
     UserByScreenName: new Endpoint<UserResult, { screen_name: string }>({
-        url: gql('Gb-d6r0vxPOADdG62OEBpQ/UserByScreenName'),
+        url: gql('AMIBMjtxEEATh4z8V9GtRg/UserByScreenName'),
         method: 'GET',
         features: flags.user
     }, (fmt, value) => fmt.next(f.userResult, value.data.user.result)),
     UsersByScreenNames: new Endpoint<UserResult[], { screen_names: string[] }>({
-        url: gql('BQEP-w59kdVKv7CSLsSSiw/UsersByScreenNames'),
+        url: gql('cACg_kWQkzNQ74lcK5rksQ/UsersByScreenNames'),
         method: 'GET',
         features: flags.user
     }, (fmt, value) => Promise.all((value.data.users as any[] || []).map(user => fmt.next(f.userResult, user?.result)))),
     UserByRestId: new Endpoint<UserResult, { userId: string }>({
-        url: gql('xvmVfRLmnr1alc5f2dib0Q/UserByRestId'),
+        url: gql('mxaYWwt52eAb6OAzYHMVzg/UserByRestId'),
         method: 'GET',
         features: flags.user
     }, (fmt, value) => fmt.next(f.userResult, value.data.user.result)),
     UsersByRestIds: new Endpoint<UserResult[], { userIds: string[] }>({
-        url: gql('RmmhHyIQp01b-lwA_zvAuw/UsersByRestIds'),
+        url: gql('ubfbnAM4qTlMTOYleYhXSg/UsersByRestIds'),
         method: 'GET',
         features: flags.user
     }, (fmt, value) => Promise.all((value.data.users as any[] || []).map(user => fmt.next(f.userResult, user?.result)))),
@@ -819,113 +841,113 @@ export const ENDPOINTS = ({
         method: 'GET'
     }, (fmt, value) => fmt.next(f.aboutUser, value.data.user_result_by_screen_name.result)),
     UserTweets: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('eoJ5zbv51Z_KVl81v9PmLQ/UserTweets'),
+        url: gql('D6z-FJI2pKuwEeYYxVIGbg/UserTweets'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserTweetsAndReplies: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('wc5DRl4VaW5lSqJ8YbftZQ/UserTweetsAndReplies'),
+        url: gql('FmuxExUC21Xn_C2NwtX5sQ/UserTweetsAndReplies'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserMedia: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('2DC9TKrcUzwGC_QskSVl5w/UserMedia'),
+        url: gql('iTSlWbsmD00dAE7Sk9xvIw/UserMedia'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Media' } as const)),
     Likes: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('BEthBswU1Bt209H5xptp4Q/Likes'),
+        url: gql('ZjyvI1V9gajq5eclHCObzA/Likes'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserOriginalsTimeline: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('ltLX7MJIZj6YcM5Y4FFqmg/UserOriginalsTimeline'),
+        url: gql('ZFKu1DFS63hgrkLzR3Hsdw/UserOriginalsTimeline'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserRepliesTimeline: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('dqZjShRwXmIn0CJak6zI1Q/UserRepliesTimeline'),
+        url: gql('fpl-c0_APDI3nZ1CeeBMbg/UserRepliesTimeline'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserRepostsTimeline: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('FOyP7r0CaHmBb-9vc7_sEQ/UserRepostsTimeline'),
+        url: gql('bWzOK-jDN4SYVcF6AQ22Qw/UserRepostsTimeline'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserPhotoTimeline: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('hFoX2urwQ9cVn319GsL2QQ/UserPhotoTimeline'),
+        url: gql('zk9sfrhiW8gNjQUP-hwung/UserPhotoTimeline'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":false,"withClientEventToken":true,"withBirdwatchNotes":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserVideoTimeline: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('V0UHJCuXkqBVjbsvCi6rxQ/UserVideoTimeline'),
+        url: gql('1UmMb8X-BFHS98GG6DyRsQ/UserVideoTimeline'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":false,"withClientEventToken":true,"withBirdwatchNotes":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserHighlightsTweets: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('Ijy4LdX8ZYTy1PzQn8xC4g/UserHighlightsTweets'),
+        url: gql('vukXwNm6argozncYmHqZDQ/UserHighlightsTweets'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     UserSuperFollowTweets: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
-        url: gql('27TwpVb97hixBY_0L6819w/UserSuperFollowTweets'),
+        url: gql('ytLS5NE_Bm3wQBztZWFtAQ/UserSuperFollowTweets'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
     Following: new Endpoint<Slice<UserResult>, { userId: string, cursor?: string }>({
-        url: gql('b8XpwALENnJdFSHchkK6rw/Following'),
+        url: gql('eDqlbOS46zda8jDT8dEQ_Q/Following'),
         method: 'GET',
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
         token: ALT_TOKEN
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.user.result.timeline.timeline.instructions)),
     Followers: new Endpoint<Slice<UserResult>, { userId: string, cursor?: string }>({
-        url: gql('vJijlO_CM7dyGFNjDd7iqQ/Followers'),
+        url: gql('Xe3y9_ndZ9-RtWz8zd_wpg/Followers'),
         method: 'GET',
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
         token: ALT_TOKEN
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.user.result.timeline.timeline.instructions)),
     FollowersYouKnow: new Endpoint<Slice<UserResult>, { userId: string, cursor?: string }>({
-        url: gql('wIEyYIhzwtDEgBvqDRCDVQ/FollowersYouKnow'),
+        url: gql('N-5YQGqcnNO164XwsevHCA/FollowersYouKnow'),
         method: 'GET',
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
         token: ALT_TOKEN
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.user.result.timeline.timeline.instructions)),
     BlueVerifiedFollowers: new Endpoint<Slice<UserResult>, { userId: string, cursor?: string }>({
-        url: gql('cg6WLW39UujWMeX77xBnOA/BlueVerifiedFollowers'),
+        url: gql('Xe3y9_ndZ9-RtWz8zd_wpg/Followers'),
         method: 'GET',
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline,
         token: OAUTH_KEY
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.user.result.timeline.timeline.instructions)),
     UserCreatorSubscriptions: new Endpoint<Slice<UserResult>, { userId: string, cursor?: string }>({
-        url: gql('n5c96Ql2BupZFGeEOIp9cA/UserCreatorSubscriptions'),
+        url: gql('mdZ9ngiV6niOd2neFHNDSA/UserCreatorSubscriptions'),
         method: 'GET',
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.user.result.timeline.timeline.instructions)),
     UserCreatorSubscribers: new Endpoint<Slice<UserResult>, { userId: string, cursor?: string }>({
-        url: gql('GiEn6LSqohGuiBqml4JzwA/UserCreatorSubscribers'),
+        url: gql('p76dCNURUPURadTDyyWbEg/UserCreatorSubscribers'),
         method: 'GET',
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.user.result.timeline.timeline.instructions)),
     UserBusinessProfileTeamTimeline: new Endpoint<Slice<UserResult>, { userId: string, teamName: string, cursor?: string }>({
-        url: gql('kMX2qUkTPCXzfp-8xc9v5w/UserBusinessProfileTeamTimeline'),
+        url: gql('I-zB8JQXsfUsQP8bBiWQkw/UserBusinessProfileTeamTimeline'),
         method: 'GET',
         variables: {"count":50,"includePromotedContent":false,"withVoice":true},
         features: flags.timeline
