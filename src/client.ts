@@ -1142,9 +1142,10 @@ export class TwitterClient {
         }
 
         const mode = match(args.replyPermission, [
+            [TweetReplyPermission.Mentioned, 'MyNetwork'],
             [TweetReplyPermission.Following, 'Community'],
             [TweetReplyPermission.Verified, 'Verified'],
-            [TweetReplyPermission.Following, 'ByInvitation']
+            [TweetReplyPermission.Mentioned, 'ByInvitation']
         ] as const);
 
         if (!TWEET_TEXT_RANGE.includes(text.length) && this.options.longTweetBehavior === LongTweetBehavior.Fail) {
@@ -1637,6 +1638,7 @@ export class TwitterClient {
         }
 
         const mode = match(permission, [
+            [TweetReplyPermission.Mentioned, 'MyNetwork'],
             [TweetReplyPermission.Following, 'Community'],
             [TweetReplyPermission.Verified, 'Verified']
         ] as const, 'ByInvitation');

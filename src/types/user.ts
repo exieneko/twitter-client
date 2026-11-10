@@ -72,7 +72,11 @@ export interface User extends Type<'User'> {
     mediaCount: number,
     /** Amount of tweets the user has liked */
     likesCount: number,
-    /** Amount of lists the user is on */
+    /**
+     * Amount of lists the user is on
+     * 
+     * @deprecated the Twitter API no longer reports this, always 0
+     */
     listedCount: number,
     /** Amount of their tweets the user has highlighted */
     highlightedTweetsCount: number,

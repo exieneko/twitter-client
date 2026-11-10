@@ -910,12 +910,12 @@ export const tweet: AsyncConstructor<T.Tweet, Record<string, any>, TweetLegacyOp
             source,
             quoteTweetsCount: value.quote_count || 0,
             quotedTweet: value.quoted_status_id_str in opts.globalObjects.tweets
-                // ? await fmt.next(Tweet, opts.globalObjects.tweets[value.quoted_status_id_str], { legacy: true, globalObjects: opts.globalObjects })
                 ? await fmt.next(tweet, opts.globalObjects.tweets[value.quoted_status_id_str], { legacy: true, globalObjects: opts.globalObjects })
                 : undefined,
             quotedTweetId: value.quoted_status_id_str || undefined,
             repliesCount: value.reply_count || 0,
             replyPermission: match(value.conversation_control?.policy as string | undefined, [
+                ['MyNetwork', T.TweetReplyPermission.Mutuals],
                 ['Community', T.TweetReplyPermission.Following],
                 ['Verified', T.TweetReplyPermission.Verified],
                 ['ByInvitation', T.TweetReplyPermission.Mentioned]
@@ -991,6 +991,7 @@ export const tweet: AsyncConstructor<T.Tweet, Record<string, any>, TweetLegacyOp
         quotedTweetId: value.legacy.quoted_status_id_str,
         repliesCount: value.legacy.reply_count || 0,
         replyPermission: match(value.legacy.conversation_control?.policy as string | undefined, [
+            ['MyNetwork', T.TweetReplyPermission.Mutuals],
             ['Community', T.TweetReplyPermission.Following],
             ['Verified', T.TweetReplyPermission.Verified],
             ['ByInvitation', T.TweetReplyPermission.Mentioned]
@@ -1279,7 +1280,6 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
         tweetsCount: value.tweets_count?.tweets || value.legacy?.statuses_count,
         mediaCount: value.tweets_count?.media_tweets || value.legacy?.media_count,
         likesCount: value.action_counts?.favorites_count || value.legacy?.favourites_count,
-        // this property probably doesn't exist anymore
         listedCount: value.legacy?.listed_count || 0,
         highlightedTweetsCount: Number(value.highlights_info?.highlighted_tweets || 0),
         username: value.core.screen_name,

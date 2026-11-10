@@ -4,6 +4,8 @@ import { type AboutUser, type AccountSettings, type BirdwatchBatSignal, type Bir
 import { Endpoint, Range, type EndpointGroup } from './types/utils.js';
 import { gql, v11 } from './utils/index.js';
 
+type _ReplyPermission = 'Community' /* Following */ | 'MyNetwork' /* Mutuals */ | 'Verified' | 'ByInvitation';
+
 export const PUBLIC_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
 export const ALT_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAAFXzAwAAAAAAMHCxpeSDG1gLNLghVe8d74hl6k4%3DRUMF4xAQLsbeBhTSRrCiQpJtxoGWeyHrDb5te2jpGskWDFW82F';
 export const OAUTH_KEY = 'Bearer AAAAAAAAAAAAAAAAAAAAAG5LOQEAAAAAbEKsIYYIhrfOQqm4H8u7xcahRkU%3Dz98HKmzbeXdKqBfUDmElcqYl0cmmKY9KdS2UoNIz3Phapgsowi';
@@ -523,7 +525,7 @@ export const ENDPOINTS = ({
         batch_compose?: 'BatchFirst' | 'BatchSubsequent',
         card_uri?: string,
         conversation_control?: {
-            mode: 'Community' /* Following */ | 'MyNetwork' /* Mutuals */ | 'Verified' | 'ByInvitation'
+            mode: _ReplyPermission
         },
         content_disclosure?: {
             advertising_promotion?: {
@@ -559,7 +561,7 @@ export const ENDPOINTS = ({
         batch_compose?: 'BatchFirst' | 'BatchSubsequent',
         card_uri?: string,
         conversation_control?: {
-            mode: 'Community' /* Following */ | 'MyNetwork' /* Mutuals */ | 'Verified' | 'ByInvitation'
+            mode: _ReplyPermission
         },
         content_disclosure?: {
             advertising_promotion?: {
@@ -745,7 +747,7 @@ export const ENDPOINTS = ({
         url: gql('BhKei844ypCyLYCg0nwigw/UnpinTweet'),
         method: 'POST'
     }, (_, value) => value.data.unpin_tweet?.message?.includes('success')),
-    ConversationControlChange: new Endpoint<boolean, { tweet_id: string, mode: 'Community' | 'Verified' | 'ByInvitation' }>({
+    ConversationControlChange: new Endpoint<boolean, { tweet_id: string, mode: _ReplyPermission }>({
         url: gql('JWeo7tCAhI_HwcuPcL4JrQ/ConversationControlChange'),
         method: 'POST'
     }, (_, value) => value.data.tweet_conversation_control_put === 'Done'),

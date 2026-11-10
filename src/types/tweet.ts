@@ -218,6 +218,8 @@ export enum TweetReplyPermission {
     Everyone = 'Everyone',
     /** Only people you follow can reply */
     Following = 'Following',
+    /** Only your mutuals can reply */
+    Mutuals = 'Mutuals',
     /** Only people you mentioned can reply */
     Mentioned = 'Mentioned',
     /** Only verified users can reply */
