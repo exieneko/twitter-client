@@ -19,6 +19,7 @@ export class TwitterPool {
     private static INITIAL_RATE_LIMIT = 500;
 
     #accounts: Account[] = [];
+    /** If `TwitterPool` is initialized with the `fromPromises` method, this will show the options for the first account in the accounts array */
     readonly options: Readonly<TwitterOptions>;
 
     private constructor(accounts: Account[], options: TwitterOptions) {
@@ -109,6 +110,26 @@ export class TwitterPool {
         }
 
         return new this(accounts, opts);
+    }
+
+    /**
+     * 
+     * @param promises Array of promises that will resolve to `TwitterClient`s
+     * @returns Promise resolving to `TwitterPool`
+     * @since 1.1.0-rc.1
+     */
+    static async fromPromises(promises: Promise<TwitterClient>[]): Promise<TwitterPool> {
+        const accounts: Account[] = await Promise.all(
+            promises.map(async (promise, index) => ({
+                id: index,
+                client: await promise,
+                rateLimitMax: this.INITIAL_RATE_LIMIT,
+                rateLimitRemaining: this.INITIAL_RATE_LIMIT,
+                rateLimitResetAt: new Date()
+            }))
+        );
+
+        return new this(accounts, accounts[0].client.options);
     }
 
 
