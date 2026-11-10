@@ -426,10 +426,21 @@ export class TwitterClient {
     }
 
     /**
+     * Get the currently active sessions
+     * 
+     * @returns Session list
+     * @since 1.1.0-rc.1
+     */
+    async getSessions() {
+        return await this.fetch(ENDPOINTS.UserSessionsList);
+    }
+
+    /**
      * Get the data saver settings set for this device
      * 
      * @param device Device id (eg `Windows/Firefox`)
      * @returns Data saver settings
+     * @since 1.0.0-rc.1
      */
     async getDataSaverSettings(device: string) {
         return await this.fetch(ENDPOINTS.DataSaverMode, { device_id: device });
@@ -1223,6 +1234,9 @@ export class TwitterClient {
                 in_reply_to_tweet_id: args.replyTo
             } : undefined,
             semantic_annotation_ids: [],
+            semantic_annotation_options: {
+                source: 'Unknown'
+            },
             tweet_text: text
         });
 
@@ -1251,6 +1265,9 @@ export class TwitterClient {
                     in_reply_to_tweet_id: lastTweetId
                 },
                 semantic_annotation_ids: [],
+                semantic_annotation_options: {
+                    source: 'Unknown'
+                },
                 tweet_text: t.text || ''
             });
 

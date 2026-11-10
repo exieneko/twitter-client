@@ -48,6 +48,15 @@ export interface AccountSettings extends Type<'AccountSettings'> {
     username: string
 }
 
+export interface AccountSession {
+    name: string,
+    description?: string,
+    isCurrentSession: boolean,
+    lastSeenAt: string,
+    location?: string,
+    token: string
+}
+
 export interface DataSaverSettings {
     dataSaverMode: boolean,
     videoAutoplay: VideoAutoplay

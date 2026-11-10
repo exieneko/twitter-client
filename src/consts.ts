@@ -1,6 +1,6 @@
 import * as flags from './flags.js';
 import * as f from './fmt/index.js';
-import { type AboutUser, type AccountSettings, type BirdwatchBatSignal, type BirdwatchHelpfulTag, type BirdwatchUnhelpfulTag, type BirdwatchUser, type CommunityResult, type DataSaverSettings, type DraftTweet, type ListResult, type TweetMediaData, type _MediaUploadInit, type Notification, type ScheduledTweet, type Slice, type Trend, type Tweet, type TweetBirdwatchNotes, type TweetResult, type TwitterResponse, type Typeahead, type UnreadCount, type User, type UserResult, type TweetTombstone, LongTweetBehavior, type TwitterOptions } from './types/index.js';
+import { type AboutUser, type AccountSettings, type BirdwatchBatSignal, type BirdwatchHelpfulTag, type BirdwatchUnhelpfulTag, type BirdwatchUser, type CommunityResult, type DataSaverSettings, type DraftTweet, type ListResult, type TweetMediaData, type _MediaUploadInit, type Notification, type ScheduledTweet, type Slice, type Trend, type Tweet, type TweetBirdwatchNotes, type TweetResult, type TwitterResponse, type Typeahead, type UnreadCount, type User, type UserResult, type TweetTombstone, LongTweetBehavior, type TwitterOptions, AccountSession } from './types/index.js';
 import { Endpoint, Range, type EndpointGroup } from './types/utils.js';
 import { gql, v11 } from './utils/index.js';
 
@@ -76,6 +76,10 @@ export const ENDPOINTS = ({
         variables: {"count":20,"includePromotedContent":false},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.users, value.data.viewer.muting_timeline.timeline.instructions)),
+    UserSessionsList: new Endpoint<AccountSession[]>({
+        url: gql('vJ-XatpmQSG8bDch8-t9Jw/UserSessionsList'),
+        method: 'GET'
+    }, (fmt, value) => Promise.all((value.data.viewer.user_results.result.sessions_list as any[] || []).map(session => fmt.next(f.accountSession, session)))),
     DataSaverMode: new Endpoint<DataSaverSettings, { device_id: string }>({
         url: gql('xF6sXnKJfS2AOylzxRjf6A/DataSaverMode'),
         method: 'GET'
@@ -519,8 +523,7 @@ export const ENDPOINTS = ({
         batch_compose?: 'BatchFirst' | 'BatchSubsequent',
         card_uri?: string,
         conversation_control?: {
-            //     Following     Mutuals
-            mode: 'Community' | 'MyNetwork' | 'Verified' | 'ByInvitation'
+            mode: 'Community' /* Following */ | 'MyNetwork' /* Mutuals */ | 'Verified' | 'ByInvitation'
         },
         content_disclosure?: {
             advertising_promotion?: {
@@ -543,7 +546,7 @@ export const ENDPOINTS = ({
         },
         semantic_annotation_ids: string[],
         semantic_annotation_options: {
-            source: 'Timeline' | 'Profile'
+            source: 'Htl' /* Home timeline */ | 'Profile' | 'Unknown' /* Under tweet replies */
         },
         tweet_text: string
     }>({
@@ -556,8 +559,7 @@ export const ENDPOINTS = ({
         batch_compose?: 'BatchFirst' | 'BatchSubsequent',
         card_uri?: string,
         conversation_control?: {
-            //     Following     Mutuals
-            mode: 'Community' | 'MyNetwork' | 'Verified' | 'ByInvitation'
+            mode: 'Community' /* Following */ | 'MyNetwork' /* Mutuals */ | 'Verified' | 'ByInvitation'
         },
         content_disclosure?: {
             advertising_promotion?: {
@@ -580,7 +582,7 @@ export const ENDPOINTS = ({
         },
         semantic_annotation_ids: string[],
         semantic_annotation_options: {
-            source: 'Timeline' | 'Profile'
+            source: 'Htl' /* Home timeline */ | 'Profile' | 'Unknown' /* Under tweet replies */
         },
         tweet_text: string
     }>({
@@ -665,7 +667,7 @@ export const ENDPOINTS = ({
         url: gql('H2elmT2R9DLhWoo0DZFNkA/FetchScheduledTweets'),
         method: 'GET'
     }, (fmt, value) => Promise.all((value.viewer.scheduled_tweet_list as any[] || []).map(tweet => fmt.next(f.scheduledTweet, tweet)))),
-    TweetDetail: new Endpoint<Slice<TweetResult>, { focalTweetId: string, rankingMode: 'ZjyvI1V9gajq5eclHCObzA/Likes', cursor?: string }>({
+    TweetDetail: new Endpoint<Slice<TweetResult>, { focalTweetId: string, rankingMode: 'Relevance' | 'Recency' | 'Likes', cursor?: string }>({
         url: gql('dQDdKtt882nl-Km98FJGSQ/TweetDetail'),
         method: 'GET',
         variables: {"with_rux_injections":false,"includePromotedContent":false,"withCommunity":true,"withBirdwatchNotes":true,"withVoice":true,"withV2Timeline":true},
@@ -804,7 +806,7 @@ export const ENDPOINTS = ({
             variables: {"command":"STATUS"}
         }, (fmt, value) => fmt.next(f.tweetMediaData, value)),
     },
-    media_metadata_create: new Endpoint<boolean, { allow_download_status: { allow_download: `${boolean}` }, alt_text: { text: string }, media_id: string }>({
+    media_metadata_create: new Endpoint<boolean, { allow_download_status: { allow_download: `${boolean}` }, alt_text?: { text: string }, media_id: string }>({
         url: v11('media/metadata/create.json'),
         method: 'POST'
     }, () => true),

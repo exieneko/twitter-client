@@ -143,6 +143,17 @@ export const accountSettings: AsyncConstructor<T.AccountSettings> = async (_, va
     };
 };
 
+export const accountSession: AsyncConstructor<T.AccountSession> = async (_, value) => {
+    return {
+        name: value.name,
+        description: !!value.summary ? value.summary : undefined,
+        isCurrentSession: !!value.is_current_session,
+        lastSeenAt: new Date(Number(value.last_seen_time_ms) || 0).toISOString(),
+        location: value.location,
+        token: value.token
+    };
+};
+
 export const dataSaverSettings: AsyncConstructor<T.DataSaverSettings> = async (_, value) => {
     return {
         dataSaverMode: value.dataSaverMode,
