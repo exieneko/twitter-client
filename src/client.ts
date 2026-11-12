@@ -1236,7 +1236,7 @@ export class TwitterClient {
             } : undefined,
             semantic_annotation_ids: [],
             semantic_annotation_options: {
-                source: 'Unknown'
+                source: 'Htl'
             },
             tweet_text: text
         });
@@ -1251,6 +1251,7 @@ export class TwitterClient {
 
         let lastTweetId = tweet.id;
 
+        // (this is actually how the twitter app does it)
         for (const t of thread) {
             const { data } = await this.fetch(ENDPOINTS.CreateTweet, {
                 batch_compose: !args.replyTo ? 'BatchSubsequent' : undefined,
@@ -1267,7 +1268,7 @@ export class TwitterClient {
                 },
                 semantic_annotation_ids: [],
                 semantic_annotation_options: {
-                    source: 'Unknown'
+                    source: 'Htl'
                 },
                 tweet_text: t.text || ''
             });

@@ -4,8 +4,6 @@ import { type AboutUser, type AccountSettings, type BirdwatchBatSignal, type Bir
 import { Endpoint, Range, type EndpointGroup } from './types/utils.js';
 import { gql, v11 } from './utils/index.js';
 
-type _ReplyPermission = 'Community' /* Following */ | 'MyNetwork' /* Mutuals */ | 'Verified' | 'ByInvitation';
-
 export const PUBLIC_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
 export const ALT_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAAFXzAwAAAAAAMHCxpeSDG1gLNLghVe8d74hl6k4%3DRUMF4xAQLsbeBhTSRrCiQpJtxoGWeyHrDb5te2jpGskWDFW82F';
 export const OAUTH_KEY = 'Bearer AAAAAAAAAAAAAAAAAAAAAG5LOQEAAAAAbEKsIYYIhrfOQqm4H8u7xcahRkU%3Dz98HKmzbeXdKqBfUDmElcqYl0cmmKY9KdS2UoNIz3Phapgsowi';
@@ -16,7 +14,7 @@ export const TWEET_TEXT_RANGE = new Range('0..=280');
 export const TWEET_MEDIA_RANGE = new Range('0..=4');
 export const TWEET_POLL_RANGE = new Range('2..=4');
 
-export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36';
+export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36';
 
 export const EMPTY_SLICE: TwitterResponse<Slice<any>> = {
     errors: [],
@@ -37,21 +35,65 @@ export const TWITTER_DEFAULT_OPTIONS: TwitterOptions = {
 
 export const GLOBAL_HEADERS = {
     accept: '*/*',
-    connection: 'keep-alive',
     'accept-encoding': 'gzip, deflate, br, zstd',
-    dnt: '1',
+    'accept-language': 'en-US,en;q=0.9',
     priority: 'u=0, i',
-    'cache-control': 'no-cache',
+    'sec-ch-ua': '"Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"',
+    'sec-ch-ua-mobile': "?0",
+    'sec-ch-ua-platform': '"Windows"',
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-site',
+    'sec-fetch-site': 'same-origin',
     'sec-fetch-user': '?1',
     'sec-gpc': '1',
     te: 'trailers',
     'upgrade-insecure-requests': '1',
-    'x-twitter-active-user': 'yes',
-    'x-twitter-auth-type': 'OAuth2Session'
+    'user-agent': USER_AGENT
 } satisfies Record<string, string>;
+
+
+
+type _ReplyPermission = 'Community' /* Following */ | 'MyNetwork' /* Mutuals */ | 'Verified' | 'ByInvitation';
+interface _CreateTweetEndpointParams {
+    batch_compose?: 'BatchFirst' | 'BatchSubsequent',
+    card_uri?: string,
+    conversation_control?: {
+        mode: _ReplyPermission
+    },
+    content_disclosure?: {
+        advertising_promotion?: {
+            is_paid_promotion: boolean
+        },
+        ai_generated_disclosure?: {
+            has_ai_generated_media: boolean
+        }
+    },
+    media: {
+        media_entities: {
+            media_id: string,
+            tagged_users: string[]
+        }[],
+        possibly_sensitive: boolean
+    },
+    reply?: {
+        exclude_reply_user_ids: string[],
+        in_reply_to_tweet_id: string
+    },
+    semantic_annotation_ids: string[],
+    semantic_annotation_options: {
+        source: 'Htl' /* Home timeline */ | 'Profile' | 'Unknown' /* Under tweet replies */
+    },
+    tweet_text: string
+}
+interface _ScheduledTweetEndpointParams {
+    execute_at: number,
+    post_tweet_request: {
+        auto_populate_reply_metadata: boolean,
+        exclude_reply_user_ids: string[],
+        media_ids: string[],
+        status: string
+    }
+}
 
 /**
  * All Twitter endpoints in use by the client
@@ -521,73 +563,13 @@ export const ENDPOINTS = ({
 
 
     // TWEET
-    CreateTweet: new Endpoint<Tweet, {
-        batch_compose?: 'BatchFirst' | 'BatchSubsequent',
-        card_uri?: string,
-        conversation_control?: {
-            mode: _ReplyPermission
-        },
-        content_disclosure?: {
-            advertising_promotion?: {
-                is_paid_promotion: boolean
-            },
-            ai_generated_disclosure?: {
-                has_ai_generated_media: boolean
-            }
-        },
-        media: {
-            media_entities: {
-                media_id: string,
-                tagged_users: string[]
-            }[],
-            possibly_sensitive: boolean
-        },
-        reply?: {
-            exclude_reply_user_ids: string[],
-            in_reply_to_tweet_id: string
-        },
-        semantic_annotation_ids: string[],
-        semantic_annotation_options: {
-            source: 'Htl' /* Home timeline */ | 'Profile' | 'Unknown' /* Under tweet replies */
-        },
-        tweet_text: string
-    }>({
+    CreateTweet: new Endpoint<Tweet, _CreateTweetEndpointParams>({
         url: gql('l4hk8uVGvR-a8kzQ4nOhPA/CreateTweet'),
         method: 'POST',
         variables: {"disallowed_reply_options":null},
         features: flags.tweet
     }, (fmt, value) => fmt.next(f.tweet, value.data.create_tweet?.tweet_results?.result)),
-    CreateNoteTweet: new Endpoint<Tweet, {
-        batch_compose?: 'BatchFirst' | 'BatchSubsequent',
-        card_uri?: string,
-        conversation_control?: {
-            mode: _ReplyPermission
-        },
-        content_disclosure?: {
-            advertising_promotion?: {
-                is_paid_promotion: boolean
-            },
-            ai_generated_disclosure?: {
-                has_ai_generated_media: boolean
-            }
-        },
-        media: {
-            media_entities: {
-                media_id: string,
-                tagged_users: string[]
-            }[],
-            possibly_sensitive: boolean
-        },
-        reply?: {
-            exclude_reply_user_ids: string[],
-            in_reply_to_tweet_id: string
-        },
-        semantic_annotation_ids: string[],
-        semantic_annotation_options: {
-            source: 'Htl' /* Home timeline */ | 'Profile' | 'Unknown' /* Under tweet replies */
-        },
-        tweet_text: string
-    }>({
+    CreateNoteTweet: new Endpoint<Tweet, _CreateTweetEndpointParams>({
         url: gql('seOZkIS8AysCGfPo6yYPVA/CreateNoteTweet'),
         method: 'POST',
         features: flags.tweet
@@ -597,28 +579,11 @@ export const ENDPOINTS = ({
         method: 'POST',
         variables: {"dark_request":false}
     }, (_, value) => !!value.delete_tweet),
-    CreateScheduledTweet: new Endpoint<string, {
-        execute_at: number,
-        post_tweet_request: {
-            auto_populate_reply_metadata: boolean,
-            exclude_reply_user_ids: string[],
-            media_ids: string[],
-            status: string
-        }
-    }>({
+    CreateScheduledTweet: new Endpoint<string, _ScheduledTweetEndpointParams>({
         url: gql('LCVzRQGxOaGnOnYH01NQXg/CreateScheduledTweet'),
         method: 'POST'
     }, (_, value) => value.data.tweet?.rest_id as string),
-    EditScheduledTweet: new Endpoint<boolean, {
-        execute_at: number,
-        post_tweet_request: {
-            auto_populate_reply_metadata: boolean,
-            exclude_reply_user_ids: string[],
-            media_ids: string[],
-            status: string
-        },
-        scheduled_tweet_id: string
-    }>({
+    EditScheduledTweet: new Endpoint<boolean, _ScheduledTweetEndpointParams & { scheduled_tweet_id: string }>({
         url: gql('_mHkQ5LHpRRjSXKOcG6eZw/EditScheduledTweet'),
         method: 'POST'
     }, (_, value) => value.data.scheduledtweet_put === 'Done'),

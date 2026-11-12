@@ -70,8 +70,10 @@ export interface TwitterOptions {
      * @since 1.0.0-rc.1
      */
     overrides: {
+        /** Overrides sent feature flags for all requests that need it */
         flags?: Flags,
-        headers?: Record<string, string>
+        /** Overrides sent headers. Setting the value to null will delete that header */
+        headers?: Record<string, string | null>
     },
     /**
      * Optional http proxy url

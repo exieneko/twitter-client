@@ -5,7 +5,7 @@ import { fetch, type BodyInit, type ProxyAgent, type Response } from 'undici';
 
 import { match, toSearchParams } from './index.js';
 import type { Logger } from './log.js';
-import { GLOBAL_HEADERS, USER_AGENT } from '../consts.js';
+import { ENDPOINTS, GLOBAL_HEADERS, USER_AGENT } from '../consts.js';
 import { ApiError, ClientError, RequestError } from '../fmt/errors.js';
 import type { TwitterOptions } from '../types/index.js';
 import { EndpointType, type Endpoint, type EndpointParams } from '../types/utils.js';
@@ -43,45 +43,48 @@ export async function request<E extends Endpoint, T = never>(opts: {
     let headers: Record<string, string> = {
         ...GLOBAL_HEADERS,
         'accept-language': `${options.language === 'en' ? 'en-US,en' : options.language};q=0.9`,
+        authorization: endpoint.token,
+        'cache-control': 'no-cache',
+        connection: 'keep-alive',
+        cookie: Object.entries(cookies).filter(([, v]) => !!v).map(([k, v]) => `${k}=${v}`).join('; '),
         host: endpoint.url.replace(/^https:\/\//, '').replace('twitter.com', options.domain).replace(/\.com\/.*/, '.com'),
         origin: `https://${options.domain}`,
-        referer: `https://${options.domain}/`,
-        authorization: endpoint.token,
-        cookie: Object.entries(cookies).filter(([, v]) => !!v).map(([k, v]) => `${k}=${v}`).join('; '),
-        'user-agent': USER_AGENT,
-        'x-twitter-client-language': options.language,
-        'x-csrf-token': cookies.ct0
+        // pretend to send tweets from the home timeline
+        referer: endpoint.getType() === EndpointType.GraphQL && /\/Create.*Tweet$/.test(endpoint.url) ? `https://${options.domain}/compose/post` : `https://${options.domain}`,
+        'x-csrf-token': cookies.ct0,
+        'x-twitter-active-user': 'yes',
+        'x-twitter-auth-type': 'OAuth2Session',
+        'x-twitter-client-language': options.language
     };
 
     if (transactionId) {
         headers['x-client-transaction-id'] = transactionId;
     }
-    
+
     if (endpoint.getType() === EndpointType.GraphQL || endpoint.getType() === EndpointType.v2Alt) {
-        headers['content-type'] = 'application/json; charset=utf-8';
-    } else if (endpoint.getType() !== EndpointType.Media && !(endpoint.getType() === EndpointType.v11 && endpoint.method === 'GET' && !endpoint.features)) {
-        headers['content-type'] = 'application/x-www-form-urlencoded; charset=utf-8';
+        headers['content-type'] = 'application/json';
+    } else if (endpoint.getType() !== EndpointType.Media && !(endpoint.getType() === EndpointType.v11 && endpoint.method === 'GET')) {
+        headers['content-type'] = 'application/x-www-form-urlencoded';
     }
 
     log?.info('[HTTP]', endpoint.method, url);
 
-    if (options.overrides.headers) {
-        let add = 0;
-        let overwrite = 0;
+    for (const k in options.overrides.headers) {
+        const key = k.toLowerCase();
 
-        for (const key in options.overrides.headers) {
-            if (key in headers) {
-                add++;
-            } else {
-                overwrite++;
-            }
-
-            headers[key] = options.overrides.headers[key];
+        if (options.overrides.headers[key] === null) {
+            delete headers[key];
+            continue;
         }
+
+        headers[key] = options.overrides.headers[key];
+    }
+
+    if (/Firefox\/\d+\.\d+$/.test(headers['user-agent'])) {
+        headers['alt-used'] = options.domain;
     }
 
     let features = endpoint.features;
-
     if (endpoint.getType() === EndpointType.GraphQL && features && options.overrides.flags) {
         for (const k in options.overrides.flags) {
             const key = k as keyof Flags;
@@ -105,19 +108,26 @@ export async function request<E extends Endpoint, T = never>(opts: {
         let body: BodyInit | undefined = undefined;
         if (mediaFormData) {
             body = mediaFormData;
-        } else if (endpoint.method === 'POST' && endpoint.getType() === EndpointType.GraphQL) {
-            body = endpoint.post({ variables, features, queryId: endpoint.url.split('/', 1)[0] });
-        } else if (endpoint.method === 'POST' && endpoint.getType() === EndpointType.v2Alt) {
-            body = endpoint.post(variables);
-        } else if (endpoint.method === 'POST') {
-            body = endpoint.post(v11Body);
+        } else {
+            if (endpoint.method === 'POST' && endpoint.getType() === EndpointType.GraphQL) {
+                body = endpoint.post({ variables, features, queryId: endpoint.url.split('/', 1)[0] });
+            } else if (endpoint.method === 'POST' && endpoint.getType() === EndpointType.v2Alt) {
+                body = endpoint.post(variables);
+            } else if (endpoint.method === 'POST') {
+                body = endpoint.post(v11Body);
+            }
+
+            if (body && body.length > 0) {
+                headers['content-length'] = body.length.toString();
+            }
         }
 
         response = await fetch(endpoint.get(url, toSearchParams({ variables, features })), {
             method: endpoint.method,
             headers,
             body,
-            dispatcher: proxyAgent
+            dispatcher: proxyAgent,
+            credentials: 'include'
         });
     } catch (error) {
         throw new RequestError(`Failed to send request to "${url}"`, { endpoint, params, cause: error, log });
@@ -143,9 +153,7 @@ export async function request<E extends Endpoint, T = never>(opts: {
             [500, 'Internal Server Error']
         ], '');
 
-        const transferred = bytes.byteLength >= 1024 * 2
-            ? (bytes.byteLength / 1024).toFixed(2) + 'KiB'
-            : bytes.byteLength + 'B';
+        const transferred = bytes.byteLength >= 1024 * 2 ? (bytes.byteLength / 1024).toFixed(2) + 'K' : bytes.byteLength + 'B';
 
         log?.debug('[HTTP]', 'Response headers:', response.headers.entries());
         log?.[response.ok ? 'info' : 'error']('[HTTP]', endpoint.method, url, '\n\t' + styleText([response.ok ? 'green' : 'red', 'bold'], `${response.status} ${statusText}`), `\n\ttransferred ${transferred}`, `\n\tin ${elapsed}ms`);
@@ -188,22 +196,21 @@ export async function request<E extends Endpoint, T = never>(opts: {
  * 
  * @see https://github.com/Lqm1/x-client-transaction-id/blob/main/utils.ts
  */
-export async function fetchXDocument(options: TwitterOptions, dispatcher?: ProxyAgent) {
-    const headers = {
-        ...GLOBAL_HEADERS,
-        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'accept-language': options.language,
-        pragma: 'no-cache',
-        'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"',
-        'sec-fetch-dest': 'document',
-        'sec-fetch-mode': 'navigate',
-        'sec-fetch-site': 'none',
-        'user-agent': options.overrides.headers?.['user-agent'] || USER_AGENT
-    };
-
-    const response = await fetch('https://x.com/i/jf', { headers, dispatcher });
+export async function fetchXDocument(options: TwitterOptions, dispatcher?: ProxyAgent): Promise<Document> {
+    const response = await fetch('https://x.com/i/jf', {
+        headers: {
+            ...GLOBAL_HEADERS,
+            accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            pragma: 'no-cache',
+            'sec-ch-ua': options.overrides.headers?.['sec-ch-ua'] || GLOBAL_HEADERS['sec-ch-ua'],
+            'sec-ch-ua-platform': options.overrides.headers?.['sec-ch-ua-platform'] || GLOBAL_HEADERS['sec-ch-ua-platform'],
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'none',
+            'user-agent': options.overrides.headers?.['user-agent'] || GLOBAL_HEADERS['user-agent']
+        },
+        dispatcher
+    });
     const html = await response.text();
     return parseHTML(html).window.document;
 }
