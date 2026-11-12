@@ -23,7 +23,7 @@ export interface TwitterOptions {
      * Right to left: errors, warnings, info, debug, trace
      * 
      * @default 0b00011
-     * @since 1.0.0-rc.1
+     * @since 1.0.0
      */
     debug: number,
     /**
@@ -67,7 +67,7 @@ export interface TwitterOptions {
      * Override data sent with requests
      * 
      * @default {}
-     * @since 1.0.0-rc.1
+     * @since 1.0.0
      */
     overrides: {
         /** Overrides sent feature flags for all requests that need it */

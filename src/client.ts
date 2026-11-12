@@ -440,7 +440,7 @@ export class TwitterClient {
      * 
      * @param device Device id (eg `Windows/Firefox`)
      * @returns Data saver settings
-     * @since 1.0.0-rc.1
+     * @since 1.0.0
      */
     async getDataSaverSettings(device: string) {
         return await this.fetch(ENDPOINTS.DataSaverMode, { device_id: device });
@@ -559,7 +559,7 @@ export class TwitterClient {
      * @param tweetId Id of the tweet to create the bat signal on
      * @param args {@link BirdwatchCreateBatSignalArgs}
      * @returns Bat signal id
-     * @since 1.0.0-rc.1
+     * @since 1.0.0
      */
     async createBatSignal(tweetId: string, args: BirdwatchCreateBatSignalArgs) {
         return await this.fetch(ENDPOINTS.BirdwatchCreateBatSignal, { tweet_id: tweetId, source_link: args.sourceTweetUrl, suggestion: args.text });
@@ -570,7 +570,7 @@ export class TwitterClient {
      * 
      * @param tweetId Id of the tweet with your bat signal on it
      * @returns Success status
-     * @since 1.0.0-rc.1
+     * @since 1.0.0
      */
     async deleteBatSignal(tweetId: string) {
         return await this.fetch(ENDPOINTS.BirdwatchDeleteBatSignal, { tweet_id: tweetId });
@@ -581,7 +581,7 @@ export class TwitterClient {
      * 
      * @param tweetId Tweet id
      * @returns Bat signal
-     * @since 1.0.0-rc.1
+     * @since 1.0.0
      */
     async getBatSignal(tweetId: string) {
         return await this.fetch(ENDPOINTS.BirdwatchFetchBatSignal, { tweet_id: tweetId });
@@ -1537,7 +1537,7 @@ export class TwitterClient {
      * 
      * @param tweetId Tweet id
      * @returns Success status
-     * @since 1.0.0-rc.1
+     * @since 1.0.0
      */
     async downvote(tweetId: string) {
         return await this.fetch(ENDPOINTS.DownvoteTweet, { tweetId });
@@ -1548,7 +1548,7 @@ export class TwitterClient {
      * 
      * @param tweetId Tweet id
      * @returns Success status
-     * @since 1.0.0-rc.1
+     * @since 1.0.0
      */
     async undownvote(tweetId: string) {
         return await this.fetch(ENDPOINTS.UndoDownvoteTweet, { tweetId });
