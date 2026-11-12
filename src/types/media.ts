@@ -18,7 +18,14 @@ export interface TweetImage extends Type<'TweetImage'> {
     isAiGenerated: boolean,
     /** Original width and height of the media */
     size: [number, number],
-    /** Url of the image */
+    /**
+     * Url of the image
+     * 
+     * Format: "https:\//pbs.twimg.com/media/[id]?format=[format]&name=[name]"
+     * 
+     * `format` is the file extension of the image. "/media/[id].[format]?name=[name]" is also valid  
+     * `name` is `orig` by default, but other sizes are: `small`, `medium`, `large`
+     */
     url: string
 }
 

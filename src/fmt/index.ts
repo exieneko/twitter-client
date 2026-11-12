@@ -1,6 +1,6 @@
 import { FormatterError, TwitterError } from './errors.js';
 import type { TwitterClient } from '../client.js';
-import type { ENDPOINTS } from '../consts.js';
+import { DEFAULT_AVATAR_URL, type ENDPOINTS } from '../consts.js';
 import * as T from '../types/index.js';
 import type { AsyncConstructor, MaybeType, PartialBy, Type } from '../types/utils.js';
 import { match } from '../utils/index.js';
@@ -393,7 +393,7 @@ export const list: AsyncConstructor<T.List> = async (fmt, value) => {
     return {
         __typename: 'List',
         id: value.id_str,
-        bannerUrl: value.custom_banner_media.media_info.original_img_id,
+        bannerUrl: value.custom_banner_media?.media_info?.original_img_id,
         createdAt: new Date(value.created_at).toISOString(),
         creator: await fmt.next(user, value.user_results?.result),
         description: value.description || '',
@@ -437,7 +437,7 @@ export const tweetImage: AsyncConstructor<T.TweetImage> = async (_, value) => {
         },
         isAiGenerated: !!value.media_results?.result?.grok_image_annotation,
         size: [value.original_info.width ?? 0, value.original_info.height ?? 0],
-        url: value.media_url_https
+        url: String(value.media_url_https).replace(/\.([a-zA-Z0-9]+)$/g, (_, p1) => `?format=${p1}&name=orig`)
     };
 };
 
@@ -471,13 +471,14 @@ export const tweetGif: AsyncConstructor<T.TweetGif> = async (fmt, value) => {
 };
 
 export const tweetMedia: AsyncConstructor<T.TweetMedia> = async (fmt, value) => {
-    return await fmt.next(
-        match<string, AsyncConstructor<T.TweetMedia>>(value.type, [
-            ['video', tweetVideo],
-            [['gif', 'animated_gif'], tweetGif]
-        ], tweetImage),
-        value
-    );
+    switch (value.type) {
+        case 'video':
+            return await fmt.next(tweetVideo, value);
+        case 'animated_gif':
+            return await fmt.next(tweetGif, value);
+        default:
+            return await fmt.next(tweetImage, value);
+    }
 };
 
 export const tweetMediaData: AsyncConstructor<T.TweetMediaData> = async (_, value) => {
@@ -486,7 +487,7 @@ export const tweetMediaData: AsyncConstructor<T.TweetMediaData> = async (_, valu
         id: value.media_id_string,
         mediaKey: value.media_key,
         bytes: value.size || 0,
-        contentType: value.image?.image_type || value.video?.video_type || 'image/gif',
+        contentType: value.image?.image_type || value.video?.video_type || 'video/mp4',
         expiresIn: value.expires_after_secs || 0,
         size: value.image && value.image?.w && value.image?.h ? [value.image?.w || 1, value.image?.h || 1] : undefined,
         processing: value.processing_info ? {
@@ -1173,7 +1174,7 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
             __typename: 'User',
             id: value.id_str,
             affiliatesCount: 0,
-            avatarUrl: value.profile_image_url_https.replace('normal', '400x400'),
+            avatarUrl: value.profile_image_url_https?.replace('normal', '400x400') || DEFAULT_AVATAR_URL,
             bannerUrl: value.profile_banner_url || undefined,
             canDm: !!value.can_dm,
             canMediaTag: !!value.can_media_tag,
@@ -1220,31 +1221,35 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
         imageUrl: value.affiliates_highlighted_label.label.badge.url
     } : undefined;
 
-    const verified = !!value.verification?.verified || !!value.is_blue_verified;
+    const blueVerified = !!value.is_blue_verified;
+    const verified = !!value.verification?.verified;
     const verifiedType = value.verification?.verified_type;
 
-    const verificationType: T.VerificationType = match(value.verification?.verified_type, [
-        ['Government', T.VerificationType.Government],
-        ['Business', T.VerificationType.Business],
-        [[], T.VerificationType.BlueAffiliate, !verifiedType && !verified && !!affiliateLabel?.owner && new RegExp(`\\/${affiliateLabel.owner}$`, 'i').test(value.verification_info.reason?.description?.entities?.at(0)?.ref.url)],
-        [[], T.VerificationType.Unverified, !verifiedType && !verified],
-        [[], T.VerificationType.Blue, verified]
-    ], T.VerificationType.Unverified);
+    let verificationType = T.VerificationType.Unverified;
+    if (verifiedType === 'Government') {
+        verificationType = T.VerificationType.Government;
+    } else if (verifiedType === 'Business') {
+        verificationType = T.VerificationType.Business;
+    } else if (!!affiliateLabel?.owner && value.verification_info?.reason?.description.text?.toLowerCase().includes(`@${affiliateLabel.owner}`)) {
+        verificationType = T.VerificationType.BlueAffiliate;
+    } else if (blueVerified) {
+        verificationType = T.VerificationType.Blue;
+    }
 
     return {
         __typename: 'User',
         id: value.rest_id,
         affiliatesCount: value.business_account?.affiliates_count || 0,
         affiliateLabel,
-        avatarUrl: value.avatar.image_url.replace('normal', '400x400'),
-        bannerUrl: value.banner.image_url ?? value.legacy?.profile_banner_url,
+        avatarUrl: value.avatar?.image_url?.replace('normal', '400x400') || DEFAULT_AVATAR_URL,
+        bannerUrl: value.banner?.image_url || value.legacy?.profile_banner_url,
         birthday: value.legacy_extended_profile?.birthdate ? {
             day: value.legacy_extended_profile.birthdate.day,
             month: value.legacy_extended_profile.birthdate.month,
             year: value.legacy_extended_profile.birthdate.year
         } : undefined,
-        canDm: !!value.dm_permissions.can_dm,
-        canMediaTag: !!value.media_permissions.can_media_tag,
+        canDm: !!value.dm_permissions?.can_dm,
+        canMediaTag: !!value.media_permissions?.can_media_tag,
         canSuperFollow: !!value.super_follow_eligible,
         createdAt: new Date(value.core.created_at).toISOString(),
         description: ((value.profile_bio?.description ?? value.legacy?.description ?? '') as string).replace(
@@ -1286,9 +1291,9 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
         url: (value.profile_bio.entities ?? value.legacy?.entities)?.url?.urls?.[0].expanded_url.replace(/^http:\/\//, 'https://').replace(/\/$/, ''),
         verification: {
             type: verificationType,
-            isVerified: verified,
-            verifiedSince: verified
-                ? new Date(Number(value.verification_info?.reason?.verified_since_msec || 0)).toISOString()
+            isVerified: verified || blueVerified,
+            verifiedSince: verified || blueVerified
+                ? new Date(Number(value.verification_info?.reason?.verified_since_msec || '0')).toISOString()
                 : undefined,
             verifiedWithId: !!value.verification_info?.is_identity_verified
         },

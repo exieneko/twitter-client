@@ -20,7 +20,11 @@ export interface User extends Type<'User'> {
         month: number,
         year?: number
     },
-    /** Whether the authenticated user can send a direct message to the user */
+    /**
+     * Whether the authenticated user can send a direct message to the user
+     * 
+     * @deprecated Replaced by xchat, this will always be false
+     */
     canDm: boolean,
     /** Whether the authenticated user can tag the user in media attachments */
     canMediaTag: boolean,
