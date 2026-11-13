@@ -4,7 +4,7 @@ import { ClientTransaction } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_MEDIA_RANGE, TWEET_POLL_RANGE, TWEET_TEXT_RANGE, TWITTER_DEFAULT_OPTIONS, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { Entries, TwitterFormatter } from './fmt/index.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, TweetReplyPermission, Slice, TweetResult, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListResult, type TweetMediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserResult, type UserTweetsGetArgs, SearchOrder, SearchArgs, BirdwatchCreateBatSignalArgs, TranslateArgs, LongTweetBehavior, TimelineOrder, UserTweetsFilter, UserMediaGetArgs, UserMediaFilter } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, TweetReplyPermission, Slice, TweetResult, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListResult, type TweetMediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserResult, type UserTweetsGetArgs, SearchOrder, SearchArgs, BirdwatchCreateBatSignalArgs, TranslateArgs, LongTweetBehavior, TimelineOrder, UserTweetsFilter, UserMediaGetArgs, UserMediaFilter, UserTweetsOrder } from './types/index.js';
 import { ValidationError, ApiError, RequestError, TwitterError, ClientError, DivineInterventionError } from './fmt/errors.js';
 import type { Endpoint, EndpointParams, Type } from './types/utils.js';
 import { match } from './utils/index.js';
@@ -1737,15 +1737,54 @@ export class TwitterClient {
     }
 
     protected async getUserTweetsSlice(id: string, args?: UserTweetsGetArgs) {
+        if (args?.filter === UserTweetsFilter.Retweets) {
+            return await this.getUserRetweetsSlice(id, { cursor: args.cursor });
+        } else if (args?.filter === UserTweetsFilter.Replies) {
+            return await this.getUserRepliesSlice(id, { cursor: args.cursor });
+        } else if (args?.filter === UserTweetsFilter.Primary) {
+            return await this.fetch(ENDPOINTS.UserTweets, { userId: id, cursor: args.cursor });
+        }
+
         const endpoint = match(args?.filter, [
-            [UserTweetsFilter.Retweets, ENDPOINTS.UserRepostsTimeline],
-            [UserTweetsFilter.Replies, ENDPOINTS.UserRepliesTimeline],
-            [UserTweetsFilter.Tweets, ENDPOINTS.UserOriginalsTimeline],
             [UserTweetsFilter.All, ENDPOINTS.UserTweetsAndReplies],
             [UserTweetsFilter.Highlights, ENDPOINTS.UserHighlightsTweets]
-        ], ENDPOINTS.UserTweets);
+        ], ENDPOINTS.UserOriginalsTimeline);
 
-        return await this.fetch(endpoint, { userId: id, cursor: args?.cursor });
+        return await this.fetch(endpoint, { userId: id, sortByMostLiked: args?.orderBy === UserTweetsOrder.Likes || undefined, cursor: args?.cursor });
+    }
+
+    /**
+     * Get replies from a user chronologically. Will also include the tweet being replied to in the profile conversations
+     * 
+     * @param id User id
+     * @param [args] {@link CursorOnly}
+     * @returns Slice of conversations
+     * @since 1.1.0-rc.0
+     */
+    async* getUserReplies(id: string, args?: CursorOnly): Timeline<TweetResult> {
+        yield* this.getSlice(args, args => this.getUserRepliesSlice(id, args));
+        return EMPTY_SLICE;
+    }
+
+    protected async getUserRepliesSlice(id: string, args?: CursorOnly) {
+        return await this.fetch(ENDPOINTS.UserRepliesTimeline, { userId: id, cursor: args?.cursor });
+    }
+
+    /**
+     * Get retweets from a user chronologically
+     * 
+     * @param id User id
+     * @param [args] {@link CursorOnly}
+     * @returns Slice of tweets
+     * @since 1.1.0-rc.0
+     */
+    async* getUserRetweets(id: string, args?: CursorOnly): Timeline<TweetResult> {
+        yield* this.getSlice(args, args => this.getUserRetweetsSlice(id, args));
+        return EMPTY_SLICE;
+    }
+
+    protected async getUserRetweetsSlice(id: string, args?: CursorOnly) {
+        return await this.fetch(ENDPOINTS.UserRepostsTimeline, { userId: id, cursor: args?.cursor });
     }
 
     /**

@@ -264,7 +264,7 @@ export enum TweetOrder {
 /**
  * Arguments for getting a tweet
  */
-export interface TweetGetArgs extends CursorOnly, OrderBy<TweetOrder> {}
+export type TweetGetArgs = CursorOnly & OrderBy<TweetOrder>;
 
 /**
  * Arguments for getting draft tweets
@@ -319,7 +319,7 @@ export interface MediaUploadArgs {
 /**
  * Arguments for getting a user's tweets
  */
-export type UserTweetsGetArgs = CursorOnly & Filter<UserTweetsFilter>;
+export type UserTweetsGetArgs = CursorOnly & OrderBy<UserTweetsOrder> & Filter<UserTweetsFilter>;
 
 /**
  * Filter user tweets timeline
@@ -333,12 +333,30 @@ export enum UserTweetsFilter {
     All = 'All',
     /** Include original tweets (`UserOriginalsTimeline`) */
     Tweets = 'Tweets',
-    /** Include only replies (`UserRepliesTimeline`) */
-    Replies = 'Replies',
-    /** Include only retweets (`UserRepostsTimeline`) */
-    Retweets = 'Retweets',
     /** Include only highlighted tweets (`UserHighlightsTweets`) */
-    Highlights = 'Highlights'
+    Highlights = 'Highlights',
+    /**
+     * Include only replies (`UserRepliesTimeline`)
+     * 
+     * @deprecated Moved to its own method `getUserReplies`
+     */
+    Replies = 'Replies',
+    /**
+     * Include only retweets (`UserRepostsTimeline`)
+     * 
+     * @deprecated Moved to its own method `getUserRetweets`
+     */
+    Retweets = 'Retweets'
+}
+
+/**
+ * Order user tweets by amount of likes. Not allowed for `UserTweetsFilter.Legacy`
+ * 
+ * @default UserTweetsOrder.New
+ */
+export enum UserTweetsOrder {
+    New = 'New',
+    Likes = 'Likes'
 }
 
 /**

@@ -816,7 +816,7 @@ export const ENDPOINTS = ({
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
-    UserTweetsAndReplies: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
+    UserTweetsAndReplies: new Endpoint<Slice<TweetResult>, { userId: string, sortByMostLiked?: boolean, cursor?: string }>({
         url: gql('FmuxExUC21Xn_C2NwtX5sQ/UserTweetsAndReplies'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
@@ -834,7 +834,7 @@ export const ENDPOINTS = ({
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
-    UserOriginalsTimeline: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
+    UserOriginalsTimeline: new Endpoint<Slice<TweetResult>, { userId: string, sortByMostLiked?: boolean, cursor?: string }>({
         url: gql('ZFKu1DFS63hgrkLzR3Hsdw/UserOriginalsTimeline'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withQuickPromoteEligibilityTweetFields":true,"withVoice":true},
@@ -864,7 +864,7 @@ export const ENDPOINTS = ({
         variables: {"count":40,"includePromotedContent":false,"withClientEventToken":true,"withBirdwatchNotes":true,"withVoice":true},
         features: flags.timeline
     }, (fmt, value) => fmt.next(f.Entries.tweets, value.data.user.result.timeline.timeline.instructions, { type: 'Default' } as const)),
-    UserHighlightsTweets: new Endpoint<Slice<TweetResult>, { userId: string, cursor?: string }>({
+    UserHighlightsTweets: new Endpoint<Slice<TweetResult>, { userId: string, sortByMostLiked?: boolean, cursor?: string }>({
         url: gql('vukXwNm6argozncYmHqZDQ/UserHighlightsTweets'),
         method: 'GET',
         variables: {"count":40,"includePromotedContent":true,"withCommunity":true,"withVoice":true},
