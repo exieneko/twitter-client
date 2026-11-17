@@ -61,6 +61,7 @@ export interface TwitterOptions {
      * 
      * @default LongTweetBehavior.Force
      * @since 1.0.0-rc.0
+     * @deprecated No longer used
      */
     longTweetBehavior: LongTweetBehavior,
     /**
@@ -87,6 +88,7 @@ export interface TwitterOptions {
  * How to handle when a tweet's text length exceeds 280 characters
  * 
  * @default LongTweetBehavior.Force
+ * @deprecated
  */
 export enum LongTweetBehavior {
     /** Send the request anyway */

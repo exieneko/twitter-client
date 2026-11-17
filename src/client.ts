@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { FormData, ProxyAgent, type Response } from 'undici';
 import { ClientTransaction } from 'x-client-transaction-id';
 
-import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWEET_MEDIA_RANGE, TWEET_POLL_RANGE, TWEET_TEXT_RANGE, TWITTER_DEFAULT_OPTIONS, UPLOAD_SEGMENT_SIZE } from './consts.js';
+import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWITTER_DEFAULT_OPTIONS, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { Entries, TwitterFormatter } from './fmt/index.js';
 import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, TweetReplyPermission, Slice, TweetResult, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListResult, type TweetMediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserResult, type UserTweetsGetArgs, SearchOrder, SearchArgs, BirdwatchCreateBatSignalArgs, TranslateArgs, LongTweetBehavior, TimelineOrder, UserTweetsFilter, UserMediaGetArgs, UserMediaFilter, UserTweetsOrder } from './types/index.js';
 import { ValidationError, ApiError, RequestError, TwitterError, ClientError, DivineInterventionError } from './fmt/errors.js';
@@ -1130,17 +1130,6 @@ export class TwitterClient {
     async createTweet(args: TweetCreateArgs, thread?: ThreadTweetArgs[]): Promise<TwitterResponse<Tweet>> {
         const text = args.text ?? '';
 
-        if (!TWEET_TEXT_RANGE.includes(text.length) && this.options.longTweetBehavior === LongTweetBehavior.Fail) {
-            return {
-                errors: [new ValidationError('Tweet text is too long', {
-                    field: 'text',
-                    value: text.length,
-                    expected: [TWEET_TEXT_RANGE],
-                    cause: new RangeError(`text.length ${text.length} out of range: ${TWEET_TEXT_RANGE}`)
-                })]
-            };
-        }
-
         const mode = match(args.replyPermission, [
             [TweetReplyPermission.Mentioned, 'MyNetwork'],
             [TweetReplyPermission.Following, 'Community'],
@@ -1148,44 +1137,9 @@ export class TwitterClient {
             [TweetReplyPermission.Mentioned, 'ByInvitation']
         ] as const);
 
-        if (!TWEET_TEXT_RANGE.includes(text.length) && this.options.longTweetBehavior === LongTweetBehavior.Fail) {
-            return {
-                errors: [new ValidationError('Tweet text is too long', {
-                    field: 'text',
-                    value: text.length,
-                    expected: [TWEET_TEXT_RANGE],
-                    cause: new RangeError(`text.length ${text.length} out of range: ${TWEET_TEXT_RANGE}`)
-                })]
-            }
-        }
-
-        const shouldCreateNoteTweet = !TWEET_TEXT_RANGE.includes(text.length) && (this.options.longTweetBehavior === LongTweetBehavior.NoteTweet || this.options.longTweetBehavior === LongTweetBehavior.NoteTweetUnchecked);
-
-        if (args.mediaIds && !TWEET_MEDIA_RANGE.includes(args.mediaIds.length)) {
-            return {
-                errors: [new ValidationError('Too many media attachements', {
-                    field: 'mediaIds',
-                    value: args.mediaIds.length,
-                    expected: [TWEET_MEDIA_RANGE],
-                    cause: new RangeError(`mediaIds.length (${args.mediaIds.length}) out of range: ${TWEET_MEDIA_RANGE}`)
-                })]
-            };
-        }
-
         let cardUri: string | undefined = undefined;
 
         if (args.card?.type === 'Poll') {
-            if (!TWEET_POLL_RANGE.includes(args.card.choices.length)) {
-                return {
-                    errors: [new ValidationError(args.card.choices.length < TWEET_POLL_RANGE.start ? 'Too few poll choices' : 'Too many poll choices', {
-                        field: 'card',
-                        value: args.card.choices.length,
-                        expected: [TWEET_POLL_RANGE],
-                        cause: new RangeError(`card.choices.length (${args.card.choices.length}) out of range: ${TWEET_POLL_RANGE}`)
-                    })]
-                };
-            }
-
             const hasImage = args.card.choices.some(choice => !!choice.mediaId);
 
             const { errors, data: uri } = await this.fetch(ENDPOINTS.cards_create, {
@@ -1211,7 +1165,8 @@ export class TwitterClient {
             cardUri = uri.value;
         }
 
-        const { errors, data: tweet } = await this.fetch(ENDPOINTS[shouldCreateNoteTweet ? 'CreateNoteTweet' : 'CreateTweet'], {
+        // todo: CreateNoteTweet should have its own method
+        const { errors, data: tweet } = await this.fetch(ENDPOINTS.CreateTweet, {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
             card_uri: cardUri,
             conversation_control: mode ? { mode } : undefined,
@@ -1606,17 +1561,6 @@ export class TwitterClient {
      * @since 0.1.0
      */
     async vote(args: TweetVoteArgs) {
-        if (!TWEET_POLL_RANGE.includes(args.choice)) {
-            return {
-                errors: [new ValidationError('Invalid', {
-                    field: 'choice',
-                    value: args.choice,
-                    expected: [TWEET_POLL_RANGE],
-                    cause: new RangeError(`choice out of range: ${TWEET_POLL_RANGE}`)
-                })]
-            };
-        }
-
         return await this.fetch(ENDPOINTS.capi_passthrough_1, {
             'twitter:long:original_tweet_id': args.tweetId,
             'twitter:string:card_uri': args.cardUri,

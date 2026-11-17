@@ -10,9 +10,6 @@ export const OAUTH_KEY = 'Bearer AAAAAAAAAAAAAAAAAAAAAG5LOQEAAAAAbEKsIYYIhrfOQqm
 
 export const UPLOAD_SEGMENT_SIZE = 1 << 20;
 export const MAX_TIMELINE_ITERATIONS = 5;
-export const TWEET_TEXT_RANGE = new Range('0..=280');
-export const TWEET_MEDIA_RANGE = new Range('0..=4');
-export const TWEET_POLL_RANGE = new Range('2..=4');
 
 export const DEFAULT_AVATAR_URL = 'https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png';
 export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36';
