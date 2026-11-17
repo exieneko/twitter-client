@@ -4,7 +4,7 @@ import type { Type } from './utils.js';
 /**
  * Timeline tweet. If the tweet is a reply under the currently focused tweet, it will be a `Conversation` instead
  * 
- * @see {@link Conversation}
+ * @see {@linkcode Conversation}
  */
 export interface Tweet extends Type<'Tweet'> {
     id: string,

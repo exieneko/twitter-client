@@ -47,7 +47,7 @@ export interface Slice<T extends Type> {
  * // `value` is always a `TwitterResponse`
  * const { errors, data } = value;
  * 
- * @see {@link TwitterResponse}
+ * @see {@linkcode TwitterResponse}
  */
 export type Timeline<T extends Type> = AsyncGenerator<TwitterResponse<Slice<T>>, TwitterResponse<Slice<T>>, unknown>;
 

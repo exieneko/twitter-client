@@ -255,7 +255,7 @@ export class TwitterClient {
      * @param endpoint Target endpoint
      * @param [params] Dynamic parameters to send to the endpoint
      * @returns Promise resolving to the expected return type of the target endpoint's `format` property
-     * @see {@link Endpoint}
+     * @see {@linkcode Endpoint}
      */
     async fetch<E extends Endpoint, T extends object = Awaited<ReturnType<E['format']>> extends boolean ? { ok: boolean } : Awaited<ReturnType<E['format']>> extends object ? Awaited<ReturnType<E['format']>> : { value: Awaited<ReturnType<E['format']>> }>(endpoint: E, params?: EndpointParams<E>): Promise<TwitterResponse<T>> {
         type U = Parameters<E['format']>[1];
@@ -349,7 +349,7 @@ export class TwitterClient {
 
 
     /**
-     * Sets the {@link TwitterClient.self} property and returns its value
+     * Sets the {@linkcode TwitterClient.self} property and returns its value
      * 
      * @returns User
      * @since 1.0.0-rc.0
@@ -382,7 +382,7 @@ export class TwitterClient {
     /**
      * Get users you've blocked
      * 
-     * @param [args] {@link BlockedUsersGetArgs}
+     * @param [args] {@linkcode BlockedUsersGetArgs}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -449,7 +449,7 @@ export class TwitterClient {
     /**
      * Update data on your profile
      * 
-     * @param args {@link UpdateProfileArgs}
+     * @param args {@linkcode UpdateProfileArgs}
      * @returns Success status
      * @since 0.1.0
      */
@@ -525,7 +525,7 @@ export class TwitterClient {
      * Rate a Birdwatch note. The helpfulness level will be inferred automatically
      * 
      * @param noteId Birdwatch note id
-     * @param args {@link BirdwatchRateNoteArgs}
+     * @param args {@linkcode BirdwatchRateNoteArgs}
      * @returns Success status
      * @since 0.4.0
      */
@@ -557,7 +557,7 @@ export class TwitterClient {
      * Create a birdwatch bat signal on a tweet. Requires a verified phone number
      * 
      * @param tweetId Id of the tweet to create the bat signal on
-     * @param args {@link BirdwatchCreateBatSignalArgs}
+     * @param args {@linkcode BirdwatchCreateBatSignalArgs}
      * @returns Bat signal id
      * @since 1.0.0
      */
@@ -592,7 +592,7 @@ export class TwitterClient {
     /**
      * Get bookmarked tweets
      * 
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -609,7 +609,7 @@ export class TwitterClient {
      * Search bookmarked tweets
      * 
      * @param query Query
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.6.0
      */
@@ -649,7 +649,7 @@ export class TwitterClient {
      * Get tweets in a given community
      * 
      * @param id Community id
-     * @param [args] {@link CommunityTweetsGetArgs}
+     * @param [args] {@linkcode CommunityTweetsGetArgs}
      * @yields Slice of tweets
      * @since 0.3.0
      */
@@ -667,7 +667,7 @@ export class TwitterClient {
      * Get tweets in a given community that contain media
      * 
      * @param id Community id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.3.0
      */
@@ -708,7 +708,7 @@ export class TwitterClient {
      * Get a Twitter list by its id or slug
      * 
      * @param id List id or slug
-     * @param [args] {@link BySlug}
+     * @param [args] {@linkcode BySlug}
      * @returns List
      * @since 0.1.0
      */
@@ -726,7 +726,7 @@ export class TwitterClient {
      * Get tweets of a list, created by listed users
      * 
      * @param id List id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -752,7 +752,7 @@ export class TwitterClient {
     /**
      * Get lists you're a member of
      * 
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of lists
      * @since 0.6.0
      */
@@ -778,7 +778,7 @@ export class TwitterClient {
      * Get members of a list
      * 
      * @param id List id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -795,7 +795,7 @@ export class TwitterClient {
      * Get subscribers of a list
      * 
      * @param id List id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -811,7 +811,7 @@ export class TwitterClient {
     /**
      * Create a new list
      * 
-     * @param args {@link ListCreateArgs}
+     * @param args {@linkcode ListCreateArgs}
      * @returns List
      * @since 0.1.0
      */
@@ -823,7 +823,7 @@ export class TwitterClient {
      * Edit details of a list
      * 
      * @param id List id
-     * @param args {@link ListCreateArgs|Required\<ListCreateArgs\>}
+     * @param args {@linkcode ListCreateArgs|Required\<ListCreateArgs\>}
      * @returns Success status
      * @since 0.1.0
      */
@@ -952,7 +952,7 @@ export class TwitterClient {
     /**
      * Get notifications
      * 
-     * @param [args] {@link NotificationGetArgs}
+     * @param [args] {@linkcode NotificationGetArgs}
      * @yields Slice of notifications
      * @since 0.1.0
      */
@@ -969,7 +969,7 @@ export class TwitterClient {
     /**
      * Get recent tweets from users you allowed notifications from
      * 
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1008,7 +1008,7 @@ export class TwitterClient {
     /**
      * Get tweets of a timeline
      * 
-     * @param [args] {@link TimelineGetArgs}
+     * @param [args] {@linkcode TimelineGetArgs}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1017,7 +1017,7 @@ export class TwitterClient {
      * Get tweets of a generic timeline by its id
      * 
      * @param id Generic timeline id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1055,7 +1055,7 @@ export class TwitterClient {
      * Search tweets
      * 
      * @param query Query
-     * @param [args] {@link SearchTweetArgs}
+     * @param [args] {@linkcode SearchTweetArgs}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1069,7 +1069,7 @@ export class TwitterClient {
      * Search users
      * 
      * @param query Query
-     * @param [args] {@link SearchTweetArgs}
+     * @param [args] {@linkcode SearchTweetArgs}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1082,7 +1082,7 @@ export class TwitterClient {
      * Search lists
      * 
      * @param query Query
-     * @param [args] {@link SearchTweetArgs}
+     * @param [args] {@linkcode SearchTweetArgs}
      * @yields Slice of lists
      * @since 0.1.0
      */
@@ -1122,7 +1122,7 @@ export class TwitterClient {
      * 
      * Additional thread tweets will be created with individual requests, as Twitter doesn't have an official way of handling this
      * 
-     * @param args {@link TweetCreateArgs}
+     * @param args {@linkcode TweetCreateArgs}
      * @param [thread] Additional tweets
      * @returns Tweet
      * @since 0.1.0
@@ -1252,7 +1252,7 @@ export class TwitterClient {
     /**
      * Schedule a tweet
      * 
-     * @param args {@link ScheduledTweetCreateArgs}
+     * @param args {@linkcode ScheduledTweetCreateArgs}
      * @returns Scheduled tweet id
      * @since 1.0.0-rc.0
      */
@@ -1272,7 +1272,7 @@ export class TwitterClient {
      * Edit a scheduled tweet
      * 
      * @param id Scheduled tweet id
-     * @param [args] {@link ScheduledTweetCreateArgs}
+     * @param [args] {@linkcode ScheduledTweetCreateArgs}
      * @returns Success status
      * @since 1.0.0-rc.0
      */
@@ -1297,7 +1297,7 @@ export class TwitterClient {
      * Get a tweet and its replies as a timeline by its id
      * 
      * @param id Tweet id
-     * @param [args] {@link TweetGetArgs}
+     * @param [args] {@linkcode TweetGetArgs}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1341,7 +1341,7 @@ export class TwitterClient {
      * Translate a tweet, user description, or birdwatch note to `language` using Grok
      * 
      * @param id Item id
-     * @param [args] {@link TranslateArgs}
+     * @param [args] {@linkcode TranslateArgs}
      * @returns Translated text
      * @since 1.0.0-rc.0
      */
@@ -1357,7 +1357,7 @@ export class TwitterClient {
      * Get hidden replies on a tweet
      * 
      * @param tweetId Tweet id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1374,7 +1374,7 @@ export class TwitterClient {
      * Get users that liked a tweet by the tweet's id. In ~June 2024, liked tweet were made private, so this method will return an empty array if you aren't the author of the tweet
      * 
      * @param tweetId Tweet id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1391,7 +1391,7 @@ export class TwitterClient {
      * Get users that retweeted a tweet by the tweet's id
      * 
      * @param tweetId Tweet id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1408,7 +1408,7 @@ export class TwitterClient {
      * Get quote tweets to a tweet by the original tweet's id
      * 
      * @param tweetId Original tweet's id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1556,7 +1556,7 @@ export class TwitterClient {
     /**
      * Vote on a poll
      * 
-     * @param args {@link TweetVoteArgs}
+     * @param args {@linkcode TweetVoteArgs}
      * @returns Success status
      * @since 0.1.0
      */
@@ -1630,7 +1630,7 @@ export class TwitterClient {
      * Get a user by their id, or username if specified
      * 
      * @param id User id or username
-     * @param [args] {@link ByUsername}
+     * @param [args] {@linkcode ByUsername}
      * @returns User
      * @since 0.1.0
      */
@@ -1655,7 +1655,7 @@ export class TwitterClient {
      * Get multiple users by their ids, or usernames if specified
      * 
      * @param ids User ids or usernames
-     * @param [args] {@link ByUsername}
+     * @param [args] {@linkcode ByUsername}
      * @returns Users
      * @since 0.1.0
      */
@@ -1671,7 +1671,7 @@ export class TwitterClient {
      * Get tweets from a user chronologically
      * 
      * @param id User id
-     * @param [args] {@link UserTweetsGetArgs}
+     * @param [args] {@linkcode UserTweetsGetArgs}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1701,7 +1701,7 @@ export class TwitterClient {
      * Get replies from a user chronologically. Will also include the tweet being replied to in the profile conversations
      * 
      * @param id User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @returns Slice of conversations
      * @since 1.1.0-rc.0
      */
@@ -1718,7 +1718,7 @@ export class TwitterClient {
      * Get retweets from a user chronologically
      * 
      * @param id User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @returns Slice of tweets
      * @since 1.1.0-rc.0
      */
@@ -1735,7 +1735,7 @@ export class TwitterClient {
      * Get media tweets from a user chronologically
      * 
      * @param id User id
-     * @param [args] {@link UserMediaGetArgs}
+     * @param [args] {@linkcode UserMediaGetArgs}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1757,7 +1757,7 @@ export class TwitterClient {
      * Get liked tweets of a user chronologically (ordered by the time when each tweet was liked instead of when the tweets were created)
      * 
      * @param id User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of tweets
      * @since 0.1.0
      */
@@ -1774,7 +1774,7 @@ export class TwitterClient {
      * Get followed users of a user
      * 
      * @param userId User id 
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1791,7 +1791,7 @@ export class TwitterClient {
      * Get followers of a user
      * 
      * @param userId User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1808,7 +1808,7 @@ export class TwitterClient {
      * Get followers of a user that you also follow
      * 
      * @param userId User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1825,7 +1825,7 @@ export class TwitterClient {
      * Get verified followers of a user
      * 
      * @param userId User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1842,7 +1842,7 @@ export class TwitterClient {
      * Get super followed users of a user. Note that super follows can be set to private
      * 
      * @param userId User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1859,7 +1859,7 @@ export class TwitterClient {
      * Get affiliates of a business account by the business account's id
      * 
      * @param userId User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of users
      * @since 0.1.0
      */
@@ -1876,7 +1876,7 @@ export class TwitterClient {
      * Get lists created by a user
      * 
      * @param id User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @yields Slice of lists
      * @since 0.1.0
      */
@@ -1893,7 +1893,7 @@ export class TwitterClient {
      * Follow a user
      * 
      * @param id User id
-     * @param [args] {@link ByUsername}
+     * @param [args] {@linkcode ByUsername}
      * @returns Success status
      * @since 0.1.0
      */
@@ -1905,7 +1905,7 @@ export class TwitterClient {
      * Unfollow a user
      * 
      * @param id User id
-     * @param [args] {@link ByUsername}
+     * @param [args] {@linkcode ByUsername}
      * @returns Success status
      * @since 0.1.0
      */
@@ -1960,7 +1960,7 @@ export class TwitterClient {
     /**
      * Get incoming follow requests
      * 
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @returns User ids
      * @since 0.1.0
      */
@@ -1972,7 +1972,7 @@ export class TwitterClient {
      * Cancel an outgoing follow request to a user
      * 
      * @param userId User id
-     * @param [args] {@link ByUsername}
+     * @param [args] {@linkcode ByUsername}
      * @returns Success status
      * @since 0.1.0
      */
@@ -1984,7 +1984,7 @@ export class TwitterClient {
      * Accept an incoming follow request from a user
      * 
      * @param userId User id
-     * @param [args] {@link ByUsername}
+     * @param [args] {@linkcode ByUsername}
      * @returns Success status
      * @since 0.1.0
      */
@@ -1996,7 +1996,7 @@ export class TwitterClient {
      * Decline an incoming follow request from a user
      * 
      * @param userId User id
-     * @param [args] {@link byUsername}
+     * @param [args] {@linkcode byUsername}
      * @returns Success status
      * @since 0.1.0
      */
@@ -2008,7 +2008,7 @@ export class TwitterClient {
      * Block a user
      * 
      * @param id User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @returns Success status
      * @since 0.1.0
      */
@@ -2022,7 +2022,7 @@ export class TwitterClient {
      * **Note**: this method is under additional protections and may return a 404 error for some users
      * 
      * @param id User id
-     * @param [args] {@link CursorOnly}
+     * @param [args] {@linkcode CursorOnly}
      * @returns Success status
      * @since 0.1.0
      */
@@ -2045,7 +2045,7 @@ export class TwitterClient {
      * Mute a user
      * 
      * @param id User id
-     * @param [args] {@link ByUsername}
+     * @param [args] {@linkcode ByUsername}
      * @returns Success status
      * @since 0.1.0
      */
@@ -2057,7 +2057,7 @@ export class TwitterClient {
      * Unmute a user
      * 
      * @param id User id
-     * @param [args] {@link byUsername}
+     * @param [args] {@linkcode byUsername}
      * @returns Success status
      * @since 0.1.0
      */
@@ -2069,7 +2069,7 @@ export class TwitterClient {
      * Upload an image or video file to Twitter by sending the file's data in several request, in small chunks
      * 
      * @param media The file's data as an `ArrayBuffer`
-     * @param args {@link MediaUploadArgs}
+     * @param args {@linkcode MediaUploadArgs}
      * @param callback Callback function executed after each chunk is uploaded
      * @returns Media
      * @since 0.6.0
