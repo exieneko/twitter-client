@@ -4,7 +4,7 @@ import { ClientTransaction } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWITTER_DEFAULT_OPTIONS, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { Entries, TwitterFormatter } from './fmt/index.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, TweetReplyPermission, Slice, TweetResult, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListResult, type TweetMediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserResult, type UserTweetsGetArgs, SearchOrder, SearchArgs, BirdwatchCreateBatSignalArgs, TranslateArgs, LongTweetBehavior, TimelineOrder, UserTweetsFilter, UserMediaGetArgs, UserMediaFilter, UserTweetsOrder } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, TweetReplyPermission, Slice, TweetResult, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListResult, type TweetMediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserResult, type UserTweetsGetArgs, SearchOrder, SearchArgs, BirdwatchCreateBatSignalArgs, TranslateArgs, LongTweetBehavior, TimelineOrder, UserTweetsFilter, UserMediaGetArgs, UserMediaFilter, UserTweetsOrder, MediaMetadataCreateArgs } from './types/index.js';
 import { ValidationError, ApiError, RequestError, TwitterError, ClientError, DivineInterventionError } from './fmt/errors.js';
 import type { Endpoint, EndpointParams, Type } from './types/utils.js';
 import { match } from './utils/index.js';
@@ -1118,9 +1118,9 @@ export class TwitterClient {
 
 
     /**
-     * Creates a new tweet with the specified content. A note tweet will be created if required by text (max 280) or media (max 4) array length, and allowed in options
+     * Creates a new tweet
      * 
-     * Additional thread tweets will be created with individual requests, as Twitter doesn't have an official way of handling this
+     * Thread tweets, card, and media metadata will be created with individual requests
      * 
      * @param args {@linkcode TweetCreateArgs}
      * @param [thread] Additional tweets
@@ -1165,6 +1165,21 @@ export class TwitterClient {
             cardUri = uri.value;
         }
 
+        let media = args.media;
+
+        if (args.mediaIds) {
+            media ||= args.mediaIds.map(id => ({ id }));
+        }
+        media ||= [];
+
+        for (const { id, altText } of media) {
+            const { errors, data } = await this.createMetadata(id, { altText });
+
+            if (!data?.ok) {
+                return { errors };
+            }
+        }
+
         // todo: CreateNoteTweet should have its own method
         const { errors, data: tweet } = await this.fetch(ENDPOINTS.CreateTweet, {
             batch_compose: !!thread?.length && !args.replyTo ? 'BatchFirst' : undefined,
@@ -1179,10 +1194,10 @@ export class TwitterClient {
                 } : undefined
             } : undefined,
             media: {
-                media_entities: args.mediaIds?.map(id => ({
-                    media_id: id,
-                    tagged_users: []
-                })) || [],
+                media_entities: media.map(media => ({
+                    media_id: media.id,
+                    tagged_users: media.taggedUsers || []
+                })),
                 possibly_sensitive: !!args.sensitive
             },
             reply: !!args.replyTo ? {
@@ -1208,13 +1223,28 @@ export class TwitterClient {
 
         // (this is actually how the twitter app does it)
         for (const t of thread) {
+            let media = t.media;
+
+            if (t.mediaIds) {
+                media ||= t.mediaIds.map(id => ({ id }));
+            }
+            media ||= [];
+
+            for (const { id, altText } of media) {
+                const { errors, data } = await this.createMetadata(id, { altText });
+
+                if (!data?.ok) {
+                    return { errors };
+                }
+            }
+
             const { data } = await this.fetch(ENDPOINTS.CreateTweet, {
                 batch_compose: !args.replyTo ? 'BatchSubsequent' : undefined,
                 media: {
-                    media_entities: t.mediaIds?.map(id => ({
-                        media_id: id,
-                        tagged_users: []
-                    })) || [],
+                    media_entities: media.map(media => ({
+                        media_id: media.id,
+                        tagged_users: media.taggedUsers || []
+                    })),
                     possibly_sensitive: !!args.sensitive
                 },
                 reply: {
@@ -2164,18 +2194,35 @@ export class TwitterClient {
     }
 
     /**
+     * Create metadata for an uploaded media. Required before creating a tweet with this media as an attachment. `createTweet` handles this request automatically
+     * 
+     * @param mediaId Media id
+     * @param [args] {@linkcode MediaMetadataCreateArgs}
+     * @returns Success status
+     * @since 1.1.0-rc.0
+     */
+    async createMetadata(mediaId: string, args?: MediaMetadataCreateArgs) {
+        return await this.fetch(ENDPOINTS.media_metadata_create, {
+            allow_download_status: {
+                allow_download: String(args?.allowDownload ?? true) as `${boolean}`
+            },
+            alt_text: args?.altText ? {
+                text: args.altText
+            }: undefined,
+            media_id: mediaId
+        });
+    }
+
+    /**
      * Add ALT text to an uploaded media
      * 
      * @param id Media id
      * @param text ALT text
      * @returns Success status
      * @since 0.6.0
+     * @deprecated Replaced by {@linkcode createMetadata}
      */
     async addAltText(id: string, text: string) {
-        return await this.fetch(ENDPOINTS.media_metadata_create, {
-            allow_download_status: { allow_download: 'true' },
-            alt_text: { text },
-            media_id: id
-        });
+        return this.createMetadata(id, { altText: text });
     }
 }

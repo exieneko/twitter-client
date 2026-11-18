@@ -223,8 +223,13 @@ export interface TweetCreateArgs {
     contentDisclosures?: Partial<Tweet['contentDisclosures']>,
     /** Tweet id to reply to */
     replyTo?: string,
-    /** Media ids to attach to the tweet. Tweets with over 4 medias can only be sent as a note tweet */
+    /**
+     * Media ids to attach to the tweet
+     * 
+     * @deprecated `media` is preferred instead
+     */
     mediaIds?: string[],
+    media?: TweetCreateMediaArgs[],
     /** Mark this tweet as sensitive? */
     sensitive?: boolean,
     /** Control who can reply to this tweet */
@@ -234,11 +239,12 @@ export interface TweetCreateArgs {
 /**
  * Arguments for adding additional tweets in reply to a root tweet
  */
-export interface ThreadTweetArgs {
-    /** Content of the tweet. Up to 280 characters */
-    text?: string,
-    /** Up to 4 media ids to attach to the tweet */
-    mediaIds?: string[]
+export type ThreadTweetArgs = Pick<TweetCreateArgs, 'text' | 'media' | 'mediaIds'>;
+
+export interface TweetCreateMediaArgs {
+    id: string,
+    altText?: string,
+    taggedUsers?: string[]
 }
 
 /**
@@ -306,14 +312,22 @@ export enum TranslationItemType {
 export interface MediaUploadArgs {
     /** Mime type of the media */
     contentType: string,
-    /** ALT text to add to the media with an additional request */
+    /** ALT text to describe the media. Not supported for videos and gifs */
     altText?: string,
     /**
      * Override the default segment size. Reducing the number will increase the amount of requests made
      * 
      * @default 1048576
+     * @deprecated You probably don't want to override this
      */
     segmentSizeOverride?: number
+}
+
+/**
+ * Arguments for adding metadata to an uploaded media
+ */
+export interface MediaMetadataCreateArgs extends Pick<MediaUploadArgs, 'altText'> {
+    allowDownload?: boolean
 }
 
 /**
