@@ -5,7 +5,7 @@
 argparse 'q/quiet' -- $argv
 
 if not set -q argv[1]
-    'missing --dir'
+    'missing directory'
 end
 
 set -l endpoints
