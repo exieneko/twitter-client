@@ -1,7 +1,7 @@
 import * as flags from './flags.js';
 import * as f from './fmt/index.js';
 import { type AboutUser, type AccountSettings, type BirdwatchBatSignal, type BirdwatchHelpfulTag, type BirdwatchUnhelpfulTag, type BirdwatchUser, type CommunityResult, type DataSaverSettings, type DraftTweet, type ListResult, type TweetMediaData, type _MediaUploadInit, type Notification, type ScheduledTweet, type Slice, type Trend, type Tweet, type TweetBirdwatchNotes, type TweetResult, type TwitterResponse, type Typeahead, type UnreadCount, type User, type UserResult, type TweetTombstone, LongTweetBehavior, type TwitterOptions, AccountSession } from './types/index.js';
-import { Endpoint, Range, type EndpointGroup } from './types/utils.js';
+import { Endpoint, type EndpointGroup } from './types/utils.js';
 import { gql, v11 } from './utils/index.js';
 
 export const PUBLIC_TOKEN = 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
