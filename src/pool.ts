@@ -144,7 +144,15 @@ export class TwitterPool {
         }
     }
 
-    private async client<T extends object>(fn: (client: TwitterClient) => Promise<TwitterResponse<T>>) {
+    /**
+     * Get the client with the least rate limit
+     * 
+     * @param fn Function using the client
+     * @returns `TwitterResponse` containing the requested data
+     * @example
+     * const user: UserResult = await pool.client(c => c.getUser('12'));
+     */
+    async client<T extends object>(fn: (client: TwitterClient) => Promise<TwitterResponse<T>>): Promise<TwitterResponse<T>> {
         this.resetRateLimits();
         this.#accounts.sort((a, b) => b.rateLimitRemaining - a.rateLimitRemaining);
 
