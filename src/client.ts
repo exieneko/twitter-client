@@ -94,7 +94,7 @@ export class TwitterClient {
             ...options
         };
 
-        const log = opts.debug > 0 ? new Logger(opts.debug) : undefined;
+        const log = opts.logLevel > 0 ? new Logger(opts.logLevel) : undefined;
         log?.debug('Initializing TwitterClient with options:', options);
 
         if (!tokens || typeof tokens !== 'object') {

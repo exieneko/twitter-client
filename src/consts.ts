@@ -23,10 +23,11 @@ export const EMPTY_SLICE: TwitterResponse<Slice<any>> = {
 };
 
 export const TWITTER_DEFAULT_OPTIONS: TwitterOptions = {
-    debug: 3,
+    debug: 2,
     domain: 'twitter.com',
     files: {},
     language: 'en',
+    logLevel: 2,
     longTweetBehavior: LongTweetBehavior.Force,
     overrides: {}
 };

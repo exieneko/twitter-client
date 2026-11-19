@@ -74,31 +74,31 @@ export class Logger {
     }
 
     trace(...data: LoggerValue[]): boolean {
-        const ok = !!((this.#debug >>> 4) & 1);
+        const ok = this.#debug >= 3;
         if (ok) this.log('trace', 'gray', data);
         return ok;
     }
 
     debug(...data: LoggerValue[]): boolean {
-        const ok = !!((this.#debug >>> 3) & 1);
+        const ok = this.#debug >= 3;
         if (ok) this.log('debug', 'magenta', data);
         return ok;
     }
 
     info(...data: LoggerValue[]): boolean {
-        const ok = !!((this.#debug >>> 2) & 1);
+        const ok = this.#debug >= 3;
         if (ok) this.log('info', 'cyan', data);
         return ok;
     }
 
     warn(...data: LoggerValue[]): boolean {
-        const ok = !!((this.#debug >>> 1) & 1);
+        const ok = this.#debug >= 2;
         if (ok) this.log('warn', 'yellow', data);
         return ok;
     }
 
     error(...data: LoggerValue[]): boolean {
-        const ok = !!((this.#debug >>> 0) & 1);
+        const ok = this.#debug >= 1;
         if (ok) this.log('error', 'red', data);
         return ok;
     }

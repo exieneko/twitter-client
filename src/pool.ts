@@ -40,7 +40,7 @@ export class TwitterPool {
             ...options
         };
 
-        const log = opts.debug > 0 ? new Logger(opts.debug) : undefined;
+        const log = opts.logLevel > 0 ? new Logger(opts.logLevel) : undefined;
 
         let proxyAgent: ProxyAgent | undefined = undefined;
         if (opts.proxyUrl) {

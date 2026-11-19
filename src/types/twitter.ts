@@ -18,15 +18,8 @@ export interface TwitterResponse<T extends object> {
  * Additional options for `TwitterClient`
  */
 export interface TwitterOptions {
-    /**
-     * Debug level expressed as a number
-     * 
-     * Right to left: errors, warnings, info, debug, trace
-     * 
-     * @default 0b00011
-     * @since 1.0.0
-     */
-    debug: number,
+    /** @deprecated Replaced by `logLevel` */
+    debug: any,
     /**
      * Set which domain to send requests to
      * 
@@ -34,13 +27,6 @@ export interface TwitterOptions {
      * @since 1.0.0-rc.0
      */
     domain: 'twitter.com' | 'x.com',
-    /**
-     * Twitter client language. English is currently the only supported language
-     * 
-     * @default 'en'
-     * @since 1.0.0-rc.0
-     */
-    language: string,
     /**
      * File paths to store data
      * 
@@ -57,6 +43,25 @@ export interface TwitterOptions {
          */
         data?: string
     },
+    /**
+     * Twitter client language. English is currently the only supported language
+     * 
+     * @default 'en'
+     * @since 1.0.0-rc.0
+     */
+    language: string,
+    /**
+     * Log level as a number between 0 and 3
+     * 
+     * 0. Silent
+     * 1. Errors only
+     * 2. Errors and warnings
+     * 3. Everything
+     * 
+     * @default 2
+     * @since 1.1.0-rc.0
+     */
+    logLevel: number,
     /**
      * How to handle when a tweet's text length exceeds 280 characters
      * 
