@@ -5,7 +5,7 @@ import { ClientTransaction } from 'x-client-transaction-id';
 
 import { EMPTY_SLICE, ENDPOINTS, MAX_TIMELINE_ITERATIONS, TWITTER_DEFAULT_OPTIONS, UPLOAD_SEGMENT_SIZE } from './consts.js';
 import { Entries, TwitterFormatter } from './fmt/index.js';
-import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, TweetReplyPermission, Slice, TweetResult, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListResult, type TweetMediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserResult, type UserTweetsGetArgs, SearchOrder, SearchArgs, BirdwatchCreateBatSignalArgs, TranslateArgs, LongTweetBehavior, TimelineOrder, UserTweetsFilter, UserMediaGetArgs, UserMediaFilter, UserTweetsOrder, MediaMetadataCreateArgs } from './types/index.js';
+import { BirdwatchNoteSource, BirthDateVisibility, CommunityTweetsOrder, TweetReplyPermission, Slice, TweetResult, TweetOrder, type BirdwatchRateNoteArgs, type BlockedUsersGetArgs, type BySlug, type ByUsername, type CommunityTweetsGetArgs, type CursorOnly, type ListCreateArgs, type ListResult, type TweetMediaData, type MediaUploadArgs, type Notification, type NotificationGetArgs, type TwitterOptions, type ScheduledTweetCreateArgs, type SearchTweetArgs, type ThreadTweetArgs, type Timeline, type TimelineGetArgs, type Tweet, type TweetCreateArgs, type TweetGetArgs, type TweetVoteArgs, type TwitterResponse, type UnsentTweetsGetArgs, type UpdateProfileArgs, type User, type UserResult, type UserTweetsGetArgs, SearchOrder, SearchArgs, BirdwatchCreateBatSignalArgs, TranslateArgs, LongTweetBehavior, TimelineType, UserTweetsFilter, UserMediaGetArgs, UserMediaFilter, UserTweetsOrder, MediaMetadataCreateArgs } from './types/index.js';
 import { ValidationError, ApiError, RequestError, TwitterError, ClientError, DivineInterventionError } from './fmt/errors.js';
 import type { Endpoint, EndpointParams, Type } from './types/utils.js';
 import { match } from './utils/index.js';
@@ -1004,7 +1004,7 @@ export class TwitterClient {
         return await this.fetch(ENDPOINTS.badge_count);
     }
 
-    
+
 
     /**
      * Get tweets of a timeline
@@ -1039,17 +1039,17 @@ export class TwitterClient {
 
     protected async getTimelineSlice(idOrArgs: string | TimelineGetArgs = {}, args?: CursorOnly) {
         if (typeof idOrArgs === 'string') {
-            return await this.fetch(ENDPOINTS.GenericTimelineById.default, { timelineId: idOrArgs, cursor: args?.cursor });
+            return await this.fetch(ENDPOINTS.GenericTimelineById.default, {
+                timelineId: idOrArgs,
+                cursor: args?.cursor
+            });
         }
 
-        const seenTweetIds = idOrArgs.seenTweetIds?.map(String) ?? [];
-        const requestContext = idOrArgs.cursor ? undefined : 'launch';
-
-        if (idOrArgs.orderBy === TimelineOrder.Chronological) {
-            return await this.fetch(ENDPOINTS.HomeLatestTimeline, { seenTweetIds, requestContext, cursor: idOrArgs.cursor });
-        }
-
-        return await this.fetch(ENDPOINTS.HomeTimeline, { seenTweetIds, requestContext, cursor: idOrArgs.cursor });
+        return await this.fetch(idOrArgs.type === TimelineType.Chronological ? ENDPOINTS.HomeLatestTimeline : ENDPOINTS.HomeTimeline, {
+            seenTweetIds: idOrArgs.seenTweetIds || [],
+            requestContext: !idOrArgs.cursor ? 'launch' : undefined,
+            cursor: idOrArgs.cursor
+        });
     }
 
     /**

@@ -183,26 +183,27 @@ export interface SearchArgs extends CursorOnly {
 /**
  * Arguments for searching tweets
  */
-export interface SearchTweetArgs extends SearchArgs, OrderBy<SearchOrder> {}
+export type SearchTweetArgs = SearchArgs & OrderBy<SearchOrder>;
 
 /**
  * Home timeline order
  * 
  * @enum
- * @default TimelineOrder.Algorithmical
+ * @default TimelineType.Algorithmical
  */
-export const TimelineOrder = {
+export const TimelineType = {
     /** Algorithmical timeline */
     Algorithmical: 'Algorithmical',
     /** Chronological timeline */
     Chronological: 'Chronolocial'
 } as const;
-export type TimelineOrder = Enum<typeof TimelineOrder>;
+export type TimelineType = Enum<typeof TimelineType>;
 
 /**
  * Arguments for getting a timeline
  */
-export interface TimelineGetArgs extends CursorOnly, OrderBy<TimelineOrder> {
+export interface TimelineGetArgs extends CursorOnly {
+    type?: TimelineType,
     /** Tweet ids of already seen tweets */
     seenTweetIds?: string[]
 }
