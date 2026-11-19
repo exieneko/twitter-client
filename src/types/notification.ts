@@ -1,5 +1,5 @@
 import type { Tweet, User } from './index.js';
-import type { Type } from './utils.js';
+import type { Enum, Type } from './utils.js';
 
 /**
  * Notification received by the authenticated user
@@ -18,50 +18,56 @@ export interface Notification extends Type<'Notification'> {
     users: User[]
 }
 
-export enum NotificationType {
+/**
+ * Notification types
+ * 
+ * @enum
+ */
+export const NotificationType = {
     /** New tweets were made by users who you enabled notifications from */
-    NewTweets = 'NewTweets',
+    NewTweets: 'NewTweets',
     /** A tweet is recommended to you */
-    RecommendedTweets = 'RecommendedTweets',
+    RecommendedTweets: 'RecommendedTweets',
 
     /** You were mentioned in a tweet */
-    Mentioned = 'Mentioned',
+    Mentioned: 'Mentioned',
     /** Users followed you */
-    NewFollowers = 'NewFollowers',
+    NewFollowers: 'NewFollowers',
     /** Users liked your tweet */
-    TweetLiked = 'TweetLiked',
+    TweetLiked: 'TweetLiked',
     /** Users retweeted your tweet */
-    TweetRetweeted = 'TweetRetweeted',
+    TweetRetweeted: 'TweetRetweeted',
     /** Users liked your retweet */
-    RetweetLiked = 'RetweetLiked',
+    RetweetLiked: 'RetweetLiked',
     /** Users retweeted your retweet */
-    RetweetRetweeted = 'RetweetRetweeted',
+    RetweetRetweeted: 'RetweetRetweeted',
     /** You were added to a list */
-    AddedToList = 'AddedToList',
+    AddedToList: 'AddedToList',
     /** Users subscribed to your list */
-    ListSubscribedTo = 'ListSubscribedTo',
+    ListSubscribedTo: 'ListSubscribedTo',
     /** A poll you created has finished */
-    PollFinished = 'PollFinished',
+    PollFinished: 'PollFinished',
 
     /** A Birdwatch note needs your help. Only possible if you're a Birdwatch contributor and have notifications enabled */
-    BirdwatchNoteNeedsHelp = 'BirdwatchNoteNeedsHelp',
+    BirdwatchNoteNeedsHelp: 'BirdwatchNoteNeedsHelp',
     /** A Birdwatch note you rated helpful reached Helpful status */
-    BirdwatchNoteRatedHelpful = 'BirdwatchNoteRatedHelpful',
+    BirdwatchNoteRatedHelpful: 'BirdwatchNoteRatedHelpful',
     /** A Birdwatch note you rated not helpful reached Not Helpful status */
-    BirdwatchNoteRatedNotHelpful = 'BirdwatchNoteRatedNotHelpful',
+    BirdwatchNoteRatedNotHelpful: 'BirdwatchNoteRatedNotHelpful',
     /** A tweet you rated a Birdwatch note on was deleted */
-    BirdwatchNoteRatedDeleted = 'BirdwatchNoteRatedDeleted',
+    BirdwatchNoteRatedDeleted: 'BirdwatchNoteRatedDeleted',
 
     /** New session created */
-    LoggedIn = 'LoggedIn',
+    LoggedIn: 'LoggedIn',
     /** Report successfully submitted */
-    ReportReceived = 'ReportReceived',
+    ReportReceived: 'ReportReceived',
     /** Report concluded */
-    ReportUpdate = 'ReportUpdate',
+    ReportUpdate: 'ReportUpdate',
     /** Advertisement for Twitter Blue as a notification */
-    Advertisement = 'Advertisement',
-    Unknown = 'Unknown'
-}
+    Advertisement: 'Advertisement',
+    Unknown: 'Unknown'
+} as const;
+export type NotificationType = Enum<typeof NotificationType>;
 
 /**
  * Unread notifications counter

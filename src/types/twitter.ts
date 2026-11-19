@@ -1,6 +1,7 @@
 import type { Response } from 'undici';
 import type { TwitterError } from '../fmt/errors.js';
 import type { Flags } from '../flags.js';
+import type { Enum } from './utils.js';
 
 /**
  * Response object returned by all methods on `TwitterClient`
@@ -90,13 +91,14 @@ export interface TwitterOptions {
  * @default LongTweetBehavior.Force
  * @deprecated
  */
-export enum LongTweetBehavior {
+export const LongTweetBehavior = {
     /** Send the request anyway */
-    Force = 'Force',
+    Force: 'Force',
     /** Return an error without sending the request */
-    Fail = 'Fail',
+    Fail: 'Fail',
     /** Send the tweet as a note tweet. This requires a verified account. If `TwitterClient.self` is undefined, it will be set before checking for verification */
-    NoteTweet = 'NoteTweet',
+    NoteTweet: 'NoteTweet',
     /** Send the tweet as a note tweet, without checking if your account is verified */
-    NoteTweetUnchecked = 'NoteTweetUnchecked'
-}
+    NoteTweetUnchecked: 'NoteTweetUnchecked'
+} as const;
+export type LongTweetBehavior = Enum<typeof LongTweetBehavior>;

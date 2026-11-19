@@ -1,5 +1,5 @@
 import type { CardResult, CommunityResult, Cursor, TweetMedia, User } from './index.js';
-import type { Type } from './utils.js';
+import type { Enum, Type } from './utils.js';
 
 /**
  * Timeline tweet. If the tweet is a reply under the currently focused tweet, it will be a `Conversation` instead
@@ -162,66 +162,75 @@ export interface ScheduledTweet extends Omit<DraftTweet, '__typename'>, Type<'Sc
 /**
  * Tweet unavailability reasons
  * 
+ * @enum
  * @default TweetUnavailableReason.Unavailable
  */
-export enum TweetUnavailableReason {
+export const TweetUnavailableReason = {
     /** Legal ID verification is required to view this tweet. Restricted server-side */
-    AgeVerificationRequired = 'AgeVerificationRequired',
+    AgeVerificationRequired: 'AgeVerificationRequired',
     /** Author has protected their tweets */
-    AuthorProtected = 'AuthorProtected',
+    AuthorProtected: 'AuthorProtected',
     /** Author has been suspended */
-    AuthorSuspended = 'AuthorSuspended',
+    AuthorSuspended: 'AuthorSuspended',
     /** Author has deactivated or is otherwise unavailable */
-    AuthorUnavailable = 'AuthorUnavailable',
+    AuthorUnavailable: 'AuthorUnavailable',
     /** Tweet has been deleted */
-    Deleted = 'Deleted',
+    Deleted: 'Deleted',
     /** Tweet has been removed because it violated Twitter's rules */
-    ViolatedRules = 'ViolatedRules',
+    ViolatedRules: 'ViolatedRules',
     /** Tweet has been withheld in the country of the authenticated user or all countries */
-    Withheld = 'Withheld',
+    Withheld: 'Withheld',
     /** Fallback */
-    Unavailable = 'Unavailable'
-}
+    Unavailable: 'Unavailable'
+} as const;
+export type TweetUnavailableReason = Enum<typeof TweetUnavailableReason>;
 
 /**
  * Tweet restriction types
+ * 
+ * @enum
  */
-export enum TweetRestrictionType {
+export const TweetRestrictionType = {
     /** Tweet visibility is restricted and interactions are disabled */
-    Full = 'Full',
+    Full: 'Full',
     /** Tweet visibility is restricted, but users can still interact with the tweet */
-    Partial = 'Partial'
-}
+    Partial: 'Partial'
+} as const;
+export type TweetRestrictionType = Enum<typeof TweetRestrictionType>;
 
 /**
  * Reason for why a restriction was applied to a tweet
  * 
+ * @enum
  * @default TweetRestrictionReason.Other
  */
-export enum TweetRestrictionReason {
-    Abuse = 'Abuse',
-    HatefulConduct = 'HatefulConduct',
-    ViolentSpeech = 'ViolentSpeech',
+export const TweetRestrictionReason = {
+    Abuse: 'Abuse',
+    HatefulConduct: 'HatefulConduct',
+    ViolentSpeech: 'ViolentSpeech',
     /** Tweet violated Twitter's rules, but was not removed because of "public interest" */
-    ViolatedRulesPublicInterest = 'ViolatedRulesPublicInterest',
+    ViolatedRulesPublicInterest: 'ViolatedRulesPublicInterest',
     /** Fallback */
-    Other = 'Other'
-}
+    Other: 'Other'
+} as const;
+export type TweetRestrictionReason = Enum<typeof TweetRestrictionReason>;
 
 /**
  * Tweet conversation control options
  * 
+ * @enum
  * @default ReplyPermission.Everyone
  */
-export enum TweetReplyPermission {
+export const TweetReplyPermission = {
     /** Everyone can reply */
-    Everyone = 'Everyone',
+    Everyone: 'Everyone',
     /** Only people you follow can reply */
-    Following = 'Following',
+    Following: 'Following',
     /** Only your mutuals can reply */
-    Mutuals = 'Mutuals',
+    Mutuals: 'Mutuals',
     /** Only people you mentioned can reply */
-    Mentioned = 'Mentioned',
+    Mentioned: 'Mentioned',
     /** Only verified users can reply */
-    Verified = 'Verified'
-}
+    Verified: 'Verified'
+} as const;
+export type TweetReplyPermission = Enum<typeof TweetReplyPermission>;

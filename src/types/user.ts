@@ -1,4 +1,4 @@
-import type { Type } from './utils.js';
+import type { Enum, Type } from './utils.js';
 
 export interface User extends Type<'User'> {
     id: string,
@@ -117,30 +117,35 @@ export type UserResult = User | UnavailableUser;
 
 /**
  * Fan account status
+ * 
+ * @enum
  */
-export enum FanAccountType {
-    Fan = 'Fan',
-    Parody = 'Parody',
-    Commentary = 'Commentary'
-}
+export const FanAccountType = {
+    Fan: 'Fan',
+    Parody: 'Parody',
+    Commentary: 'Commentary'
+} as const;
+export type FanAccountType = Enum<typeof FanAccountType>;
 
 /**
  * Verification status of a user
  * 
+ * @enum
  * @default VerificationType.Unverified
  */
-export enum VerificationType {
+export const VerificationType = {
     /** No verification */
-    Unverified = 'Unverified',
+    Unverified: 'Unverified',
     /** Blue checkmark for Twitter Blue subscribers or some legacy verified accounts */
-    Blue = 'Blue',
+    Blue: 'Blue',
     /** Blue checkmark received for being an affiliate to a gold checkmark account */
-    BlueAffiliate = 'BlueAffiliate',
+    BlueAffiliate: 'BlueAffiliate',
     /** Gold checkmark for business accounts */
-    Business = 'Business',
+    Business: 'Business',
     /** Gray checkmark for official government accounts */
-    Government = 'Government'
-}
+    Government: 'Government'
+} as const;
+export type VerificationType = Enum<typeof VerificationType>;
 
 
 

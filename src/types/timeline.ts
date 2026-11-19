@@ -1,5 +1,5 @@
 import type { TwitterResponse } from './index.js';
-import type { Type } from './utils.js';
+import type { Enum, Type } from './utils.js';
 
 /**
  * Entry in a timeline containing the item
@@ -62,15 +62,17 @@ export interface Cursor extends Type<'Cursor'> {
 /**
  * Cursor type showing what fetching the next slice of the timeline with the cursor will do
  * 
+ * @enum
  * @default CursorDirection.Next
  */
-export enum CursorDirection {
+export const CursorDirection = {
     /** Top of the timeline */
-    Previous = 'Previous',
+    Previous: 'Previous',
     /** Bottom of the timeline */
-    Next = 'Next',
+    Next: 'Next',
     /** Show more replies under a tweet */
-    ShowMore = 'ShowMore',
+    ShowMore: 'ShowMore',
     /** Show possible spam replies under a tweet */
-    ShowSpam = 'ShowSpam'
-}
+    ShowSpam: 'ShowSpam'
+} as const;
+export type CursorDirection = Enum<typeof CursorDirection>;

@@ -1,4 +1,4 @@
-import type { Type } from './utils.js';
+import type { Enum, Type } from './utils.js';
 
 /**
  * Settings for the authenticated user
@@ -62,14 +62,26 @@ export interface DataSaverSettings {
     videoAutoplay: VideoAutoplay
 }
 
-export enum InboxPrivacy {
-    Everyone = 'Everyone',
-    Following = 'Following',
-    Verified = 'Verified',
-    None = 'None'
-}
+/**
+ * 
+ * 
+ * @enum
+ */
+export const InboxPrivacy = {
+    Everyone: 'Everyone',
+    Following: 'Following',
+    Verified: 'Verified',
+    None: 'None'
+} as const;
+export type InboxPrivacy = Enum<typeof InboxPrivacy>;
 
-export enum VideoAutoplay {
-    Always = 'Always',
-    Never = 'Never'
-}
+/**
+ * When to autoplay videos
+ * 
+ * @enum
+ */
+export const VideoAutoplay = {
+    Always: 'Always',
+    Never: 'Never'
+} as const;
+export type VideoAutoplay = Enum<typeof VideoAutoplay>;

@@ -1,5 +1,5 @@
 import type { UserResult } from './index.js';
-import type { Type } from './utils.js';
+import type { Enum, Type } from './utils.js';
 
 export interface Community extends Type<'Community'> {
     id: string,
@@ -38,11 +38,13 @@ export type CommunityResult = Community | UnavailableCommunity;
 /**
  * Community roles
  * 
+ * @enum
  * @default CommunityRole.Guest
  */
-export enum CommunityRole {
-    Guest = 'Guest',
-    Member = 'Member',
-    Moderator = 'Moderator',
-    Owner = 'Owner'
-}
+export const CommunityRole = {
+    Guest: 'Guest',
+    Member: 'Member',
+    Moderator: 'Moderator',
+    Owner: 'Owner'
+} as const;
+export type CommunityRole = Enum<typeof CommunityRole>;

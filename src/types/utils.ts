@@ -14,6 +14,7 @@ type PartialUndefined<T extends object | undefined> = {
 export interface Type<K extends string = string> {
     readonly __typename: K
 }
+export type Enum<T extends Record<string, string>> = T[keyof T];
 
 export type AsyncConstructor<This, T = Record<string, any>, Opts extends Record<string, any> | null = null> = [Opts] extends [null]
     ? (fmt: TwitterFormatter, value: T) => Promise<This>
@@ -102,13 +103,14 @@ export class Endpoint<T = any, P extends object = {}> implements EndpointOptions
     }
 }
 
-export enum EndpointType {
-    GraphQL = 'GraphQL',
-    v11 = 'v11',
-    v2 = 'v2',
-    v2Alt = 'v2Alt',
-    Media = 'Media'
-}
+export const EndpointType = {
+    GraphQL: 'GraphQL',
+    v11: 'v11',
+    v2: 'v2',
+    v2Alt: 'v2Alt',
+    Media: 'Media'
+} as const;
+export type EndpointType = Enum<typeof EndpointType>;
 
 export interface EndpointGroup {
     [key: string]: Endpoint

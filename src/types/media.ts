@@ -1,4 +1,4 @@
-import type { Type } from './utils.js';
+import type { Enum, Type } from './utils.js';
 
 export interface TweetImage extends Type<'TweetImage'> {
     id: string,
@@ -83,19 +83,22 @@ export interface _MediaUploadInit {
 /**
  * Availability status of a media
  * 
+ * @enum
  * @default TweetMediaAvailability.Available
  */
-export enum TweetMediaAvailability {
-    Available = 'Available',
+export const TweetMediaAvailability = {
+    Available: 'Available',
     /** Media was removed due to a DMCA demand */
-    Copyright = 'Copyright',
+    Copyright: 'Copyright',
     /** Media is unavailable in the region of the current IP address where the request was made */
-    GeoBlocked = 'GeoBlocked',
-    Other = 'Other'
-}
+    GeoBlocked: 'GeoBlocked',
+    Other: 'Other'
+} as const;
+export type TweetMediaAvailability = Enum<typeof TweetMediaAvailability>;
 
-export enum TweetMediaState {
-    Success = 'Succeeded',
-    Failure = 'Failed',
-    Pending = 'Pending'
-}
+export const TweetMediaState = {
+    Success: 'Succeeded',
+    Failure: 'Failed',
+    Pending: 'Pending'
+} as const;
+export type TweetMediaState = Enum<typeof TweetMediaState>;
