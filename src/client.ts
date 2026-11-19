@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { FormData, ProxyAgent, type Response } from 'undici';
 import { ClientTransaction } from 'x-client-transaction-id';
 
@@ -2101,7 +2102,7 @@ export class TwitterClient {
      * Unmute a user
      * 
      * @param id User id
-     * @param [args] {@linkcode byUsername}
+     * @param [args] {@linkcode ByUsername}
      * @returns Success status
      * @since 0.1.0
      */
@@ -2113,12 +2114,26 @@ export class TwitterClient {
      * Upload an image or video file to Twitter by sending the file's data in several request, in small chunks
      * 
      * @param media The file's data as an `ArrayBuffer`
+     * @param contentType Mime type of the media
+     * @param callback Callback function executed after each chunk is uploaded
+     * @returns Media
+     * @since 0.6.0
+     */
+    async upload(media: ArrayBuffer, contentType: string, callback?: (chunk: ArrayBuffer, index: number, total: number) => any): Promise<TwitterResponse<TweetMediaData>>;
+    /**
+     * Upload an image or video file to Twitter by sending the file's data in several request, in small chunks
+     * 
+     * @param media The file's data as an `ArrayBuffer`
      * @param args {@linkcode MediaUploadArgs}
      * @param callback Callback function executed after each chunk is uploaded
      * @returns Media
      * @since 0.6.0
      */
-    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => any): Promise<TwitterResponse<TweetMediaData>> {
+    async upload(media: ArrayBuffer, args: MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => any): Promise<TwitterResponse<TweetMediaData>>;
+
+    async upload(media: ArrayBuffer, args: string | MediaUploadArgs, callback?: (chunk: ArrayBuffer, index: number, total: number) => any): Promise<TwitterResponse<TweetMediaData>> {
+        const contentType = typeof args === 'string' ? args : args.contentType;
+
         const append = async (id: string, data: ArrayBuffer, index: number, contentType: string) => {
             let formData = new FormData();
             formData.append('media', new Blob([data], { type: contentType }));
@@ -2142,8 +2157,8 @@ export class TwitterClient {
 
         const { errors, data: init } = await this.fetch(ENDPOINTS.media_upload.init, {
             total_bytes: media.byteLength.toString(),
-            media_type: args.contentType,
-            media_category: args.contentType.startsWith('video/') ? 'tweet_video' : args.contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
+            media_type: contentType,
+            media_category: contentType.startsWith('video/') ? 'tweet_video' : contentType.endsWith('gif') ? 'tweet_gif' : 'tweet_image'
         });
 
         if (errors.length && !init) {
@@ -2154,15 +2169,13 @@ export class TwitterClient {
             };
         }
 
-        const chunkSize = args.segmentSizeOverride || UPLOAD_SEGMENT_SIZE;
-        const chunksNeeded = Math.ceil(media.byteLength / chunkSize);
-
-        const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * chunkSize, (index + 1) * chunkSize));
+        const chunksNeeded = Math.ceil(media.byteLength / UPLOAD_SEGMENT_SIZE);
+        const chunks = [...Array(chunksNeeded).keys()].map(index => media.slice(index * UPLOAD_SEGMENT_SIZE, (index + 1) * UPLOAD_SEGMENT_SIZE));
 
         for (const [index, chunk] of chunks.entries()) {
             let response: Response;
             try {
-                [, response] = await append(init.media_id_string, chunk, index, args.contentType);
+                [, response] = await append(init.media_id_string, chunk, index, contentType);
             } catch (error) {
                 return {
                     errors: [error instanceof TwitterError ? error : new DivineInterventionError('Request function threw an unknown error', { cause: error })]
@@ -2171,7 +2184,7 @@ export class TwitterClient {
 
             if (!response.ok) {
                 return {
-                    errors: [new RequestError('An unknown error occured while appending new media segment', {
+                    errors: [new RequestError(`An unknown error occured while appending media segment ${index + 1}/${chunksNeeded}`, {
                         endpoint: ENDPOINTS.media_upload.append,
                         params: { media_id: init.media_id_string, segment_index: index }
                     })],
@@ -2182,18 +2195,10 @@ export class TwitterClient {
             callback?.(chunk, index, chunksNeeded);
         }
 
-        const final = await this.fetch(ENDPOINTS.media_upload.finalize, { media_id: init.media_id_string });
-
-        let altTextErrors: TwitterError[] = [];
-        if (!!final.data && !!args.altText) {
-            ({ errors: altTextErrors } = await this.addAltText(init!.media_id_string, args.altText));
-        }
-
-        return {
-            data: final.data,
-            errors: [...final.errors, ...altTextErrors],
-            response: final.response
-        };
+        return await this.fetch(ENDPOINTS.media_upload.finalize, {
+            media_id: init.media_id_string,
+            original_md5: createHash('md5').update(Buffer.from(media)).digest('hex')
+        });
     }
 
     /**

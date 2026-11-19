@@ -760,7 +760,7 @@ export const ENDPOINTS = ({
             method: 'POST',
             variables: {"command":"APPEND"}
         }, (_, value) => value),
-        finalize: new Endpoint<TweetMediaData>({
+        finalize: new Endpoint<TweetMediaData, { media_id: string, original_md5: string }>({
             url: 'https://upload.twitter.com/1.1/media/upload.json',
             method: 'GET',
             variables: {"command":"FINALIZE"}

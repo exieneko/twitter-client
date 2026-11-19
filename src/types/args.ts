@@ -317,11 +317,17 @@ export enum TranslationItemType {
 
 /**
  * Arguments for uploading a new media
+ * 
+ * @deprecated Using the mime type string instead of `{ contentType: string }` is preferred
  */
 export interface MediaUploadArgs {
     /** Mime type of the media */
     contentType: string,
-    /** ALT text to describe the media. Not supported for videos and gifs */
+    /**
+     * ALT text to describe the media. Not supported for videos and gifs
+     * 
+     * @deprecated Alt text is no longer created at media upload. Use with `createTweet` or `createMetadata` instead
+     */
     altText?: string,
     /**
      * Override the default segment size. Reducing the number will increase the amount of requests made
@@ -335,7 +341,9 @@ export interface MediaUploadArgs {
 /**
  * Arguments for adding metadata to an uploaded media
  */
-export interface MediaMetadataCreateArgs extends Pick<MediaUploadArgs, 'altText'> {
+export interface MediaMetadataCreateArgs {
+    /** ALT text to describe the media. Not supported for videos and gifs */
+    altText?: string,
     allowDownload?: boolean
 }
 
