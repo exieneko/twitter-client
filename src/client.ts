@@ -1138,24 +1138,40 @@ export class TwitterClient {
         ] as const);
 
         let cardUri: string | undefined = undefined;
-
+        let poll = args.poll;
         if (args.card?.type === 'Poll') {
-            const hasImage = args.card.choices.some(choice => !!choice.mediaId);
+            poll ||= args.card;
+        }
+
+        if (poll && poll.choices.length >= 2) {
+            const hasImage = poll.choices.every(choice => typeof choice.mediaId === 'string');
+
+            if (poll.choices.length > 4) {
+                this.log?.warn(`Poll has more ${poll.choices.length} choices, expected a max of 4`);
+            }
+            if (!hasImage && poll.choices.some(choice => typeof choice.mediaId === 'string')) {
+                this.log?.warn('Not all poll choices have media ids');
+            }
+
+            let payload: Record<string, string | number> = {
+                'twitter:api:api:endpoint': '1',
+                'twitter:card': hasImage ? `1906814671912599552:poll_choice_images` : `poll${poll.choices.length}choice_text_only`,
+                'twitter:long:duration_minutes': Math.floor(poll.duration / 60)
+            };
+            poll.choices.forEach((choice, index) => {
+                payload[`twitter:string:choice${index}_label`] = choice.text;
+                if (hasImage && choice.mediaId) {
+                    payload[`twitter:image:choice${index}_image:src:id`] = choice.mediaId;
+                }
+            });
+
+            if (hasImage) {
+                // just ignore any errors and hope it works
+                await Promise.all(poll.choices.map(choice => this.createMetadata(choice.mediaId!)));
+            }
 
             const { errors, data: uri } = await this.fetch(ENDPOINTS.cards_create, {
-                card_data: JSON.stringify({
-                    'twitter:api:api:endpoint': '1',
-                    'twitter:card': hasImage ? `1906814671912599552:poll_choice_images` : `poll${args.card.choices.length}choice_text_only`,
-                    'twitter:long:duration_minutes': Math.floor(args.card.duration / 60),
-                    'twitter:string:choice1_label': args.card!.choices.at(0)!.text,
-                    'twitter:image:choice1_image:src:id': hasImage ? `mis://${args.card!.choices.at(0)!.mediaId}` : undefined,
-                    'twitter:string:choice2_label': args.card!.choices.at(1)!.text,
-                    'twitter:image:choice2_image:src:id': hasImage ? `mis://${args.card!.choices.at(1)!.mediaId}` : undefined,
-                    'twitter:string:choice3_label': args.card!.choices.at(2)?.text,
-                    'twitter:image:choice3_image:src:id': hasImage ? `mis://${args.card!.choices.at(2)?.mediaId}` : undefined,
-                    'twitter:string:choice4_label': args.card!.choices.at(3)?.text,
-                    'twitter:image:choice4_image:src:id': hasImage ? `mis://${args.card!.choices.at(3)?.mediaId}` : undefined
-                })
+                card_data: JSON.stringify(payload)
             });
 
             if (!uri) {
@@ -1166,7 +1182,6 @@ export class TwitterClient {
         }
 
         let media = args.media;
-
         if (args.mediaIds) {
             media ||= args.mediaIds.map(id => ({ id }));
         }
@@ -1224,7 +1239,6 @@ export class TwitterClient {
         // (this is actually how the twitter app does it)
         for (const t of thread) {
             let media = t.media;
-
             if (t.mediaIds) {
                 media ||= t.mediaIds.map(id => ({ id }));
             }

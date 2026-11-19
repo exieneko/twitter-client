@@ -210,19 +210,16 @@ export interface TweetVoteArgs {
 export interface TweetCreateArgs {
     /** Content of the tweet. Defaults to an empty string. Tweets over 280 characters can only be sent as a note tweet */
     text?: string,
-    /** Card content of the tweet */
+    /**
+     * Card content of the tweet
+     * 
+     * @deprecated Use `poll` instead
+     */
     card?: {
-        type: 'Poll',
-        duration: number,
-        choices: {
-            text: string,
-            mediaId?: string
-        }[]
-    },
+        type: 'Poll'
+    } & TweetCreateArgs['poll'],
     /** Tweet content disclosures */
     contentDisclosures?: Partial<Tweet['contentDisclosures']>,
-    /** Tweet id to reply to */
-    replyTo?: string,
     /**
      * Media ids to attach to the tweet
      * 
@@ -230,10 +227,22 @@ export interface TweetCreateArgs {
      */
     mediaIds?: string[],
     media?: TweetCreateMediaArgs[],
-    /** Mark this tweet as sensitive? */
-    sensitive?: boolean,
+    poll?: {
+        /** Duration in seconds */
+        duration: number,
+        /** 2-4 choices */
+        choices: {
+            text: string,
+            /** If the poll should have images with the choices, add a media id to all choices */
+            mediaId?: string
+        }[]
+    },
+    /** Tweet id to reply to */
+    replyTo?: string,
     /** Control who can reply to this tweet */
-    replyPermission?: TweetReplyPermission
+    replyPermission?: TweetReplyPermission,
+    /** Mark this tweet as sensitive? */
+    sensitive?: boolean
 }
 
 /**
