@@ -1225,7 +1225,7 @@ export const user: AsyncConstructor<T.User, Record<string, any>, { legacy?: bool
     const verified = !!value.verification?.verified;
     const verifiedType = value.verification?.verified_type;
 
-    let verificationType = T.VerificationType.Unverified;
+    let verificationType: T.VerificationType = T.VerificationType.Unverified;
     if (verifiedType === 'Government') {
         verificationType = T.VerificationType.Government;
     } else if (verifiedType === 'Business') {
