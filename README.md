@@ -19,6 +19,9 @@ Install the `@exieneko/twitter-client` npm package with your preferred package m
 
 ```sh
 pnpm add @exieneko/twitter-client
+
+# or if you're not a coward
+pnpm add @exieneko/twitter-client@next
 ```
 
 ## Usage
