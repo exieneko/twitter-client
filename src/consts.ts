@@ -38,7 +38,7 @@ export const GLOBAL_HEADERS = {
     'accept-language': 'en-US,en;q=0.9',
     priority: 'u=0, i',
     'sec-ch-ua': '"Google Chrome";v="149", "Chromium";v="149", "Not)A;Brand";v="24"',
-    'sec-ch-ua-mobile': "?0",
+    'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Windows"',
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
@@ -553,11 +553,6 @@ export const ENDPOINTS = ({
             features: flags.timeline
         }, (fmt, value) => fmt.next(f.Entries.trends, value.data.timeline.timeline.instructions)),
     },
-    // TODO: whatever this thing is requires a new parser
-    inspiration_remote_urt: new Endpoint<string | undefined, { engagement: 'fjf5b5Lu82lYMSBRhppK2g/Bookmarks' | 'Shares' | 'VideoQualityViews', period: 'Daily' | 'Weekly' | 'Monthly', language: string }>({
-        url: 'https://twitter.com/i/jfapi/creators/inspiration/remote/urt',
-        method: 'GET'
-    }, (_, value) => value as unknown as string),
 
 
 
