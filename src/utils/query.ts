@@ -1,3 +1,5 @@
+import type { Tweet, User } from '../types/index.js';
+
 /**
  * Can be used to build any query with filters supported by Twitter search
  * 
@@ -27,9 +29,9 @@ export interface Query {
      * 
      * Acceptable formats:
      * 
-     * String: `'2023-12-31'`,  
-     * Tuple: `[2023, 12, 31]`,  
-     * Date: `new Date()`
+     * + String: `'2023-12-31'`
+     * + Tuple: `[2023, 12, 31]`
+     * + Date: `new Date()`
      * 
      * ### Result
      * 
@@ -41,9 +43,9 @@ export interface Query {
      * 
      * ### Acceptable formats:
      * 
-     * String: `'2023-12-31'`,  
-     * Tuple: `[2023, 12, 31]`,  
-     * Date: `new Date()`
+     * + String: `'2023-12-31'`
+     * + Tuple: `[2023, 12, 31]`
+     * + Date: `new Date()`
      * 
      * ### Result
      * 
@@ -53,7 +55,7 @@ export interface Query {
 
     // filters
     /**
-     * Filter tweets that contain images or videos (not gifs)
+     * Filter tweets that contain images or videos
      * 
      * ### Result
      * 
@@ -61,7 +63,7 @@ export interface Query {
      */
     hasMedia?: boolean,
     /**
-     * Filter tweets that contain images
+     * Filter tweets that contain images (not gifs)
      * 
      * ### Result
      * 
@@ -157,7 +159,17 @@ export interface Query {
      * 
      * ### Result
      * 
-     * `quoted_tweet_id:20000000000000000000`
+     * `quoted_tweet_id:1234`
+     */
+    quotedTweet?: string | Pick<Tweet, 'id'>,
+    /**
+     * Limit search to tweets quoting a particular tweet
+     * 
+     * ### Result
+     * 
+     * `quoted_tweet_id:1234`
+     * 
+     * @deprecated Replaced by `quotedTweet`
      */
     quotedTweetId?: string,
 
@@ -169,7 +181,7 @@ export interface Query {
      * 
      * `from:jack`
      */
-    author?: string,
+    author?: string | Pick<User, 'username'>,
     /**
      * Username of the user being replied to
      * 
@@ -177,7 +189,7 @@ export interface Query {
      * 
      * `to:jack`
      */
-    replyingTo?: string,
+    replyingTo?: string | Pick<User, 'username'>,
     /**
      * Usernames of users \@mentioned in the tweet or conversation
      * 
@@ -185,7 +197,7 @@ export interface Query {
      * 
      * `@jack`
      */
-    users?: string[],
+    users?: (string | Pick<User, 'username'>)[],
 
     /**
      * Apply negative filters to the query
@@ -215,7 +227,7 @@ export interface Query {
      *     OR: [
      *         {
      *             includes: 'this'
-     *         }
+     *         },
      *         {
      *             includes: 'that',
      *             author: 'jack'
@@ -225,16 +237,15 @@ export interface Query {
      */
     OR?: Query[]
 }
-export const Query = {
-    parse(query: string | Query): string {
-        if (typeof query === 'string') {
-            return query;
-        }
 
-        const expr = buildExpr(query)
-        return exprToString(expr);
+export function parseQuery(query: string | Query): string {
+    if (typeof query === 'string') {
+        return query;
     }
-};
+
+    const expr = buildExpr(query)
+    return exprToString(expr);
+}
 
 type QueryExpr = { type: 'token', value: string } | { type: 'not', children: QueryExpr[] } | { type: 'and', children: QueryExpr[] } | { type: 'or', children: QueryExpr[] };
 
@@ -265,7 +276,7 @@ function negative(expr: QueryExpr): string[] {
 }
 
 function escape(value: string): string {
-    if (/^[a-zA-Z0-9_]+$/.test(value) && value.trim().toUpperCase() !== 'OR') {
+    if (/^(\w+)$/.test(value) && value.trim().toUpperCase() !== 'OR') {
         return value;
     }
 
@@ -315,49 +326,49 @@ function buildExpr(query: Query): QueryExpr {
     if (query.hasMedia) {
         result.push({
             type: 'token',
-            value: `filter:media`
+            value: 'filter:media'
         });
     }
     if (query.hasImage) {
         result.push({
             type: 'token',
-            value: `filter:images`
+            value: 'filter:images'
         });
     }
     if (query.hasVideo) {
         result.push({
             type: 'token',
-            value: `filter:videos`
+            value: 'filter:videos'
         });
     }
     if (query.hasLink) {
         result.push({
             type: 'token',
-            value: `filter:links`
+            value: 'filter:links'
         });
     }
     if (query.isQuoteTweet) {
         result.push({
             type: 'token',
-            value: `filter:quote`
+            value: 'filter:quote'
         });
     }
     if (query.isReply) {
         result.push({
             type: 'token',
-            value: `filter:replies`
+            value: 'filter:replies'
         });
     }
     if (query.isRetweet) {
         result.push({
             type: 'token',
-            value: `filter:retweets`
+            value: 'filter:retweets'
         });
     }
     if (query.isVerified) {
         result.push({
             type: 'token',
-            value: `filter:verified`
+            value: 'filter:verified'
         });
     }
 
@@ -386,7 +397,12 @@ function buildExpr(query: Query): QueryExpr {
             value: `lang:${query.language}`
         });
     }
-    if (query.quotedTweetId) {
+    if (query.quotedTweet) {
+        result.push({
+            type: 'token',
+            value: `quoted_tweet_id:${typeof query.quotedTweet === 'string' ? query.quotedTweet : query.quotedTweet.id}`
+        });
+    } else if (query.quotedTweetId) {
         result.push({
             type: 'token',
             value: `quoted_tweet_id:${query.quotedTweetId}`
@@ -396,20 +412,20 @@ function buildExpr(query: Query): QueryExpr {
     if (query.author) {
         result.push({
             type: 'token',
-            value: `from:${query.author.replaceAll('@', '')}`
+            value: `from:${(typeof query.author === 'string' ? query.author : query.author.username).replaceAll('@', '')}`
         });
     }
     if (query.replyingTo) {
         result.push({
             type: 'token',
-            value: `to:${query.replyingTo.replaceAll('@', '')}`
+            value: `to:${(typeof query.replyingTo === 'string' ? query.replyingTo : query.replyingTo.username).replaceAll('@', '')}`
         });
     }
     if (query.users?.length) {
         for (const user of query.users) {
             result.push({
                 type: 'token',
-                value: `@${user.replaceAll('@', '')}`
+                value: `@${(typeof user === 'string' ? user : user.username).replaceAll('@', '')}`
             });
         }
     }

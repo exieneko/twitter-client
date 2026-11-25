@@ -10,7 +10,7 @@ import { ValidationError, ApiError, RequestError, TwitterError, ClientError, Div
 import type { Endpoint, EndpointParams, Type } from './types/utils.js';
 import { match } from './utils/index.js';
 import { Logger } from './utils/log.js';
-import { Query } from './utils/query.js';
+import { parseQuery, Query } from './utils/query.js';
 import { fetchXDocument, request } from './utils/request.js';
 
 /**
@@ -620,7 +620,7 @@ export class TwitterClient {
     }
 
     protected async searchBookmarksSlice(query: string | Query, args?: CursorOnly) {
-        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: Query.parse(query), ...args });
+        return await this.fetch(ENDPOINTS.BookmarkSearchTimeline, { rawQuery: parseQuery(query), ...args });
     }
 
     /**
@@ -1094,7 +1094,7 @@ export class TwitterClient {
 
     protected async searchSlice(query: string | Query, args?: SearchTweetArgs): Promise<TwitterResponse<Slice<TweetResult>>> {
         const product = args?.orderBy === SearchOrder.Relevant ? 'Top' : 'Latest';
-        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: Query.parse(query), querySource: args?.source ?? 'typed_query', product, cursor: args?.cursor });
+        return await this.fetch(ENDPOINTS.SearchTimeline, { rawQuery: parseQuery(query), querySource: args?.source ?? 'typed_query', product, cursor: args?.cursor });
     }
 
     protected async searchUsersSlice(query: string, args?: SearchArgs): Promise<TwitterResponse<Slice<UserResult>>> {
